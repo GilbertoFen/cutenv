@@ -1,0 +1,11 @@
+{
+  "name": "proyecto3",
+  "version": "1.0.0",
+  "description": "Software para gestion de inventario y restaurantes",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Saul Casas y Gilberto Avalos",
+  "license": "ISC"
+}
