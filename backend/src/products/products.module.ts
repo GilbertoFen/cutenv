@@ -8,7 +8,7 @@ import { ProductService } from './products.service';
 
 //Mongoose
 import { MongooseModule } from '@nestjs/mongoose';
-import { Product, ProductSchema } from 'schemasMongo/product.schema';
+import { Product, ProductSchema } from '../schemasMongo/product.schema';
 
 @Module({
   imports: [MongooseModule.forFeature([{

@@ -7,7 +7,7 @@ import { CreateProductDto } from "./dto/create-product.dto";
 //Mongoose
 import { Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
-import { Product } from "schemasMongo/product.schema";
+import { Product } from "../schemasMongo/product.schema";
 
 //El servicion tiene toda la logica del negocio, sabe si los productos existen o no
 @Injectable()

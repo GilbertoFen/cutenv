@@ -1,15 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ProductModule } from './products/products.module';
+import { ConfigModule } from '@nestjs/config';
 
 //Mongoose
 import { MongooseModule } from '@nestjs/mongoose';
+import { RecipesController } from './recipes/recipes.controller';
+import { RecipesModule } from './recipes/recipes.module';
+import { ProductController } from './products/products.controller';
 
 @Module({
   imports: [
-    MongooseModule.forRoot("mongodb://127.0.0.1:27017/inventory"), 
-    ProductModule
-  ], //modulos => endpoint de entrada
-  controllers: [], //controllers => controller(req, res)
-  providers: [], //servicios => Model(conexion a la base de datos)
+    ConfigModule.forRoot(),
+    MongooseModule.forRoot(process.env.MONGODB_PATH!), 
+    ProductModule, RecipesModule
+  ]
 })
 export class AppModule {}
