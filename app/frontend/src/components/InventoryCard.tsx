@@ -13,3 +13,4 @@ export const InventoryCard: React.FC<InventoryCardProps> = ({ title, onClick }) 
     {title}
   </button>
 );
+

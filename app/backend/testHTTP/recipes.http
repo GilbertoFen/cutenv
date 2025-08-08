@@ -1,0 +1,105 @@
+### Crear receta o platillo ( Aqui debe existir el id de los ingredientes 
+### en la base de datos o regresa un error )
+POST http://localhost:3000/api/recipes
+Content-Type: application/json
+
+{
+  "name": "Ensalada Cesar",
+  "steps": "1. Pica la lechuga. 2. Mezcla con el aderezo",
+  "price": 60.5,
+  "ingredients": [
+    {
+      "ingredientId": "6876f3358d6276645cde0105",  
+      "quantity": 1,
+      "unitMesure": "pieza"
+    },
+    {
+      "ingredientId": "6876f3648d6276645cde0108",  
+      "quantity": 50,
+      "unitMesure": "ml"
+    }
+  ],
+  "imageUrl": "https://res.cloudinary.com/dheg6jjxx/image/upload/v1754262386/ensalda-cesar_bfir6k.jpg"
+}
+
+###
+GET http://localhost:3000/api/recipes
+###
+POST http://localhost:3000/api/recipes
+Content-Type: application/json
+
+{
+  "name": "Huevo con Jamon",
+  "steps": "1. Estrela los huevos y revuelve junto con el jamon. 2.Frie todo junto con aceite.",
+  "price": 45,
+  "ingredients": [
+    {
+      "ingredientId": "688a74174c708fdb96d97f80",  
+      "quantity": 2,
+      "unitMesure": "pieza"
+    },
+    {
+      "ingredientId": "688a74a34c708fdb96d97f82",  
+      "quantity": 50,
+      "unitMesure": "gr"
+    }
+  ],
+  "imageUrl": "https://res.cloudinary.com/dheg6jjxx/image/upload/v1754262386/huevos-jamon_txxkci.jpg"
+}
+
+
+###HUEVO : 688a74174c708fdb96d97f80
+###JAMON :  688a74a34c708fdb96d97f82
+### 
+PATCH http://localhost:3000/api/recipes/688bd36b464d2d8c2ea24bca
+Content-Type: application/application/json
+
+{
+  "name": "Huevo con Jamon extra extra mucho ",
+  "steps": "1. Estrela los huevos y revuelve junto con el jamon. 2.Frie todo junto con aceite.",
+  "price": 45,
+  "ingredients": [
+    {
+      "name": "Huevo",
+      "quantity": 2,
+      "unitMesure": "pieza"
+    },
+    {
+      "name": "Jamon de pierna FUD",
+      "quantity": 75,
+      "unitMesure": "gr"
+    }
+  ]
+}
+###
+GET http://localhost:3000/api/orders/search?status=preparing
+
+###
+GET  http://localhost:3000/api/recipes/688bd36b464d2d8c2ea24bca
+
+###
+DELETE http://localhost:3000/api/recipes/688a758f4c708fdb96d97f88
+
+
+### 
+POST http://localhost:3000/api/recipes
+Content-Type: application/json
+
+{
+  "name": "Jugo de Naranja",
+  "steps": "Servir",
+  "price": 30,
+  "ingredients": [
+    {
+      "ingredientId": "689292087a02138c2526b611",  
+      "quantity": 500,
+      "unitMesure": "ml"
+    }
+  ],
+  "category": "bebidas",
+  "imageUrl": "https://res.cloudinary.com/dheg6jjxx/image/upload/v1754432507/jugo-naranja-natural_mazmxd.jpg"
+}
+
+### 6892827162e75f5658511f29
+### lin agua https://res.cloudinary.com/dheg6jjxx/image/upload/v1754432515/agua-ciel-600_so2qzk.jpg
+### link jugo naranja https://res.cloudinary.com/dheg6jjxx/image/upload/v1754432507/jugo-naranja-natural_mazmxd.jpg

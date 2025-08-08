@@ -1,0 +1,57 @@
+### 1 OBTENER TODAS LAS VENTAS
+GET http://localhost:3000/api/sales/
+
+
+### 2 BUSCAR VENTAS EN GENERAL
+GET http://localhost:3000/api/sales/search?_id=688ffa49ed7f6afdefde5866
+
+### 3 BUSCAR VENTA POR ID 
+GET http://localhost:3000/api/sales/68902670b84c80a671c3e16d
+
+### 4 CREAR UNA VENTA 
+POST http://localhost:3000/api/sales
+Content-Type: application/json
+
+{
+    "table": "688a76a04c708fdb96d97f9e",
+  "orders": ["688a774c4c708fdb96d97fa1"],
+  "totalAmount": 90,
+  "status": "paid"
+}
+
+
+### 5 IMPRIMIR TICKET (SIMULADO)
+GET http://localhost:3000/api/sales/688d9882a5546fea81c6137a/print
+
+
+### 6 PAGAR UNA VENTA
+PATCH http://localhost:3000/api/sales/688ef282e809d696b33da85e/pay
+
+
+
+
+
+###
+POST http://localhost:5000/print
+Content-Type: application/json
+
+{
+  "venta": {
+    "tableNumber": 2,
+    "totalAmount": 90,
+    "orders": [
+      {
+        "total": 90,
+        "items": [
+          {
+            "recipe": "Huevo con Jamon",
+            "quantity": 2,
+            "price": 45
+          }
+        ]
+      }
+    ],
+    "folio": "83EAE752",
+    "date": "2025-08-02T03:46:58.115Z"
+  }
+}

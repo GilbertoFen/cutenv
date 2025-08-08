@@ -1,0 +1,37 @@
+### 1 TODAS LAS MESAS
+GET http://localhost:3000/api/tables
+
+### 2 MESAS POR ID
+GET http://localhost:3000/api/tables/688d888d56a185441d84cc72
+
+### 3 CREAR UNA MESA
+POST http://localhost:3000/api/tables
+Content-Type: application/json
+
+{
+  "number": 4,
+  "status": "disponible",
+  "capacity": 2
+}
+
+### 4 ACTUALIZAR STATUS DE UNA MESA 
+
+###3 id mesa 5 688a76a04c708fdb96d97f9e
+PATCH http://localhost:3000/api/tables/688d888d56a185441d84cc72/status
+Content-Type: application/json
+
+{
+  "status": "ocupada"
+}
+
+
+### 5 BUSCAR MESAS EN GENERAL
+GET http://localhost:3000/api/tables/search?status=disponible
+
+###
+GET http://localhost:3000/api/tables/search?id=688d888d56a185441d84cc72
+
+### 6 LIBERAR UNA MESA
+PATCH http://localhost:3000/api/tables/688d888d56a185441d84cc72/release
+
+

@@ -1,0 +1,60 @@
+### 1 TODAS LAS ORDENES 
+GET http://localhost:3000/api/orders/
+
+### 2 ORDENES POR MESA
+GET http://localhost:3000/api/orders/table/688d888d56a185441d84cc72
+
+
+### 3 ORDEN POR ID
+
+GET http://localhost:3000/api/orders/688ff590a81962746a4b8d61
+
+
+### 4 CREAR ORDEN  id de receta de huev= 688fee03df08fdd48cecfd14
+### id de ensalada cesar=688fef28df08fdd48cecfd43
+POST http://localhost:3000/api/orders
+Content-Type: application/json
+
+{
+    "table": "688d888d56a185441d84cc72",
+    "items": [
+        {
+        "recipe": "688fee03df08fdd48cecfd14",  
+        "quantity": 1
+        },
+        {
+          "recipe": "688fef28df08fdd48cecfd43",
+        "quantity": 2
+        }
+    ],
+    "notes":" "
+}
+
+### 5 ACTUALIZAR ORDEN EN ESTADO
+PATCH http://localhost:3000/api/orders/68952ab3aa9bbc725a311802
+Content-Type: application/json
+
+{
+  "status": "ready"
+}
+
+### 6 ACTUALIZAR ORDEN COMPLETA O PARCIAL
+PATCH http://localhost:3000/api/orders/689533c8f6b8ea7f09652f52
+Content-Type: application/json
+
+{
+  "notes": "Sexo"
+}
+
+### 7 ELIMINAR ORDEN
+DELETE http://localhost:3000/api/orders/64e5d1234abc1234567890ab
+
+### 8 BUSCAR ORDEN EN GENERAL 
+
+GET http://localhost:3000/api/orders/search?table=688d888d56a185441d84cc72
+
+
+###
+
+GET http://localhost:3000/api/orders/search?status=preparing
+

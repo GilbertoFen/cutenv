@@ -1,0 +1,23 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import * as express from 'express';
+import { join } from 'path';
+import helmet from 'helmet';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true
+  }))
+
+  app.use(helmet())
+
+  app.setGlobalPrefix("api")
+
+
+  await app.listen(process.env.PORT ?? 3000);
+  console.log(`Server running on port ${process.env.PORT ?? 3000}`);
+}
+bootstrap();
