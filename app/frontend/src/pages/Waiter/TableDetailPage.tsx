@@ -42,6 +42,8 @@ const TableDetailPage = () => {
   };
 
   const occupyTable = async () => {
+    console.log("id de mesa "+ id)
+
     if (!id) return;
     try {
       await updateTableStatus(id, 'ocupada');
@@ -73,7 +75,14 @@ const TableDetailPage = () => {
       )
     : [];
 
-  const hasPendingOrders = orders.some((order) => order.status !== "delivered");
+  const hasPendingOrders = Array.isArray(orders)
+  ? orders.some(
+      (o) =>
+        o.tableNumber === tableInfo?.number &&
+        o.status !== "delivered" &&
+        (o.recipes?.length ?? 0) > 0
+    )
+  : false;
 
   return (
     <div className="min-h-screen bg-white text-white rounded-lg shadow-lg p-6 w-full max-w-6xl sm:p-6">
@@ -113,16 +122,16 @@ const TableDetailPage = () => {
                 + Agregar orden
               </button>
               <button
-                onClick={() => !hasPendingOrders && setShowChargeModal(true)}
-                disabled={hasPendingOrders}
-                className={`mt-2 px-3 py-1 rounded block w-full font-semibold ${
-                  hasPendingOrders
-                    ? "bg-gray-500 cursor-not-allowed text-white"
-                    : "bg-[#646cffaa] text-black shadow-[0_0_10px_#646cffaa] hover:shadow-[0_0_15px_#646cff] transition"
-                }`}
-              >
-                COBRAR
-              </button>
+  onClick={() => setShowChargeModal(true)}
+  disabled={hasPendingOrders}
+  className={`mt-2 px-3 py-1 rounded block w-full font-semibold ${
+    hasPendingOrders
+      ? "bg-gray-500 cursor-not-allowed text-white"
+      : "bg-[#646cffaa] text-black shadow-[0_0_10px_#646cffaa] hover:shadow-[0_0_15px_#646cff] transition"
+  }`}
+>
+  COBRAR
+</button>
             </>
           )}
         </div>
@@ -218,15 +227,16 @@ const TableDetailPage = () => {
       </div>
 
       {showChargeModal && id && (
-        <ChargeModal
-          tableId={id}
-          onClose={() => setShowChargeModal(false)}
-          onPaid={() => {
-            setShowChargeModal(false);
-            getTableById(id).then(setTableInfo); // <- actualiza estado
-          }}
-        />
-      )}
+  <ChargeModal
+    tableId={id}          // <- este `id` es el route param con ObjectId de la mesa
+    onClose={() => setShowChargeModal(false)}
+    onPaid={() => {
+      setShowChargeModal(false);
+      getTableById(id).then(setTableInfo);
+    }}
+  />
+)}
+
 
       {showAddModal && id && (
         <AddOrderModal

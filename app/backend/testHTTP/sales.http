@@ -3,10 +3,10 @@ GET http://localhost:3000/api/sales/
 
 
 ### 2 BUSCAR VENTAS EN GENERAL
-GET http://localhost:3000/api/sales/search?_id=688ffa49ed7f6afdefde5866
+GET http://localhost:3000/api/sales/search?table=688d888d56a185441d84cc72&status=unpaid
 
 ### 3 BUSCAR VENTA POR ID 
-GET http://localhost:3000/api/sales/68902670b84c80a671c3e16d
+GET http://localhost:3000/api/sales/689ed5df370925de7a95d233
 
 ### 4 CREAR UNA VENTA 
 POST http://localhost:3000/api/sales
@@ -25,7 +25,7 @@ GET http://localhost:3000/api/sales/688d9882a5546fea81c6137a/print
 
 
 ### 6 PAGAR UNA VENTA
-PATCH http://localhost:3000/api/sales/688ef282e809d696b33da85e/pay
+PATCH http://localhost:3000/api/sales/689ed5df370925de7a95d233/pay
 
 
 

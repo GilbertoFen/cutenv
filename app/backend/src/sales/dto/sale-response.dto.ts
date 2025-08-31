@@ -22,4 +22,16 @@ export class SaleResponseDto {
 
   @IsString()
   folio: string;
+
+  @IsOptional()
+  @IsString()
+  orderType?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  tableId?:string;
 }

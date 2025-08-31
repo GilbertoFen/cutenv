@@ -6,6 +6,9 @@ import Navbar from "./components/Navbar";
 import WaiterPage from "./pages/Waiter/WaiterPage";
 import TableDetailPage from "./pages/Waiter/TableDetailPage";
 import CookPage from "./pages/Cook/CookPage";
+import ManagerPage from "./pages/Manager/ManagerPage"
+import ReceptionistPage from "./pages/Receptionist/ReceptionistPage";
+import ReservationsPage from "./pages/Receptionist/ReservationsPage";
 
 export default function App() {
   return (
@@ -20,6 +23,9 @@ export default function App() {
           <Route path="/waiter" element={<WaiterPage />} />
           <Route path="/waiter/table/:id" element={<TableDetailPage />} />
           <Route path="/cook" element={<CookPage />} />
+          <Route path="/manager" element={<ManagerPage />} />
+          <Route path="/receptionist" element={<ReceptionistPage/>} />
+          <Route path= "/reception/reservations" element= {<ReservationsPage /> }/>
 
           <Route path="*" element={<div>Ruta no encontrada</div>} />
         </Routes>

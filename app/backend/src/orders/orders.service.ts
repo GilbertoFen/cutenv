@@ -9,6 +9,7 @@ import { OrderResponseDto } from './dto/order-response.dto';
 import { Sale, SaleDocument } from '../schemasMongo/sale.schema';
 import { Recipe, RecipeDocument } from '../schemasMongo/recipe.schema';
 import { Types } from 'mongoose';
+import { KitchenGateway } from 'src/gateways/kitchen.gateway';
 
 @Injectable()
 export class OrdersService {
@@ -16,7 +17,25 @@ export class OrdersService {
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(Recipe.name) private recipeModel: Model<RecipeDocument>,
-  ) {}
+    private readonly kitchenGateway: KitchenGateway,
+  ) { }
+  private toKitchenOrderPayload(order: any): any {
+  return {
+    id: order._id.toString(),
+    tableNumber: order.table?.number ?? order.table?.['number'] ?? 0,
+    status: order.status,
+    total: order.total,
+    notes: order.notes,
+    recipes: (order.items ?? [])
+      .filter((it) => it.recipe)
+      .map((it) => ({
+        id: it.recipe?._id?.toString?.(),
+        name: it.recipe?.name ?? '',
+        imageUrl: it.recipe?.imageUrl ?? '',
+        quantity: it.quantity ?? 0,
+      })),
+  };
+}
 
   async getAllOrders(): Promise<OrderResponseDto[]> {
     try {
@@ -85,7 +104,7 @@ export class OrdersService {
       tableNumber: order.table['number'] || 0,
       notes: order.notes,
       recipes: order.items
-        .filter((item) => item.recipe) 
+        .filter((item) => item.recipe)
         .map((item) => ({
           id: item.recipe._id.toString(),
           name: item.recipe['name'],
@@ -139,6 +158,12 @@ export class OrdersService {
       });
 
       const savedOrder = await createdOrder.save();
+      const populated = await this.orderModel
+  .findById(savedOrder._id)
+  .populate('items.recipe')
+  .populate('table');
+
+this.kitchenGateway.emitToAll('order.created', this.toKitchenOrderPayload(populated));
       const allSales = await this.saleModel.find({ status: 'unpaid' });
       console.log(
         'ventas unpaid:',
@@ -152,13 +177,21 @@ export class OrdersService {
         table: new Types.ObjectId(dto.table),
         status: 'unpaid',
       });
+      
       console.log('Venta activa encontrada:', activeSale);
 
       if (activeSale) {
         activeSale.orders.push(savedOrder._id as any);
-        activeSale.totalAmount += total;
         await activeSale.save();
-      } else {
+        const totals = await this.orderModel.aggregate([
+          { $match: { _id: { $in: activeSale.orders as any[] } } },
+          { $group: { _id: null, total: { $sum: '$total' } } },
+        ]);
+        activeSale.totalAmount = totals[0]?.total ?? 0;
+        
+        await activeSale.save();
+      }
+      else {
         console.warn(`No se encontro venta activa para la mesa ${dto.table}`);
       }
 
@@ -220,24 +253,39 @@ export class OrdersService {
         order.notes = dto.notes;
       }
 
+      // Recalcula SIEMPRE
+      const recipeIds = order.items.map(it => it.recipe);
+      const recipes = await this.recipeModel.find({ _id: { $in: recipeIds } });
+      const priceMap = new Map(recipes.map(r => [(r._id as Types.ObjectId).toString(), r.price]));
+      order.total = order.items.reduce((acc, it) => acc + (priceMap.get(it.recipe.toString()) ?? 0) * (it.quantity ?? 0), 0);
+
       const updatedOrder = await order.save();
 
-      const activeSale = await this.saleModel
-        .findOne({
-          table: order.table,
-          status: 'unpaid',
-        })
-        .populate('orders');
-
+      // Recalcula la venta activa de esta mesa
+      const activeSale = await this.saleModel.findOne({ table: order.table, status: 'unpaid' });
       if (activeSale) {
-        const recalculatedTotal = await this.orderModel.aggregate([
-          { $match: { _id: { $in: activeSale.orders.map((order) => order['_id']) } } },
+        const totals = await this.orderModel.aggregate([
+          { $match: { _id: { $in: activeSale.orders as any[] } } },
           { $group: { _id: null, total: { $sum: '$total' } } },
         ]);
-
-        activeSale.totalAmount = recalculatedTotal[0]?.total || 0;
+        activeSale.totalAmount = totals[0]?.total ?? 0;
         await activeSale.save();
+
       }
+
+      const populated = await this.orderModel
+  .findById(updatedOrder._id)
+  .populate('items.recipe')
+  .populate('table');
+
+// Evento genérico de actualización
+this.kitchenGateway.emitToAll('order.updated', this.toKitchenOrderPayload(populated));
+
+// Evento específico de cambio de estado (el front puede filtrar)
+this.kitchenGateway.emitToAll('order.status.changed', {
+  id: updatedOrder._id.toString(),
+  status: updatedOrder.status,
+});
 
       return updatedOrder;
     } catch (e) {
@@ -248,6 +296,7 @@ export class OrdersService {
   async deleteOrder(id: string) {
     try {
       const deleted = await this.orderModel.findByIdAndDelete(id);
+      this.kitchenGateway.emitToAll('order.deleted', { id: deleted?._id.toString() });
       if (!deleted) throw new NotFoundException('Orden no encontrada');
       return deleted;
     } catch (e) {

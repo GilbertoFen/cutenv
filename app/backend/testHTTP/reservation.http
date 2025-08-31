@@ -1,0 +1,40 @@
+###
+GET http://localhost:3000/api/reservations
+###
+GET http://localhost:3000/api/reservations?date=2025-08-15
+###
+POST http://localhost:3000/api/reservations
+Content-Type: application/json
+
+{
+    "table": "688c6d88d89b666d36361fa5",
+    "customerName": "Juan Pérez",
+    "phone": "555-123-4567",
+    "partySize": 4,
+    "startTime": "2025-08-15T20:00:00.000Z",
+    "endTime":   "2025-08-15T22:00:00.000Z",
+    "notes": "Aniversario"
+}
+
+###
+POST http://localhost:3000/api/reservations 
+Content-Type: application/json
+{
+    "customerName": "Walk-in",
+    "startTime": "2025-08-15T20:00:00.000Z",
+    "durationMinutes": 120
+}
+
+###
+PATCH http://localhost:3000/api/reservations/689ed4b5370925de7a95d20f/assign-table 
+Content-Type: application/json 
+
+{
+    "tableId":"688d888d56a185441d84cc72"
+}
+
+###
+PATCH http://localhost:3000/api/reservations/689ed4b5370925de7a95d20f/seat
+
+###
+PATCH http://localhost:3000/api/reservations/<RESERVATION_ID>/noshow

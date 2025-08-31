@@ -1,25 +1,21 @@
-import { useEffect, useState } from 'react';
-import type { Order } from '../../types';
-import { getPreparingOrders, markReadyOrders } from '../../services/OrderService';
+import { useState } from 'react';
+ import { markReadyOrders } from '../../services/OrderService';
+import { useKitchenOrders } from '../../hooks/useKitchenOrders';
 
 const CookPage = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-
-  const loadOrders = async () => {
-    const data = await getPreparingOrders();
-    setOrders(data);
-  };
-
-  useEffect(() => {
-    loadOrders();
-
-    const interval = setInterval(loadOrders, 80000);
-    return () => clearInterval(interval);
-  }, []);
+  const { orders, setOrders } = useKitchenOrders(); // estado inicial + sockets
+  const [updating, setUpdating] = useState<string | null>(null);
 
   const handleReady = async (id: string) => {
-    await markReadyOrders(id);
-    loadOrders(); 
+    try {
+      setUpdating(id);
+      await markReadyOrders(id); // esto dispara el evento en el backend
+      // no necesitas recargar; el socket hará que desaparezca
+      // pero puedes ser optimista:
+      setOrders(prev => prev.filter(o => o.id !== id));
+    } finally {
+      setUpdating(null);
+    }
   };
 
   return (
@@ -44,16 +40,16 @@ const CookPage = () => {
               ))}
               {order.notes && (
                 <div className="bg-yellow-100 border-l-4 border-yellow-500 text-black p-2 mt-2 rounded">
-                    <strong>Nota:</strong> {order.notes}
+                  <strong>Nota:</strong> {order.notes}
                 </div>
-                )}
-
+              )}
             </ul>
             <button
               onClick={() => handleReady(order.id)}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded w-full font-bold"
+              disabled={updating === order.id}
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1 rounded w-full font-bold"
             >
-              Marcar como lista
+              {updating === order.id ? 'Marcando...' : 'Marcar como lista'}
             </button>
           </div>
         ))}

@@ -10,6 +10,7 @@ export interface Recipe {
 export interface UpdateOrderItem{
   recipe: string;
   quantity: number; 
+  notes? : string;
 }
 
 export interface Order {
@@ -25,6 +26,7 @@ export interface Order {
     quantity: number;
     imageUrl?: string;
     category?: string;
+    notes?: string;
   }[];
 }
 
@@ -45,21 +47,49 @@ export interface AddOrderModalProps {
 export interface SelectedItem {
   recipe: Recipe;
   quantity: number;
+  notes?:string;
 }
 
+
+export interface SaleItem {
+  recipe: string;
+  quantity: number;
+  price: number;
+}
+
+export interface SaleOrder {
+  orderType?:'local' | 'para llevar' | 'evento' | 'domicilio';
+  total: number;
+  items: SaleItem[];
+  notes?: string;
+}
 export interface SaleData {
   id: string;
   folio: string;
+  table: { number?: number } | string;
   totalAmount: number;
-  orders: {
-    total: number;
-    items: {
-      recipe: string;
-      quantity: number;
-      price: number;
-    }[];
-  }[];
+  date?: string;
+  orders: SaleOrder[];
+  orderType?:'local' | 'para llevar' | 'evento' | 'domicilio';
+  paymentMethod?: 'efectivo' | 'tarjeta' | 'transferencia';
+  status: string;
 }
+
+export type BackendSale = {
+  id?: string;
+  _id?: string;
+  folio?: string;
+  totalAmount?: number | string;
+  orders?: {
+    total?: number | string;
+    items?: { recipe?: string; quantity?: number | string; price?: number | string }[];
+  }[];
+  status?: string;
+  date?: string;
+  table?: { number?: number } | string; 
+   orderType?:'local' | 'para llevar' | 'evento' | 'domicilio';
+  paymentMethod?: 'efectivo' | 'tarjeta' | 'transferencia';// puede ser objeto populado o string
+};
 
 export interface Props {
   tableId: string;
@@ -71,4 +101,38 @@ export interface SaleProps {
   order: Order;
   onClose: () => void;
   onUpdate: () => void;
+}
+
+export interface Reservation {
+  id: string;
+  table?: Table | string | null;
+  customerName?: string;
+  phone?: string;
+  partySize?: number;
+  startTime: string;  // ISO
+  endTime?: string;   // ISO
+  status: 'programada' | 'sentada' | 'cancelada' | 'no_asistencia'| 'expirada';
+  notes?: string;
+}
+
+
+export type ReservationInfoForTable = {
+  reservation: Reservation | null;
+  inLeadWindow: boolean;
+  minutesToStart: number | null;
+};
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  brand?: string;
+  price?: number;
+  sku?: string;        
+  category?: string;
+  unit?: string;       
+  description?: string;
+  currentQty: number;  
+  packageQty?: number; 
+  lastUpdate?: string; 
+  minQty?: number;    
 }

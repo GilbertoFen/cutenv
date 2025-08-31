@@ -6,7 +6,7 @@ import { OrdersController } from './orders.controller';
 import { RecipesModule } from '../recipes/recipes.module';
 import { SalesModule } from 'src/sales/sales.module';
 import { forwardRef } from '@nestjs/common';
-
+import { KitchenGateway } from 'src/gateways/kitchen.gateway';
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -16,7 +16,7 @@ import { forwardRef } from '@nestjs/common';
       forwardRef(() => SalesModule)
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, KitchenGateway],
   exports: [OrdersService],
 })
 export class OrdersModule {}

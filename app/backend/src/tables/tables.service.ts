@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Table, TableDocument } from '../schemasMongo/table.schema';
 import { Model } from 'mongoose';
@@ -54,40 +54,67 @@ export class TablesService {
   }
 
   async updateTableStatus(
-    id: string,
-    dto: UpdateTableStatusDto,
-  ): Promise<Table> {
-    try {
-      const table = await this.tableModel.findById(id);
-      if (!table) throw new NotFoundException('Table not found');
+  id: string,
+  dto: UpdateTableStatusDto,
+): Promise<Table> {
+  try {
+    const table = await this.tableModel.findById(id);
+    if (!table) throw new NotFoundException('Table not found');
 
-      table.status = dto.status;
-      await table.save();
+    // 1) BLOQUEAR liberar/“reservar” si hay venta activa en la mesa
+    if (dto.status === 'disponible' || dto.status === 'reservada') {
+      const activeSale = await this.saleModel.findOne({
+        table: table._id,
+        status: { $in: ['unpaid', 'partial'] },
+      });
 
-      const folio = randomBytes(4).toString('hex').toUpperCase();
+      if (activeSale) {
+        // (opcional) checar si hay órdenes pendientes para dar un mejor mensaje
+        const hasPending =
+          Array.isArray(activeSale.orders) &&
+          activeSale.orders.some((o: any) => o.status !== 'delivered');
 
-      if (dto.status === 'ocupada') {
-        const existingSale = await this.saleModel.findOne({
-          table: table._id,
-          status: 'unpaid',
-        });
+        const reason = hasPending
+          ? 'hay órdenes pendientes en la venta activa'
+          : 'la venta de esta mesa sigue abierta';
 
-        if (!existingSale) {
-          await this.saleModel.create({
-            table: table._id,
-            orders: [],
-            totalAmount: 0,
-            status: 'unpaid',
-            folio: folio,
-          });
-        }
+        throw new ConflictException(
+          `No puedes ${dto.status === 'disponible' ? 'desocupar' : 'reservar'} la mesa: ${reason}. Cierra (pay) o cancela la venta primero.`,
+        );
       }
-
-      return table;
-    } catch (e) {
-      throw e;
     }
+
+    // 2) Al marcar como “ocupada”: crear venta solo si no existe ya una activa
+    if (dto.status === 'ocupada') {
+      const existingSale = await this.saleModel.findOne({
+        table: table._id,
+        status: { $in: ['unpaid', 'partial'] },
+      });
+
+      if (!existingSale) {
+        const folio = randomBytes(4).toString('hex').toUpperCase();
+        await this.saleModel.create({
+          table: table._id,
+          orders: [],
+          totalAmount: 0,
+          status: 'unpaid',        // sigue tu convención actual
+          folio,
+          // Si ya agregaste orderType en el schema, puedes setearlo aquí:
+          // orderType: 'dine_in',
+        });
+      }
+    }
+
+    // 3) Finalmente, actualizar el estado de la mesa
+    table.status = dto.status;
+    await table.save();
+
+    return table;
+  } catch (e) {
+    throw e;
   }
+}
+
 
   async searchTables(query: any): Promise<Table[]> {
     try {

@@ -1,4 +1,4 @@
-import { IsMongoId, IsArray, IsNumber, IsString } from 'class-validator';
+import { IsMongoId, IsArray, IsNumber, IsString , IsOptional, IsIn} from 'class-validator';
 
 export class CreateSaleDto {
   @IsMongoId()
@@ -16,4 +16,14 @@ export class CreateSaleDto {
 
   @IsString()
   folio: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['local', 'para llevar', 'evento', 'domicilio'])
+  orderType?: string;
+  
+  @IsOptional()
+  @IsString()
+  @IsIn(['efectivo', 'tarjeta', 'transferencia'])
+  paymentMethod?: string;
 }
