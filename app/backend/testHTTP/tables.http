@@ -9,9 +9,9 @@ POST http://localhost:3000/api/tables
 Content-Type: application/json
 
 {
-  "number": 4,
+  "number": 3,
   "status": "disponible",
-  "capacity": 2
+  "capacity": 6
 }
 
 ### 4 ACTUALIZAR STATUS DE UNA MESA 

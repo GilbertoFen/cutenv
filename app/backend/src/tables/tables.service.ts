@@ -61,7 +61,6 @@ export class TablesService {
     const table = await this.tableModel.findById(id);
     if (!table) throw new NotFoundException('Table not found');
 
-    // 1) BLOQUEAR liberar/“reservar” si hay venta activa en la mesa
     if (dto.status === 'disponible' || dto.status === 'reservada') {
       const activeSale = await this.saleModel.findOne({
         table: table._id,
@@ -69,7 +68,6 @@ export class TablesService {
       });
 
       if (activeSale) {
-        // (opcional) checar si hay órdenes pendientes para dar un mejor mensaje
         const hasPending =
           Array.isArray(activeSale.orders) &&
           activeSale.orders.some((o: any) => o.status !== 'delivered');
@@ -84,7 +82,6 @@ export class TablesService {
       }
     }
 
-    // 2) Al marcar como “ocupada”: crear venta solo si no existe ya una activa
     if (dto.status === 'ocupada') {
       const existingSale = await this.saleModel.findOne({
         table: table._id,
@@ -97,15 +94,12 @@ export class TablesService {
           table: table._id,
           orders: [],
           totalAmount: 0,
-          status: 'unpaid',        // sigue tu convención actual
+          status: 'unpaid',     
           folio,
-          // Si ya agregaste orderType en el schema, puedes setearlo aquí:
-          // orderType: 'dine_in',
         });
       }
     }
 
-    // 3) Finalmente, actualizar el estado de la mesa
     table.status = dto.status;
     await table.save();
 

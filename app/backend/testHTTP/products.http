@@ -49,12 +49,12 @@ POST http://localhost:3000/api/products
 Content-Type: application/json
 
 {
-    "name": "Jugo de Naranja",
+    "name": "Agua Ciel",
     "brand": "Natural",
-    "price": 30,
+    "price": 25,
     "quantity": 500,
     "category": "drink",
-    "description": "Jugo de naranja natural sin conservadores",
+    "description": "Agua embotellada Ciel",
     "stock": 10,
-    "barCode": 1223456749
+    "barCode": 652165218
 }

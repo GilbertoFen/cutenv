@@ -4,7 +4,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
-type KitchenOrderPayload = {
+type KitchenOrderLoad = {
   id: string;
   tableNumber?: number;
   status: string;
@@ -14,19 +14,15 @@ type KitchenOrderPayload = {
 };
 
 @WebSocketGateway({
-  namespace: 'kitchen',           // el front se conecta a /kitchen
-  cors: { origin: '*', credentials: true }, // ajusta para prod
+  namespace: 'kitchen',    
+  cors: { origin: '*', credentials: true }, 
 })
 export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
-  handleConnection(client: Socket) {
-    // Aquí puedes validar JWT: client.handshake.auth?.token
-  }
-
+  handleConnection(client: Socket) {}
   handleDisconnect(client: Socket) {}
 
-  // opcional: sala por mesa/sucursal si quieres segmentar
   @SubscribeMessage('joinKitchen')
   handleJoinKitchen(
     @ConnectedSocket() client: Socket,
@@ -36,12 +32,10 @@ export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect 
       ? `kitchen:${payload.restaurantId}`
       : `kitchen:all`;
     client.join(room);
-    // Si quieres, aquí puedes mandar estado inicial:
-    // this.server.to(client.id).emit('orders:init', lista);
+    //this.server.to(client.id).emit('orders:init', ready);
   }
 
-  // helpers para emitir eventos
-  emitToAll(event: string, data: KitchenOrderPayload | any) {
+  emitToAll(event: string, data: KitchenOrderLoad | any) {
     this.server.emit(event, data);
   }
 

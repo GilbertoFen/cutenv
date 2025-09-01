@@ -34,12 +34,12 @@ Content-Type: application/json
   "price": 45,
   "ingredients": [
     {
-      "ingredientId": "688a74174c708fdb96d97f80",  
+      "ingredientId": "68b3e71e675772c83f4fae6a",  
       "quantity": 2,
       "unitMesure": "pieza"
     },
     {
-      "ingredientId": "688a74a34c708fdb96d97f82",  
+      "ingredientId": "68b3e722675772c83f4fae6c",  
       "quantity": 50,
       "unitMesure": "gr"
     }
@@ -86,18 +86,18 @@ POST http://localhost:3000/api/recipes
 Content-Type: application/json
 
 {
-  "name": "Jugo de Naranja",
+  "name": "Agua Embotellada Ciel",
   "steps": "Servir",
-  "price": 30,
+  "price": 25,
   "ingredients": [
     {
-      "ingredientId": "689292087a02138c2526b611",  
+      "ingredientId": "68b3e773675772c83f4fae74",  
       "quantity": 500,
       "unitMesure": "ml"
     }
   ],
   "category": "bebidas",
-  "imageUrl": "https://res.cloudinary.com/dheg6jjxx/image/upload/v1754432507/jugo-naranja-natural_mazmxd.jpg"
+  "imageUrl": "https://res.cloudinary.com/dheg6jjxx/image/upload/v1754432515/agua-ciel-600_so2qzk.jpg"
 }
 
 ### 6892827162e75f5658511f29

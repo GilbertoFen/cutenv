@@ -253,7 +253,6 @@ this.kitchenGateway.emitToAll('order.created', this.toKitchenOrderPayload(popula
         order.notes = dto.notes;
       }
 
-      // Recalcula SIEMPRE
       const recipeIds = order.items.map(it => it.recipe);
       const recipes = await this.recipeModel.find({ _id: { $in: recipeIds } });
       const priceMap = new Map(recipes.map(r => [(r._id as Types.ObjectId).toString(), r.price]));
@@ -261,7 +260,6 @@ this.kitchenGateway.emitToAll('order.created', this.toKitchenOrderPayload(popula
 
       const updatedOrder = await order.save();
 
-      // Recalcula la venta activa de esta mesa
       const activeSale = await this.saleModel.findOne({ table: order.table, status: 'unpaid' });
       if (activeSale) {
         const totals = await this.orderModel.aggregate([
@@ -278,10 +276,8 @@ this.kitchenGateway.emitToAll('order.created', this.toKitchenOrderPayload(popula
   .populate('items.recipe')
   .populate('table');
 
-// Evento genérico de actualización
 this.kitchenGateway.emitToAll('order.updated', this.toKitchenOrderPayload(populated));
 
-// Evento específico de cambio de estado (el front puede filtrar)
 this.kitchenGateway.emitToAll('order.status.changed', {
   id: updatedOrder._id.toString(),
   status: updatedOrder.status,
