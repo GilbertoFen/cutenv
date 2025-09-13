@@ -4,6 +4,7 @@ import { Table, TableSchema } from '../schemasMongo/table.schema';
 import { TablesService } from './tables.service';
 import { TablesController } from './tables.controller';
 import { SalesModule } from '../sales/sales.module';  
+import { TablesGateway } from 'src/gateways/tables.gateway';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { SalesModule } from '../sales/sales.module';
     SalesModule
   ],
   controllers: [TablesController],
-  providers: [TablesService],
+  providers: [TablesService, TablesGateway],
   exports: [TablesService]
 })
 export class TablesModule {}

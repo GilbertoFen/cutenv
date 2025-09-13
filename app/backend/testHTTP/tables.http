@@ -17,11 +17,11 @@ Content-Type: application/json
 ### 4 ACTUALIZAR STATUS DE UNA MESA 
 GET http://localhost:3000/api/sales
 ###3 id mesa 5 688a76a04c708fdb96d97f9e
-PATCH http://localhost:3000/api/tables/688d888d56a185441d84cc72/status
+PATCH http://localhost:3000/api/tables/68b3e7a2675772c83f4fae7f/status
 Content-Type: application/json
 
 {
-  "status": "ocupada"
+  "status": "disponible"
 }
 
 

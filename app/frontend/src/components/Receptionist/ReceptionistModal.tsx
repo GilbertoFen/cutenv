@@ -1,13 +1,6 @@
 import { useState } from "react";
-import type { Table } from "../../types";
+import type {Props} from '../../types/Receptionist/receptionist.types'
 import { createReservation, localToUTCISO } from "../../services/ReservationService";
-
-type Props = {
-  table?: Table | null;     // 👈 preseleccionada (si vienes de la card), opcional
-  tables: Table[]; 
-  onClose: () => void;
-  onCreated: () => void; // refrescar lista/mesas
-};
 
 export default function ReservationModal({ table,tables, onClose, onCreated }: Props) {
   const [customerName, setCustomerName] = useState("");
@@ -17,7 +10,7 @@ export default function ReservationModal({ table,tables, onClose, onCreated }: P
     const d = new Date();
     d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
     const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    return iso; // "YYYY-MM-DDTHH:mm"
+    return iso; 
   });
   const [duration, setDuration] = useState<number>(120);
   const [notes, setNotes] = useState("");
@@ -57,8 +50,6 @@ export default function ReservationModal({ table,tables, onClose, onCreated }: P
         </div>
 
         <div className="grid grid-cols-1 gap-3 text-sm">
-          {/* 👇 Selector de mesa */}
-          {/* SOLO mostrar el selector si NO hay mesa preseleccionada */}
           {!table && (
             <label>
               <span className="block text-gray-700 mb-1">Mesa</span>

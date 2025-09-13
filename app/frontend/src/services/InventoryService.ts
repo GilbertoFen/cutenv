@@ -19,7 +19,6 @@ export async function getInventory(): Promise<InventoryItem[]> {
   }));
 }
 
-/** PATCH /api/products/:id con { stock } */
 export async function updateProductStock(productId: string, newStock: number) {
   const res = await fetch(`/api/products/${productId}`, {
     method: "PATCH",
@@ -34,7 +33,6 @@ export async function updateProductStock(productId: string, newStock: number) {
   return res.json().catch(() => ({}));
 }
 
-/** Calcula y aplica delta (+/-) de stock */
 export async function adjustStock(product: InventoryItem, delta: number) {
   const target = Math.max(0, (product.currentQty ?? 0) + delta);
   await updateProductStock(product.id, target);

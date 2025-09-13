@@ -2,6 +2,7 @@ import { IsMongoId, IsArray, IsNumber, IsString , IsOptional, IsIn} from 'class-
 
 export class CreateSaleDto {
   @IsMongoId()
+  @IsOptional()
   table: string;
 
   @IsArray()

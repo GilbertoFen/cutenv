@@ -23,7 +23,6 @@ export class ReservationsController {
     @Param('tableId') tableId: string,
     @Query('date') date: string,
   ) {
-    // si no mandan date toma hoy local
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');

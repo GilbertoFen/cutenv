@@ -34,7 +34,6 @@ export default function ManagerPage() {
     refreshSales();
   }, []);
 
-  // Rango local del día seleccionado
   const dateRange = useMemo(() => {
     const [y, m, d] = selectedDate.split("-").map(Number);
     const start = new Date(y, m - 1, d, 0, 0, 0, 0);
@@ -42,7 +41,6 @@ export default function ManagerPage() {
     return { start, end };
   }, [selectedDate]);
 
-  // Ventas pagadas del día (sale.date existe solo cuando está pagada)
   const salesOfDay: SaleData[] = useMemo(() => {
     return (allSales || []).filter((s) => {
       if (!s?.date) return false;
@@ -51,7 +49,6 @@ export default function ManagerPage() {
     });
   }, [allSales, dateRange]);
 
-  // KPIs
   const summary = useMemo(() => {
     const count = salesOfDay.length;
     const totalAmount = salesOfDay.reduce(
@@ -60,19 +57,16 @@ export default function ManagerPage() {
     );
     const avg = count > 0 ? totalAmount / count : 0;
     const paidCount = salesOfDay.filter((s) => s.status === "paid").length;
-    const unpaidCount = allSales.filter((s) => s.status !== "paid").length; // abiertas (sin date)
+    const unpaidCount = allSales.filter((s) => s.status !== "paid").length;
     return { count, totalAmount, avg, paidCount, unpaidCount };
   }, [salesOfDay, allSales]);
 
   return (
     <div className="flex h-[100dvh]">
-      {/* Lateral izquierdo */}
       <Sidebar active={tab} onSelect={(t) => setTab(t)} />
 
-      {/* Contenido derecho */}
       <main className="flex-1 overflow-auto">
         <div className="mx-auto max-w-7xl p-4 md:p-6">
-          {/* Header + fecha */}
           <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold">Panel del gerente</h1>
@@ -97,8 +91,7 @@ export default function ManagerPage() {
             </div>
           </header>
 
-          {/* KPIs visibles en Sales/Summary */}
-         {tab === "sales" && (
+          {tab === "sales" && (
   <SalesSummary
     loading={loading}
     dateLabel={selectedDate}
@@ -112,13 +105,11 @@ export default function ManagerPage() {
            {/*//////////////////////// METER AQUI EL BOTON DE REALIZAR REPORTES//////////////*/}
 
 
-          {/* Panel según pestaña */}
           {tab === "employees" && <EmployeesPanel />}
           {tab === "inventory" && <InventoryPanel />}
 
           {tab === "sales" && (
   <>
-    {/* Botón para saltar al resumen */}
     <div className="mb-2 flex justify-end">
       <button
         className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
@@ -134,7 +125,6 @@ export default function ManagerPage() {
       sales={salesOfDay}
       onPrint={(id) => window.open(`/api/sales/${id}/print`, "_blank")}
       onOpen={(id) => setDetailId(id)}
-      // nuevo (por si también quieres mostrar botón arriba dentro del panel)
       onGoToSummary={() => setTab("summary")}
     />
   </>
@@ -143,7 +133,7 @@ export default function ManagerPage() {
         {tab === "summary" && (
   <ReportsPanel
     allSales={allSales}
-    defaultDate={selectedDate}   // arranca en “hoy” o en la fecha que elegiste arriba
+    defaultDate={selectedDate}  
   />
 )}
       </main>

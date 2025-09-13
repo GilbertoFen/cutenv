@@ -1,11 +1,5 @@
 import type { SaleData } from "../../types";
-
-function getTableNumber(table: { number?: number } | string | undefined): string {
-  if (!table) return "—";
-  if (typeof table === "string") return table;        // viene como id o nombre
-  if (typeof table.number === "number") return String(table.number);
-  return "—";
-}
+import { getTableNumber, Th, Td, currency } from "../../utils/Manager/manager.functions";
 
 export default function SalesTodayPanel({
   loading,
@@ -15,10 +9,10 @@ export default function SalesTodayPanel({
   onGoToSummary,
 }: {
   loading: boolean;
-  sales: SaleData[];              // usa tu tipo Sale si lo tienes
+  sales: SaleData[];           
   onPrint: (id: string) => void;
   onOpen: (id: string) => void;
-  onGoToSummary?: () => void; // <--- NUEVO
+  onGoToSummary?: () => void; 
 }) {
   return (
     <section className="mt-2">
@@ -87,14 +81,4 @@ export default function SalesTodayPanel({
       </div>
     </section>
   );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 text-xs font-semibold text-gray-600">{children}</th>;
-}
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2">{children}</td>;
-}
-function currency(n: number) {
-  return n.toLocaleString(undefined, { style: "currency", currency: "MXN" });
 }

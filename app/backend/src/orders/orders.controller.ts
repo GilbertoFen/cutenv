@@ -56,11 +56,9 @@ async getOrdersByTable(@Param('id') id: string) {
     return this.ordersService.getActiveOrdersByTable(id);
   }
 
-
   @Delete(':id')
   deleteOrder(@Param('id') id: string) {
     return this.ordersService.deleteOrder(id);
   }
   
-
 }

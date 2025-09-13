@@ -7,7 +7,7 @@ export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
 export async function getAllSales(): Promise<SaleData[]> {
   const res = await fetch("/api/sales", { credentials: "include" });
   if (!res.ok) throw new Error("Error al obtener ventas");
-  const json: unknown = await res.json();     // ← json tipado como unknown, no any
+  const json: unknown = await res.json(); 
   return normalizeSalesResponse(json);
 }
 export async function getUnpaidSaleByTable(tableId: string) {
@@ -47,8 +47,7 @@ export async function paySale(
   saleId: string,
   body: { orderType: OrderType; paymentMethod: PaymentMethod }
 ) {
-  // Log de lo que envías
-  console.debug('[paySale] Sending', { saleId, body });
+  console.debug('PAYSALE send: ', { saleId, body });
 
   let res: Response;
   try {
@@ -58,13 +57,11 @@ export async function paySale(
       body: JSON.stringify(body),
     });
   } catch (netErr: unknown) {
-    // Error de red/proxy/CORS
-    console.error('[paySale] Network error:', netErr);
+    console.error('PAYSALE error:', netErr);
     throw new Error('No se pudo contactar al servidor (network/CORS)');
   }
 
   if (!res.ok) {
-    // Captura status, statusText y el body (json o texto) para depurar
     let detail = '';
     try {
       const ct = res.headers.get('content-type') || '';
@@ -78,7 +75,6 @@ export async function paySale(
         detail = await res.text();
       }
     } catch {
-      // si no se pudo leer el body
     }
     const composed = `[${res.status} ${res.statusText}] ${detail || 'Sin mensaje'}`;
     console.error('[paySale] Server error:', composed);
@@ -91,4 +87,22 @@ export async function paySale(
   } catch {
     return {};
   }
+}
+
+export async function requestTicket(saleId: string) {
+  const r = await fetch(`/api/sales/${saleId}/request-ticket`, { method: 'POST' });
+  if (!r.ok) throw new Error('request-ticket failed');
+  return r.json();
+}
+
+export async function markPrinted(saleId: string) {
+  const r = await fetch(`/api/sales/${saleId}/mark-printed`, { method: 'POST' });
+  if (!r.ok) throw new Error('mark-printed failed');
+  return r.json();
+}
+
+export async function getTicketQueue(status: 'requested'|'printed'='requested') {
+  const r = await fetch(`/api/sales/tickets?status=${status}`);
+  if (!r.ok) throw new Error('ticket queue failed');
+  return r.json();
 }

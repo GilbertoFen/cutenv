@@ -1,20 +1,12 @@
 import type { Reservation, Table } from "../../types";
 import { seatReservation, cancelReservation, noShowReservation } from "../../services/ReservationService";
-
+import { fmt } from "../../utils/Receptionist/receptionist.functions";
 type Props = {
   reservation: Reservation;
   table: Table;
   onClose: () => void;
   onChanged: () => void;
 };
-
-
-
-function fmt(dtIso?: string) {
-  if (!dtIso) return "—";
-  const d = new Date(dtIso);
-  return d.toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
-}
 
 export default function ReservationDetailsModal({ reservation, table, onClose, onChanged }: Props) {
   const seat = async () => {
@@ -34,7 +26,7 @@ export default function ReservationDetailsModal({ reservation, table, onClose, o
       onChanged();
       onClose();
     } catch (e) {
-      alert(e|| "Error al cancelar");
+      alert(e || "Error al cancelar");
     }
   };
 
@@ -61,10 +53,10 @@ export default function ReservationDetailsModal({ reservation, table, onClose, o
             <>
               <button onClick={cancel} className="px-3 py-1 rounded border">Cancelar</button>
               <button onClick={seat} className="px-3 py-1 rounded bg-green-600 text-white">Ya llegó (Sentar)</button>
-               <button onClick={async () => { await noShowReservation(reservation.id); onChanged(); onClose(); }}
-            className="px-3 py-1 rounded border text-red-700">
-      No asistió
-    </button>
+              <button onClick={async () => { await noShowReservation(reservation.id); onChanged(); onClose(); }}
+                className="px-3 py-1 rounded border text-red-700">
+                No asistió
+              </button>
             </>
           )}
 

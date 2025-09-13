@@ -10,7 +10,6 @@ export function isArray(v: unknown): v is unknown[] {
   return Array.isArray(v);
 }
 
-// Normaliza a SaleData[]
 export function normalizeSalesResponse(json: unknown): SaleData[] {
   const rawList: unknown[] =
     isArray(json) ? json
@@ -51,7 +50,7 @@ export function normalizeSalesResponse(json: unknown): SaleData[] {
         paymentMethod: s.paymentMethod as PaymentMethod | undefined,
         status: s.status,
         date: s.date,
-        table: s.table, // objeto {number} o string; la UI lo resuelve
+        table: s.table,
       } as SaleData;
     });
 }

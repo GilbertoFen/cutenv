@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { getInventory, adjustStock } from "../../services/InventoryService";
 import type { InventoryItem } from "../../types";
+import { Kpi, Th, Td, fmtNum, currency } from "../../utils/Manager/manager.functions";
 
 export default function InventoryPanel() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<InventoryItem[]>([]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState<string>("all");
-
-  // estado para modal de ajuste
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [delta, setDelta] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -22,7 +21,7 @@ export default function InventoryPanel() {
   const categories = useMemo(() => {
     const set = new Set<string>();
     rows.forEach(r => r.category && set.add(r.category));
-    return ["all", ...Array.from(set).sort((a,b)=>a.localeCompare(b))];
+    return ["all", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
 
   const filtered = useMemo(() => {
@@ -41,7 +40,6 @@ export default function InventoryPanel() {
     return { totalItems, totalStock };
   }, [rows]);
 
-  // acciones rápidas +/- 1 o +/- 5
   const quickAdjust = async (r: InventoryItem, d: number) => {
     try {
       setSaving(true);
@@ -82,7 +80,6 @@ export default function InventoryPanel() {
     <section className="space-y-4">
       <h2 className="text-lg font-semibold">Inventario</h2>
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Kpi label="Ítems" value={String(kpis.totalItems)} />
         <Kpi label="Stock total (unidades)" value={String(kpis.totalStock)} />
@@ -95,7 +92,7 @@ export default function InventoryPanel() {
           <input
             className="rounded-xl border px-3 py-2 text-sm"
             placeholder="Nombre, marca, SKU…"
-            value={q} onChange={e=>setQ(e.target.value)}
+            value={q} onChange={e => setQ(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-2">
@@ -103,7 +100,7 @@ export default function InventoryPanel() {
           <select
             className="rounded-xl border px-3 py-2 text-sm"
             value={category}
-            onChange={e=>setCategory(e.target.value)}
+            onChange={e => setCategory(e.target.value)}
           >
             {categories.map(c => <option key={c} value={c}>{c === "all" ? "Todas" : c}</option>)}
           </select>
@@ -176,13 +173,12 @@ export default function InventoryPanel() {
         </table>
       </div>
 
-      {/* Modal simple de ajuste */}
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
             <header className="flex items-center justify-between border-b p-4">
               <h3 className="text-lg font-semibold">Ajustar stock</h3>
-              <button className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-50" onClick={()=>setEditing(null)}>
+              <button className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-50" onClick={() => setEditing(null)}>
                 Cerrar
               </button>
             </header>
@@ -204,7 +200,7 @@ export default function InventoryPanel() {
               </label>
               {error && <div className="text-sm text-red-600">{error}</div>}
               <div className="flex justify-end gap-2 pt-2">
-                <button className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50" onClick={()=>setEditing(null)}>
+                <button className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50" onClick={() => setEditing(null)}>
                   Cancelar
                 </button>
                 <button
@@ -221,25 +217,4 @@ export default function InventoryPanel() {
       )}
     </section>
   );
-}
-
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-[180px] rounded-2xl border p-4 shadow-sm">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-xl font-semibold whitespace-nowrap">{value}</div>
-    </div>
-  );
-}
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-3 py-2 text-xs font-semibold text-gray-600 ${className}`}>{children}</th>;
-}
-function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 ${className}`}>{children}</td>;
-}
-function fmtNum(n: number) {
-  return Number.isFinite(n) ? new Intl.NumberFormat().format(n) : "0";
-}
-function currency(n: number) {
-  return n.toLocaleString(undefined, { style: "currency", currency: "MXN" });
 }

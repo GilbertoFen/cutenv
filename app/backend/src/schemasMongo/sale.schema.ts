@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument , Types} from 'mongoose';
+import mongoose, { HydratedDocument, Types } from 'mongoose';
 
 export type SaleDocument = HydratedDocument<Sale> & { _id: Types.ObjectId };
 @Schema({ timestamps: true })
@@ -10,7 +10,7 @@ export class Sale {
   @Prop([{ type: Types.ObjectId, ref: 'Order', required: true }])
   orders: mongoose.Schema.Types.ObjectId[];
 
-  @Prop({ required: true, default:0 })
+  @Prop({ required: true, default: 0 })
   totalAmount: number;
 
   @Prop({ default: 'unpaid', enum: ['paid', 'unpaid', 'partial'] })
@@ -24,9 +24,18 @@ export class Sale {
 
   @Prop({ enum: ['local', 'para llevar', 'evento', 'domicilio'], default: 'local' })
   orderType: string;
+  @Prop({ enum: ['none', 'requested', 'printed'], default: 'none' })
+  ticketStatus: 'none' | 'requested' | 'printed';
+
+  @Prop() requestedAt?: Date;
+  @Prop() ticketPrintedAt?: Date;
 
   @Prop({ enum: ['efectivo', 'tarjeta', 'transferencia'], default: 'efectivo' })
   paymentMethod: string;
+
+
 }
 
 export const SaleSchema = SchemaFactory.createForClass(Sale);
+SaleSchema.index({ status: 1, ticketStatus: 1, requestedAt: -1 }); // útil para cola del cajero
+

@@ -3,13 +3,13 @@ export default function Sidebar({
   onSelect,
 }: {
   active: "employees" | "sales" | "summary" | "inventory";
-onSelect: (t: "employees" | "sales" | "summary" | "inventory") => void;
+  onSelect: (t: "employees" | "sales" | "summary" | "inventory") => void;
 }) {
   const Item = ({
     id,
     label,
   }: {
-    id: "employees" | "sales" | "summary"| "inventory";
+    id: "employees" | "sales" | "summary" | "inventory";
     label: string;
   }) => {
     const isActive = active === id;

@@ -8,6 +8,8 @@ import { OrdersModule } from 'src/orders/orders.module';
 import { forwardRef } from '@nestjs/common';
 import { Order, OrderSchema } from '../schemasMongo/order.schema';
 import { Table, TableSchema } from '../schemasMongo/table.schema';
+import { TablesService } from 'src/tables/tables.service';
+import { CashierGateway } from 'src/gateways/cashier.gateway';
 @Module({
   imports: [
     MongooseModule.forFeature(
@@ -16,9 +18,10 @@ import { Table, TableSchema } from '../schemasMongo/table.schema';
       { name: Table.name, schema: TableSchema },]),
       forwardRef(() => OrdersModule),
       forwardRef(() => TablesModule),
+      
   ], 
   controllers: [SalesController],
-  providers: [SalesService],
+  providers: [SalesService, CashierGateway],
   exports: [SalesService, MongooseModule],
 })
 export class SalesModule {}

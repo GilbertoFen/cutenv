@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SaleData } from "../../types";
 import { getUnpaidSaleByTable, paySale, getSaleById } from "../../services/SaleService";
-
-type Props = { tableId: string; onClose: () => void; onPaid: () => void; };
-type OrderType = 'local' | 'para llevar' | 'evento' | 'domicilio';
-type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
+import type { Props, OrderType, PaymentMethod } from "../../types/Waiter/waiter.types";
 
 export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
   const [sale, setSale] = useState<SaleData | null>(null);
@@ -15,25 +12,25 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-  (async () => {
-    try {
-      const s = await getUnpaidSaleByTable(tableId);
-      if (s?.id) {
-        const full = await getSaleById(s.id); // <-- asegura orders poblados
-        setSale(full ?? s);
-        setError("");
-      } else {
-        setSale(null);
-        setError("No hay venta abierta (unpaid) para esta mesa.");
+    (async () => {
+      try {
+        const s = await getUnpaidSaleByTable(tableId);
+        if (s?.id) {
+          const full = await getSaleById(s.id); // <-- asegura orders poblados
+          setSale(full ?? s);
+          setError("");
+        } else {
+          setSale(null);
+          setError("No hay venta abierta (unpaid) para esta mesa.");
+        }
+      } catch (e) {
+        console.error(e);
+        setError("Error al cargar la venta");
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-      setError("Error al cargar la venta");
-    } finally {
-      setLoading(false);
-    }
-  })();
-}, [tableId]);
+    })();
+  }, [tableId]);
 
   const confirmPayment = async () => {
     if (!sale?.id) { setError("No hay venta que pagar."); return; }
@@ -72,39 +69,39 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
           <button onClick={onClose} className="text-xl font-bold">&times;</button>
         </div>
         {(() => {
-  const grouped = (sale.orders ?? [])
-    .flatMap(o => o.items ?? [])
-    .reduce((acc, it) => {
-      const key = it.recipe;
-      if (!acc[key]) acc[key] = { qty: 0, price: it.price };
-      acc[key].qty += it.quantity;
-      return acc;
-    }, {} as Record<string, { qty: number; price: number }>);
+          const grouped = (sale.orders ?? [])
+            .flatMap(o => o.items ?? [])
+            .reduce((acc, it) => {
+              const key = it.recipe;
+              if (!acc[key]) acc[key] = { qty: 0, price: it.price };
+              acc[key].qty += it.quantity;
+              return acc;
+            }, {} as Record<string, { qty: number; price: number }>);
 
-  const keys = Object.keys(grouped);
-  if (!keys.length) return <div className="mt-2 text-xs text-gray-500">No hay items.</div>;
+          const keys = Object.keys(grouped);
+          if (!keys.length) return <div className="mt-2 text-xs text-gray-500">No hay items.</div>;
 
-  return (
-    <ul className="mt-2 list-disc pl-5">
-      {keys.map(name => {
-        const { qty, price } = grouped[name];
-        return (
-          <li key={name} className="flex justify-between text-sm">
-            <span>{qty} × {name}</span>
-            <span>${(qty * price).toFixed(2)}</span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-})()}
+          return (
+            <ul className="mt-2 list-disc pl-5">
+              {keys.map(name => {
+                const { qty, price } = grouped[name];
+                return (
+                  <li key={name} className="flex justify-between text-sm">
+                    <span>{qty} × {name}</span>
+                    <span>${(qty * price).toFixed(2)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        })()}
 
         <div className="space-y-2 text-sm">
           <div className="flex gap-2">
             <label className="flex-1">
               <span className="block text-gray-600 mb-1">Tipo de orden</span>
               <select className="w-full border rounded px-2 py-1"
-                value={orderType} onChange={e=>setOrderType(e.target.value as OrderType)}>
+                value={orderType} onChange={e => setOrderType(e.target.value as OrderType)}>
                 <option value="local">Local</option>
                 <option value="para llevar">Para llevar</option>
                 <option value="evento">Evento</option>
@@ -114,7 +111,7 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
             <label className="flex-1">
               <span className="block text-gray-600 mb-1">Método de pago</span>
               <select className="w-full border rounded px-2 py-1"
-                value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value as PaymentMethod)}>
+                value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}>
                 <option value="efectivo">Efectivo</option>
                 <option value="tarjeta">Tarjeta</option>
                 <option value="transferencia">Transferencia</option>

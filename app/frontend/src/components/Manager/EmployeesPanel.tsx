@@ -1,14 +1,8 @@
 import { useMemo } from "react";
+import type { Employee } from "../../types/Manager/manager.types";
+ 
 
-type Employee = {
-  id: string;
-  name: string;
-  role: "waiter" | "cook" | "cashier" | "host" | "supervisor";
-  clockIn?: string;   // ISO
-  status: "on_shift" | "off_shift";
-};
-
-// Por ahora MOCK: más adelante esto vendrá de tu backend (roles/turnos)
+// Temporal 
 const MOCK: Employee[] = [
   { id: "e1", name: "María", role: "waiter", status: "on_shift", clockIn: new Date().toISOString() },
   { id: "e2", name: "José", role: "cook", status: "on_shift", clockIn: new Date().toISOString() },
@@ -25,12 +19,12 @@ export default function EmployeesPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="Activos">
           <ul className="divide-y">
-            {onShift.map(e => (
-              <li key={e.id} className="py-2 flex items-center justify-between">
+            {onShift.map(employee => (
+              <li key={employee.id} className="py-2 flex items-center justify-between">
                 <div>
-                  <div className="font-medium">{e.name}</div>
+                  <div className="font-medium">{employee.name}</div>
                   <div className="text-xs text-gray-500">
-                    Rol: {e.role} · Entrada: {e.clockIn ? new Date(e.clockIn).toLocaleTimeString() : "—"}
+                    Rol: {employee.role} · Entrada: {employee.clockIn ? new Date(employee.clockIn).toLocaleTimeString() : "—"}
                   </div>
                 </div>
                 <span className="rounded-full border px-2 py-0.5 text-xs bg-green-100 border-green-200 text-green-800">

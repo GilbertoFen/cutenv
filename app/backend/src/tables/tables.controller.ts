@@ -5,21 +5,16 @@ import { UpdateTableStatusDto } from './dto/update-table-status.dto';
 
 @Controller('tables')
 export class TablesController {
-  constructor(private readonly tablesService: TablesService) {}
+  constructor(private readonly tablesService: TablesService) { }
 
   @Get()
   getAllTables() {
     return this.tablesService.getAllTables();
   }
-  
+
   @Get('search')
   async search(@Query() query: any) {
     return this.tablesService.searchTables(query);
-  }
-
-  @Get(':id')
-  getTableById(@Param('id') id: string) {
-    return this.tablesService.getTableById(id);
   }
 
   @Post()
@@ -35,5 +30,9 @@ export class TablesController {
   @Patch(':id/release')
   releaseTable(@Param('id') id: string) {
     return this.tablesService.releaseTable(id);
+  }
+  @Get(':id')
+  getTableById(@Param('id') id: string) {
+    return this.tablesService.getTableById(id);
   }
 }

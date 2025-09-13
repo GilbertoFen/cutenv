@@ -3,36 +3,34 @@ import {
   OnGatewayDisconnect, SubscribeMessage, MessageBody, ConnectedSocket
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-
-type KitchenOrderLoad = {
-  id: string;
-  tableNumber?: number;
-  status: string;
-  total: number;
-  notes?: string;
-  recipes: { id?: string; name: string; quantity: number; imageUrl?: string }[];
-};
+import type { KitchenOrderLoad } from './types/gateways.types';
 
 @WebSocketGateway({
-  namespace: 'kitchen',    
-  cors: { origin: '*', credentials: true }, 
+  namespace: 'kitchen',
+  cors: {
+    origin: ['http://localhost:5175, http://localhost:5173'],
+  },
 })
 export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
-  handleConnection(client: Socket) {}
-  handleDisconnect(client: Socket) {}
+  handleConnection(client: Socket) {
+    console.log('----- Socket ---- KITCHEN connected: ', client.id);
+  }
+  handleDisconnect(client: Socket) {
+    console.log('----- Socket ---- KITCHEN  disconnected: ', client.id);
+
+  }
 
   @SubscribeMessage('joinKitchen')
   handleJoinKitchen(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { restaurantId?: string }
+    @MessageBody() load: { restaurantId?: string }
   ) {
-    const room = payload?.restaurantId
-      ? `kitchen:${payload.restaurantId}`
+    const room = load?.restaurantId
+      ? `kitchen:${load.restaurantId}`
       : `kitchen:all`;
     client.join(room);
-    //this.server.to(client.id).emit('orders:init', ready);
   }
 
   emitToAll(event: string, data: KitchenOrderLoad | any) {

@@ -18,17 +18,17 @@ export class CreateReservationDto {
   partySize?: number;
 
   @IsISO8601()
-  startTime: string; // ISO string
+  startTime: string; 
 
   @ValidateIf(o => !o.durationMinutes)
   @IsOptional()
   @IsISO8601()
-  endTime?: string;  // ISO; si no llega, usamos durationMinutes
+  endTime?: string;   
 
   @ValidateIf(o => !o.endTime)
   @IsOptional()
   @IsNumber()
-  durationMinutes?: number; // si no mandan endTime
+  durationMinutes?: number;  
 
   @IsOptional()
   @IsString()

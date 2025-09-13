@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Order } from '../types';
 import { getPreparingOrders } from '../services/OrderService';
-import { getKitchenSocket } from '../gateways/socket';
+import { getKitchenSocket } from '../gateways/socketKitchen';
 
 export function useKitchenOrders(authToken?: string) {
   const [orders, setOrders] = useState<Order[]>([]);
-  const joinedRef = useRef(false);
+  const joined = useRef(false);
 
   useEffect(() => {
-    // 1) cargar estado inicial vía REST (solo una vez)
     getPreparingOrders().then((data) => {
-      // asegurar que solo 'preparing' se muestre
       setOrders(Array.isArray(data) ? data.filter(o => o.status === 'preparing') : []);
     });
 
-    // 2) conectar socket y escuchar eventos
     const socket = getKitchenSocket(authToken);
 
     const onCreated = (o: Order) => {
@@ -24,9 +21,7 @@ export function useKitchenOrders(authToken?: string) {
 
     const onUpdated = (o: Order) => {
       setOrders((prev) => {
-        // si la orden ya no está en preparing, quítala
         if (o.status !== 'preparing') return prev.filter(x => x.id !== o.id);
-        // si sigue en preparing, reemplázala
         const i = prev.findIndex(x => x.id === o.id);
         if (i === -1) return [o, ...prev];
         const clone = prev.slice();
@@ -37,7 +32,6 @@ export function useKitchenOrders(authToken?: string) {
 
     const onStatusChanged = ({ id, status }: { id: string; status: string }) => {
       if (status !== 'preparing') {
-        // si cambió a 'ready' o cualquier otro, la sacamos
         setOrders(prev => prev.filter(x => x.id !== id));
       }
     };
@@ -51,10 +45,8 @@ export function useKitchenOrders(authToken?: string) {
     socket.on('order.status.changed', onStatusChanged);
     socket.on('order.deleted', onDeleted);
 
-    // Unirse a la "sala" (opcional)
-    if (!joinedRef.current) {
-      socket.emit('joinKitchen', { restaurantId: null }); // o tu id real si lo tienes
-      joinedRef.current = true;
+    if (!joined.current) {
+      socket.emit('joinKitchen', { restaurantId: null }); 
     }
 
     return () => {

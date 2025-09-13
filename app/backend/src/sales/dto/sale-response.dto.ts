@@ -34,4 +34,6 @@ export class SaleResponseDto {
   @IsOptional()
   @IsString()
   tableId?:string;
+    table: { number: number } | null;
+
 }

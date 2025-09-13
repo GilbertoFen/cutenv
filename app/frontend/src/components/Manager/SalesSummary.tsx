@@ -1,3 +1,4 @@
+import { Kpi , currency} from "../../utils/Manager/manager.functions";
 export default function SalesSummary({
   loading,
   dateLabel,
@@ -26,14 +27,3 @@ export default function SalesSummary({
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-[180px] rounded-2xl border p-4 shadow-sm">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-xl font-semibold whitespace-nowrap">{value}</div>
-    </div>
-  );
-}
-function currency(n: number) {
-  return n.toLocaleString(undefined, { style: "currency", currency: "MXN" });
-}

@@ -11,29 +11,8 @@ import {
   localToUTCISO,
 } from "../../services/ReservationService";
 import { getAllTables } from "../../services/TableService";
-
-function getTableNumberStr(t: Reservation["table"]): string {
-  if (t && typeof t === "object" && "number" in t) {
-    return String((t as Table).number);
-  }
-  return "";
-}
-function todayYYYYMMDD() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function fmt(dtIso?: string) {
-  if (!dtIso) return "—";
-  const d = new Date(dtIso);
-  return d.toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
-}
-
-type Mode = "hoy" | "proximas";
-type StatusFilter = "todas" | "programada" | "sentada";
+import { dateFormat, fmt, getTableNumberStr } from "../../utils/Receptionist/receptionist.functions";
+import type { Mode, StatusFilter } from "../../types/Receptionist/receptionist.types";
 
 export default function ReservationsPage() {
   const [mode, setMode] = useState<Mode>("hoy");
@@ -46,51 +25,47 @@ export default function ReservationsPage() {
   const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
-  setLoading(true);
-  try {
-    let rows: Reservation[] = [];
+    setLoading(true);
+    try {
+      let rows: Reservation[] = [];
 
-    if (mode === "proximas") {
-      // 🔹 Próximas 48 h: pedimos al backend ya filtrado por estado (si no es "todas")
-      const state = statusFilter !== "todas" ? (statusFilter as 'programada' | 'sentada') : undefined;
-      rows = await getUpcomingReservations(48, state);
-      console.debug("[ReservationsPage] /reservations/upcoming ->", rows?.length, { state });
-    } else {
-      // 🔹 Hoy: 1) por ?date=YYYY-MM-DD
-      const yyyyMmDd = todayYYYYMMDD();
-      rows = await getReservationsByDate(yyyyMmDd);
-      console.debug("[ReservationsPage] /reservations?date=", yyyyMmDd, "->", rows?.length);
+      if (mode === "proximas") {
+        const state = statusFilter !== "todas" ? (statusFilter as 'programada' | 'sentada') : undefined;
+        rows = await getUpcomingReservations(48, state);
+        console.debug("[ReservationsPage] /reservations/upcoming ->", rows?.length, { state });
+      } else {
+        const yyyyMmDd = dateFormat();
+        rows = await getReservationsByDate(yyyyMmDd);
+        console.debug("[ReservationsPage] /reservations?date=", yyyyMmDd, "->", rows?.length);
 
-      // 2) Fallback por rango horario del día local (from/to) si vino vacío
-      if (!Array.isArray(rows) || rows.length === 0) {
-        const startLocal = new Date(); startLocal.setHours(0, 0, 0, 0);
-        const endLocal = new Date();   endLocal.setHours(23, 59, 59, 999);
+        if (!Array.isArray(rows) || rows.length === 0) {
+          const startLocal = new Date(); startLocal.setHours(0, 0, 0, 0);
+          const endLocal = new Date(); endLocal.setHours(23, 59, 59, 999);
 
-        const from = startLocal.toISOString();
-        const to   = endLocal.toISOString();
+          const from = startLocal.toISOString();
+          const to = endLocal.toISOString();
 
-        const alt = await fetch(
-          `/api/reservations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
-        );
-        if (alt.ok) {
-          rows = await alt.json();
-          console.debug("[ReservationsPage] fallback from/to ->", rows?.length, { from, to });
-        } else {
-          console.warn("[ReservationsPage] fallback from/to error", alt.status, await alt.text());
+          const alt = await fetch(
+            `/api/reservations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+          );
+          if (alt.ok) {
+            rows = await alt.json();
+            console.debug("[ReservationsPage] fallback from/to ->", rows?.length, { from, to });
+          } else {
+            console.warn("[ReservationsPage] fallback from/to error", alt.status, await alt.text());
+          }
         }
+
       }
 
-      // Nota: el filtro de estado en "hoy" lo seguimos aplicando en el cliente (tu useMemo).
+      setList(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      console.error("[ReservationsPage] refresh error:", err);
+      setList([]);
+    } finally {
+      setLoading(false);
     }
-
-    setList(Array.isArray(rows) ? rows : []);
-  } catch (err) {
-    console.error("[ReservationsPage] refresh error:", err);
-    setList([]);
-  } finally {
-    setLoading(false);
-  }
-}, [mode, statusFilter]);
+  }, [mode, statusFilter]);
 
   useEffect(() => {
     refresh();
@@ -99,7 +74,7 @@ export default function ReservationsPage() {
   useEffect(() => {
     getAllTables()
       .then(setTables)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const filtered = useMemo(() => {
@@ -114,7 +89,7 @@ export default function ReservationsPage() {
         return (
           (r.customerName || "").toLowerCase().includes(q) ||
           (r.phone || "").toLowerCase().includes(q) ||
-          tableNum.includes(q) // 👈 aquí usamos el helper
+          tableNum.includes(q)
         );
       })
       .sort((a, b) => +new Date(a.startTime) - +new Date(b.startTime));
@@ -258,15 +233,14 @@ export default function ReservationsPage() {
                     </td>
                     <td className="p-2">
                       <span
-                        className={`px-2 py-0.5 rounded text-xs ${
-                          r.status === "programada"
+                        className={`px-2 py-0.5 rounded text-xs ${r.status === "programada"
                             ? "bg-amber-100 text-amber-800"
                             : r.status === "sentada"
                               ? "bg-green-100 text-green-800"
                               : r.status === "cancelada"
                                 ? "bg-gray-200 text-gray-700"
                                 : "bg-red-100 text-red-700"
-                        }`}
+                          }`}
                       >
                         {r.status}
                       </span>
@@ -327,7 +301,6 @@ export default function ReservationsPage() {
   );
 }
 
-/** Modal minimalista para crear reservación desde esta vista (sin mesa obligatoria) */
 function CreateReservationModal({
   onClose,
   onCreated,
@@ -348,7 +321,7 @@ function CreateReservationModal({
       .slice(0, 16);
     return isoLocal;
   });
-  const [selectedTableId, setSelectedTableId] = useState<string>(""); // 👈 aquí vive el estado
+  const [selectedTableId, setSelectedTableId] = useState<string>("");
   const [duration, setDuration] = useState<number>(120);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -388,7 +361,6 @@ function CreateReservationModal({
         </div>
 
         <div className="grid grid-cols-1 gap-3 text-sm">
-          {/* Selector de mesa (opcional) */}
           {tables.length > 0 ? (
             <label>
               <span className="block text-gray-700 mb-1">Mesa (opcional)</span>

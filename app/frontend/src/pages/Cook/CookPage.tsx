@@ -3,15 +3,13 @@ import { useState } from 'react';
 import { useKitchenOrders } from '../../hooks/useKitchenOrders';
 
 const CookPage = () => {
-  const { orders, setOrders } = useKitchenOrders(); // estado inicial + sockets
+  const { orders, setOrders } = useKitchenOrders(); 
   const [updating, setUpdating] = useState<string | null>(null);
 
   const handleReady = async (id: string) => {
     try {
       setUpdating(id);
-      await markReadyOrders(id); // esto dispara el evento en el backend
-      // no necesitas recargar; el socket hará que desaparezca
-      // pero puedes ser optimista:
+      await markReadyOrders(id); 
       setOrders(prev => prev.filter(o => o.id !== id));
     } finally {
       setUpdating(null);

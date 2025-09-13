@@ -88,7 +88,7 @@ export type BackendSale = {
   date?: string;
   table?: { number?: number } | string; 
    orderType?:'local' | 'para llevar' | 'evento' | 'domicilio';
-  paymentMethod?: 'efectivo' | 'tarjeta' | 'transferencia';// puede ser objeto populado o string
+  paymentMethod?: 'efectivo' | 'tarjeta' | 'transferencia';
 };
 
 export interface Props {
@@ -109,8 +109,8 @@ export interface Reservation {
   customerName?: string;
   phone?: string;
   partySize?: number;
-  startTime: string;  // ISO
-  endTime?: string;   // ISO
+  startTime: string;  
+  endTime?: string;  
   status: 'programada' | 'sentada' | 'cancelada' | 'no_asistencia'| 'expirada';
   notes?: string;
 }

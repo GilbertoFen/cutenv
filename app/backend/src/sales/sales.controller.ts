@@ -1,10 +1,10 @@
-import {Controller, Get, Param, Post, Body, Patch, Query, } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, Patch, Query, } from '@nestjs/common';
 import { SalesService } from './sales.service';
-import { CreateSaleDto} from './dto/create-sale.dto';
+import { CreateSaleDto } from './dto/create-sale.dto';
 import { PaySaleDto } from './dto/pay-sale.dto';
 @Controller('sales')
 export class SalesController {
-  constructor(private readonly salesService: SalesService) {}
+  constructor(private readonly salesService: SalesService) { }
 
   @Get()
   getAllSales() {
@@ -17,17 +17,11 @@ export class SalesController {
     return this.salesService.searchSales(query);
   }
 
-
-  @Get(':id')
-  getSaleById(@Param('id') id: string) {
-    return this.salesService.getSaleById(id);
-  }
-
   @Post()
   createSale(@Body() dto: CreateSaleDto) {
     return this.salesService.createSale(dto);
   }
-   @Patch(':id/pay')
+  @Patch(':id/pay')
   paySale(@Param('id') id: string, @Body() dto: PaySaleDto) {
     return this.salesService.paySale(id, dto);
   }
@@ -36,6 +30,24 @@ export class SalesController {
   printTicket(@Param('id') id: string) {
     return this.salesService.printTicket(id);
   }
-  
 
+  @Post(':id/request-ticket')
+  requestTicket(@Param('id') id: string) {
+    return this.salesService.requestTicket(id);
+  }
+
+  @Post(':id/mark-printed')
+  markPrinted(@Param('id') id: string) {
+    return this.salesService.markPrinted(id);
+  }
+
+  @Get('/tickets')
+  getPendingTickets(@Query('status') status: 'requested' | 'printed' = 'requested') {
+    return this.salesService.getTicketQueue(status);
+  }
+
+  @Get(':id')
+  getSaleById(@Param('id') id: string) {
+    return this.salesService.getSaleById(id);
+  }
 }

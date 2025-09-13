@@ -1,0 +1,42 @@
+// src/gateways/tables.gateway.ts
+import {
+  WebSocketGateway, WebSocketServer, SubscribeMessage,
+  ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import type { TableStatusChangeLoad } from './types/gateways.types';
+
+@WebSocketGateway({
+  namespace: '/tables',
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:5175'],
+  },
+})
+export class TablesGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer() server: Server;
+
+  handleConnection(client: Socket) {
+    console.log('----- Socket ---- TABLES connected: ', client.id);
+
+  }
+  handleDisconnect(client: Socket) {
+    console.log('----- Socket ---- TABLES disconnected: ', client.id);
+  }
+
+  @SubscribeMessage('joinTable')
+  joinTable(@ConnectedSocket() client: Socket, @MessageBody() load: { tableId: string }) {
+    if (load?.tableId) client.join(`table:${load.tableId}`);
+    return { ok: true };
+  }
+
+  @SubscribeMessage('joinReception')
+  joinReception(@ConnectedSocket() client: Socket) {
+    client.join('role:reception');
+    return { ok: true };
+  }
+
+  emitTableStatusChanged(load : TableStatusChangeLoad) {
+    this.server.to(`table:${load.tableId}`).emit('table.status.changed', load);
+    this.server.to('role:reception').emit('table.status.changed', load);
+  }
+}

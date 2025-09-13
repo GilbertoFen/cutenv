@@ -15,6 +15,7 @@ import { SalesModule } from './sales/sales.module';
 import { SalesController } from './sales/sales.controller';
 import { OrdersService } from './orders/orders.service';
 import { ReservationsModule } from './reservations/reservations.module';
+import { CashierGateway } from './gateways/cashier.gateway';
 
 @Module({
   imports: [

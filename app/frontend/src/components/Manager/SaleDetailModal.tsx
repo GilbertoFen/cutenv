@@ -1,8 +1,7 @@
-// src/components/Manager/SaleDetailModal.tsx
 import { useEffect, useState } from "react";
 import { getSaleById } from "../../services/SaleService";
 import type { SaleData } from "../../types";
-
+import { Th, Td, Kpi, currency } from "../../utils/Manager/manager.functions";
 type Props = {
   saleId: string;
   onClose: () => void;
@@ -62,7 +61,6 @@ export default function SaleDetailModal({ saleId, onClose }: Props) {
                           </div>
                         </div>
 
-                        {/* Items si existen */}
                         {Array.isArray(o.items) && o.items.length > 0 && (
                           <div className="overflow-auto">
                             <table className="min-w-full text-sm">
@@ -88,7 +86,6 @@ export default function SaleDetailModal({ saleId, onClose }: Props) {
                           </div>
                         )}
 
-                        {/* Notas si existen */}
                         {o.notes && (
                           <div className="mt-2 rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
                             <span className="font-medium">Notas:</span> {o.notes}
@@ -107,22 +104,4 @@ export default function SaleDetailModal({ saleId, onClose }: Props) {
       </div>
     </div>
   );
-}
-
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border p-3">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-sm font-semibold">{value}</div>
-    </div>
-  );
-}
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">{children}</th>;
-}
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2">{children}</td>;
-}
-function currency(n: number) {
-  return n.toLocaleString(undefined, { style: "currency", currency: "MXN" });
 }

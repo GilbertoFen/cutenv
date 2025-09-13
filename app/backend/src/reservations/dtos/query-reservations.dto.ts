@@ -1,19 +1,17 @@
-// src/reservations/dtos/query-reservations.dto.ts
 import { IsOptional, IsString, IsIn } from 'class-validator';
 
 export class QueryReservationsDto {
   @IsOptional() @IsString()
-  date?: string; // YYYY-MM-DD
+  date?: string; 
 
   @IsOptional() @IsString()
-  from?: string; // ISO
+  from?: string; 
 
   @IsOptional() @IsString()
-  to?: string;   // ISO
+  to?: string;   
 
   @IsOptional() @IsString()
-  table?: string; // ObjectId
-
+  table?: string;  
   @IsOptional() @IsString() @IsIn(['programada','sentada','cancelada','no_asistencia','expirada'])
   status?: string;
 }
