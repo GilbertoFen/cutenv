@@ -8,9 +8,7 @@ import type { TableStatusChangeLoad } from './types/gateways.types';
 
 @WebSocketGateway({
   namespace: '/tables',
-  cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5175'],
-  },
+  cors: true,
 })
 export class TablesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;

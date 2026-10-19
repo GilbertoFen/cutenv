@@ -35,9 +35,35 @@ export class Product {
     quantity: number
 
     @Prop({
-        trim: true
+        trim: true,
+        default: 'pieza'
     })
-    unitMesure: string //deberia de ser un array [ml, l, g, kg, oz, li, ...]
+    unitMesure: string // compatibilidad: unidad base anterior
+
+    @Prop({
+        trim: true,
+        default: 'pieza'
+    })
+    purchaseUnit?: string // Unidad de compra: ej. 'caja', 'botella', 'bolsa', 'paquete', 'pieza'
+
+    @Prop({
+        type: Number,
+        default: 1,
+        min: 0
+    })
+    contentPerUnit?: number // Contenido por empaque: ej. 12 botellas, 1.5 L, 2 kg
+
+    @Prop({
+        trim: true,
+        default: 'pieza'
+    })
+    contentUnit?: string // Unidad del contenido: ej. 'l', 'kg', 'ml', 'g', 'pieza'
+
+    @Prop({
+        trim: true,
+        default: 'pieza'
+    })
+    baseUnit?: string // Unidad base de inventario para recetas: 'ml', 'g', 'pieza'
 
     @Prop({
         required: true,
@@ -60,11 +86,33 @@ export class Product {
     stock: number
 
     @Prop({
-        unique: true,
-        required: true,
+        sparse: true,
+        trim: true,
+        type: String,
+    })
+    barCode?: string
+
+    @Prop({
         trim: true,
     })
-    barCode: number
+    imageUrl?: string
+
+    @Prop({
+        default: 'manual',
+    })
+    source?: string
+
+    @Prop({
+        type: Object,
+        default: null,
+    })
+    nutriments?: Record<string, any>
+
+    @Prop({
+        trim: true,
+    })
+    servingSize?: string
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product)
+ProductSchema.index({ barCode: 1 }, { unique: true, sparse: true })

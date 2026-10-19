@@ -1,5 +1,6 @@
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { INestApplication } from '@nestjs/common';
+import { isAllowedOrigin } from './common/utils/cors.util';
 
 export class SocketIoAdapter extends IoAdapter {
   constructor(private app: INestApplication) {
@@ -8,7 +9,9 @@ export class SocketIoAdapter extends IoAdapter {
 
   createIOServer(port: number, options?: any) {
     const cors = {
-      origin: ['http://localhost:5173', 'http://localhost:5175'],  
+      origin: (origin: string | undefined, callback: (err: Error | null, success: boolean) => void) => {
+        callback(null, isAllowedOrigin(origin));
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],

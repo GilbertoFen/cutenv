@@ -13,8 +13,12 @@ export class Sale {
   @Prop({ required: true, default: 0 })
   totalAmount: number;
 
-  @Prop({ default: 'unpaid', enum: ['paid', 'unpaid', 'partial'] })
+  @Prop({ default: 'unpaid', enum: ['paid', 'unpaid', 'partial', 'cancelled'] })
   status: string;
+
+  @Prop() cancelReason?: string;
+  @Prop() cancelledBy?: string;
+  @Prop() cancelledAt?: Date;
 
   @Prop({ type: Date })
   date: Date;
@@ -33,9 +37,26 @@ export class Sale {
   @Prop({ enum: ['efectivo', 'tarjeta', 'transferencia'], default: 'efectivo' })
   paymentMethod: string;
 
+  @Prop({ default: false, index: true })
+  isFacturada: boolean;
 
+  @Prop({ type: Types.ObjectId, ref: 'Invoice', required: false })
+  invoiceId?: Types.ObjectId;
+
+  @Prop({ default: 0 })
+  discountAmount: number;
+
+  @Prop({ type: Object, required: false })
+  promotionApplied?: {
+    promotionId: string;
+    name: string;
+    type: string;
+    discountAmount: number;
+    benefitedItems?: string[];
+  };
 }
 
 export const SaleSchema = SchemaFactory.createForClass(Sale);
 SaleSchema.index({ status: 1, ticketStatus: 1, requestedAt: -1 }); // útil para cola del cajero
+SaleSchema.index({ isFacturada: 1, status: 1 });
 

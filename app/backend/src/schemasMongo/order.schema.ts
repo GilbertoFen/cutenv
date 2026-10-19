@@ -11,11 +11,16 @@ export class Order {
 
   @Prop([{
     recipe: { type: Types.ObjectId, ref: 'Recipe', required: true },
-    quantity: { type: Number, required: true }
+    quantity: { type: Number, required: true },
+    status: { type: String, enum: ['preparing', 'ready', 'delivered', 'cancelled'], default: 'preparing' },
+    notes: { type: String, required: false }
   }])
   items: {
+    _id?: Types.ObjectId;
     recipe: Types.ObjectId;
     quantity: number;
+    status: 'preparing' | 'ready' | 'delivered' | 'cancelled';
+    notes?: string;
   }[];
 
   @Prop({ default: 'preparing', enum: ['preparing', 'ready', 'delivered', 'cancelled'] })

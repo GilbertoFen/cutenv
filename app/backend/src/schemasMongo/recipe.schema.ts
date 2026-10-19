@@ -40,6 +40,18 @@ export class Recipe {
   
   @Prop()
   imageUrl?: string;
+
+  @Prop({ default: true })
+  isActive: boolean;
+
+  @Prop({ type: String, required: false })
+  deletedBy?: string;
+
+  @Prop({ type: Date, required: false })
+  deletedAt?: Date;
+
+  @Prop({ type: String, required: false })
+  deleteReason?: string;
 }
 
 export const RecipeSchema = SchemaFactory.createForClass(Recipe);

@@ -10,6 +10,7 @@ import { Order, OrderSchema } from '../schemasMongo/order.schema';
 import { Table, TableSchema } from '../schemasMongo/table.schema';
 import { TablesService } from 'src/tables/tables.service';
 import { CashierGateway } from 'src/gateways/cashier.gateway';
+import { AuthModule } from 'src/auth/auth.module';
 @Module({
   imports: [
     MongooseModule.forFeature(
@@ -18,7 +19,7 @@ import { CashierGateway } from 'src/gateways/cashier.gateway';
       { name: Table.name, schema: TableSchema },]),
       forwardRef(() => OrdersModule),
       forwardRef(() => TablesModule),
-      
+      AuthModule,
   ], 
   controllers: [SalesController],
   providers: [SalesService, CashierGateway],

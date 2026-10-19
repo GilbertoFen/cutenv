@@ -33,7 +33,29 @@ export class SaleResponseDto {
 
   @IsOptional()
   @IsString()
-  tableId?:string;
-    table: { number: number } | null;
+  tableId?: string;
+  table: { number: number } | null;
 
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  cancelReason?: string;
+
+  @IsOptional()
+  @IsString()
+  cancelledBy?: string;
+
+  @IsOptional()
+  @IsDate()
+  cancelledAt?: Date;
+
+  @IsOptional()
+  isFacturada?: boolean;
+
+  @IsOptional()
+  @IsString()
+  invoiceId?: string;
 }

@@ -1,7 +1,8 @@
-import { Controller, Delete, Get, Patch, Post, Body, Param, Query,NotFoundException } from "@nestjs/common";
+import { Controller, Delete, Get, Patch, Post, Body, Param, Query, NotFoundException } from "@nestjs/common";
 import { RecipesService } from "./recipes.service";
 import { CreateRecipeDto } from "./dto/create-recipe.dto";
 import { UpdateRecipeDto } from "./dto/update-recipe.dto";
+import { DeleteRecipeDto } from "./dto/delete-recipe.dto";
 
 @Controller("/recipes")
 export class RecipesController {
@@ -15,7 +16,6 @@ export class RecipesController {
   searchRecipes(@Query() query: any) {
     return this.recipesService.searchRecipes(query);
   }
-
 
   @Get(":id")
   async getRecipeById(@Param("id") id: string) {
@@ -32,10 +32,8 @@ export class RecipesController {
     return this.recipesService.updateRecipe(id, dto);
   }
 
-
   @Delete(":id")
-  async deleteRecipeById(@Param("id") id: string) {
-    return await this.recipesService.deleteRecipeById(id);
+  async deleteRecipeById(@Param("id") id: string, @Body() dto: DeleteRecipeDto) {
+    return await this.recipesService.deleteRecipeById(id, dto);
   }
-  
 }

@@ -1,4 +1,4 @@
-import { IsString, IsIn } from 'class-validator';
+import { IsString, IsIn, IsOptional, IsNumber, IsObject } from 'class-validator';
 
 export class PaySaleDto {
   @IsString()
@@ -8,4 +8,18 @@ export class PaySaleDto {
   @IsString()
   @IsIn(['efectivo', 'tarjeta', 'transferencia'])
   paymentMethod: string;
+
+  @IsOptional()
+  @IsNumber()
+  discountAmount?: number;
+
+  @IsOptional()
+  @IsObject()
+  promotionApplied?: {
+    promotionId: string;
+    name: string;
+    type: string;
+    discountAmount: number;
+    benefitedItems?: string[];
+  };
 }

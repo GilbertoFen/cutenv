@@ -10,6 +10,8 @@ import { PaySaleDto } from './dto/pay-sale.dto';
 import { TablesService } from 'src/tables/tables.service';
 import { CashierGateway } from 'src/gateways/cashier.gateway';
 import { normalizeId, isPopulatedTable, normalizeIdStrict } from 'src/common/utils/normalizeId';
+import { AuthService } from 'src/auth/auth.service';
+import { CancelSaleDto } from './dto/cancel-sale.dto';
 
 @Injectable()
 export class SalesService {
@@ -19,6 +21,7 @@ export class SalesService {
     @InjectModel(Table.name) private tableModel: Model<TableDocument>,
     private readonly tablesService: TablesService,
     private readonly cashierGateway: CashierGateway,
+    private readonly authService: AuthService,
   ) { }
 
   async getAllSales(): Promise<SaleResponseDto[]> {
@@ -60,8 +63,13 @@ export class SalesService {
         paymentMethod: sale?.paymentMethod,
         date: sale?.date ?? undefined,
         tableId: sale?.table?._id,
-            table: sale?.table ? { number: sale.table.number } : null,
-
+        table: sale?.table ? { number: sale.table.number } : null,
+        status: sale?.status,
+        cancelReason: sale?.cancelReason,
+        cancelledBy: sale?.cancelledBy,
+        cancelledAt: sale?.cancelledAt,
+        isFacturada: Boolean(sale?.isFacturada),
+        invoiceId: sale?.invoiceId?.toString?.() ?? undefined,
       }));
 
     } catch (e) {
@@ -145,8 +153,13 @@ export class SalesService {
           orderType: sale.orderType,
           paymentMethod: sale.paymentMethod,
           date: sale.date ?? undefined,
-              table: sale?.table ? { number: sale.table.number } : null,
-
+          table: sale?.table ? { number: sale.table.number } : null,
+          status: sale.status,
+          cancelReason: sale.cancelReason,
+          cancelledBy: sale.cancelledBy,
+          cancelledAt: sale.cancelledAt,
+          isFacturada: Boolean(sale.isFacturada),
+          invoiceId: sale.invoiceId?.toString?.() ?? undefined,
         };
       });
     } catch (e) {
@@ -200,8 +213,13 @@ export class SalesService {
         orderType: sale?.orderType,
         paymentMethod: sale?.paymentMethod,
         date: sale?.date ?? undefined,
-            table: sale?.table ? { number: sale.table.number } : null,
-
+        table: sale?.table ? { number: sale.table.number } : null,
+        status: sale?.status,
+        cancelReason: sale?.cancelReason,
+        cancelledBy: sale?.cancelledBy,
+        cancelledAt: sale?.cancelledAt,
+        isFacturada: Boolean(sale?.isFacturada),
+        invoiceId: sale?.invoiceId?.toString?.() ?? undefined,
       };
     } catch (e) {
       throw e;
@@ -240,16 +258,14 @@ export class SalesService {
 
   async printTicket(saleId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:3000/api/sales/search?_id=${saleId}`);
-      const sales = await response.json();
+      const sale = await this.getSaleById(saleId);
 
-      if (!Array.isArray(sales) || sales.length === 0) {
+      if (!sale) {
         throw new Error('Venta no encontrada');
       }
 
-      const sale = sales[0];
-
-      const printRes = await fetch('http://localhost:5000/print', {
+      const printerUrl = process.env.PRINTER_SERVICE_URL || 'http://localhost:5000/print';
+      const printRes = await fetch(printerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -306,6 +322,15 @@ export class SalesService {
       sale.date = new Date();
       sale.orderType = orderType;
       sale.paymentMethod = paymentMethod;
+
+      if (body.discountAmount && body.discountAmount > 0) {
+        sale.discountAmount = body.discountAmount;
+        sale.totalAmount = Math.max(0, Number((sale.totalAmount - body.discountAmount).toFixed(2)));
+      }
+      if (body.promotionApplied) {
+        sale.promotionApplied = body.promotionApplied;
+      }
+
       await sale.save();
       console.log('[paySale] about to free table. raw sale.table =', sale.table);
 console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
@@ -408,5 +433,50 @@ console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
     }
   }
 
+  async cancelSale(saleId: string, dto: CancelSaleDto) {
+    try {
+      // 1. Validar credenciales de gerente
+      const managerAuth = await this.authService.verifyManager({
+        username: dto.username,
+        password: dto.password,
+      });
 
+      // 2. Buscar venta
+      const sale = await this.saleModel.findById(saleId).populate('table');
+      if (!sale) throw new NotFoundException('Venta no encontrada');
+
+      if (sale.status === 'cancelled') {
+        throw new ConflictException('Esta cuenta ya ha sido cancelada previamente');
+      }
+
+      // 3. Marcar como cancelada y auditar
+      sale.status = 'cancelled';
+      sale.cancelReason = dto.reason;
+      sale.cancelledBy = `${managerAuth.manager.name} (@${managerAuth.manager.username})`;
+      sale.cancelledAt = new Date();
+      await sale.save();
+
+      // 4. Liberar mesa si estaba ocupada
+      const tableId = normalizeIdStrict(sale.table);
+      if (tableId) {
+        await this.tablesService.updateTableStatus(tableId, { status: 'disponible' });
+      }
+
+      // 5. Emitir socket para caja y mesas
+      this.cashierGateway.emitSalePaid({ saleId: sale._id.toString() });
+
+      return {
+        message: 'Cuenta cancelada exitosamente por el gerente',
+        sale: {
+          id: sale._id.toString(),
+          status: sale.status,
+          cancelReason: sale.cancelReason,
+          cancelledBy: sale.cancelledBy,
+          cancelledAt: sale.cancelledAt,
+        },
+      };
+    } catch (e) {
+      throw e;
+    }
+  }
 }

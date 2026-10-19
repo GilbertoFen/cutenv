@@ -4,7 +4,10 @@
   "description": "Software para gestion de inventario y restaurantes",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test"
   },
   "author": "Saul Casas y Gilberto Avalos",
   "license": "ISC",

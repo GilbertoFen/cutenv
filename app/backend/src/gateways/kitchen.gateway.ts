@@ -7,9 +7,7 @@ import type { KitchenOrderLoad } from './types/gateways.types';
 
 @WebSocketGateway({
   namespace: 'kitchen',
-  cors: {
-    origin: ['http://localhost:5175, http://localhost:5173'],
-  },
+  cors: true,
 })
 export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;

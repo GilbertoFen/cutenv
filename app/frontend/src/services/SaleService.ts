@@ -7,7 +7,7 @@ export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
 export async function getAllSales(): Promise<SaleData[]> {
   const res = await fetch("/api/sales", { credentials: "include" });
   if (!res.ok) throw new Error("Error al obtener ventas");
-  const json: unknown = await res.json(); 
+  const json: unknown = await res.json();
   return normalizeSalesResponse(json);
 }
 export async function getUnpaidSaleByTable(tableId: string) {
@@ -101,7 +101,7 @@ export async function markPrinted(saleId: string) {
   return r.json();
 }
 
-export async function getTicketQueue(status: 'requested'|'printed'='requested') {
+export async function getTicketQueue(status: 'requested' | 'printed' = 'requested') {
   const r = await fetch(`/api/sales/tickets?status=${status}`);
   if (!r.ok) throw new Error('ticket queue failed');
   return r.json();

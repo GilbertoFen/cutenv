@@ -56,9 +56,22 @@ async getOrdersByTable(@Param('id') id: string) {
     return this.ordersService.getActiveOrdersByTable(id);
   }
 
+  @Post('check-stock')
+  checkStock(@Body() body: { items: Array<{ recipe: string; quantity: number }> }) {
+    return this.ordersService.checkRecipeAvailability(body?.items || []);
+  }
+
+  @Patch(':id/items/:itemId/status')
+  updateOrderItemStatus(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body('status') status: 'preparing' | 'ready' | 'delivered' | 'cancelled',
+  ) {
+    return this.ordersService.updateOrderItemStatus(id, itemId, status);
+  }
+
   @Delete(':id')
   deleteOrder(@Param('id') id: string) {
     return this.ordersService.deleteOrder(id);
   }
-  
 }

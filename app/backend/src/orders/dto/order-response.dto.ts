@@ -1,9 +1,14 @@
 import { IsString, IsArray, IsNumber } from 'class-validator';
 
-class OrderRecipeDto {
+export class OrderRecipeDto {
+  itemId?: string;
+  id?: string;
   name: string;
   quantity: number;
   imageUrl?: string;
+  status?: string;
+  notes?: string;
+  price?: number;
 }
 
 export class OrderResponseDto {

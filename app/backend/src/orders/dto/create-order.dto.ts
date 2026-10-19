@@ -7,6 +7,14 @@ class OrderItemDto {
 
   @IsNumber()
   quantity: number;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class CreateOrderDto {

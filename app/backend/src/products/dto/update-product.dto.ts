@@ -1,45 +1,69 @@
-import { IsInt, IsNumber, IsOptional, IsString } from "class-validator"
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
-export class UpdateProductDto{
+export class UpdateProductDto {
     @IsString()
     @IsOptional()
-    name?: string
+    name?: string;
 
     @IsString()
     @IsOptional()
-    brand?: string
+    brand?: string;
 
     @IsNumber()
     @IsOptional()
-    price?: number
+    price?: number;
 
-    @IsInt()
+    @IsNumber()
     @IsOptional()
-    quantity?: number
-
-    @IsString()
-    @IsOptional()
-    unitMesure?: string //deberia de ser un array [ml, l, g, kg, oz, li, ...]
+    quantity?: number;
 
     @IsString()
     @IsOptional()
-    category?: string //deberia de ser un array [verduras, lacteos, ...]
+    unitMesure?: string;
 
     @IsString()
     @IsOptional()
-    description?: string
+    purchaseUnit?: string;
 
-    @IsInt()
+    @IsNumber()
     @IsOptional()
-    stock?: number
+    contentPerUnit?: number;
 
-    @IsInt()
+    @IsString()
     @IsOptional()
-    barCode?: number
-} 
-/*
-Posibles campos:
-    - Proveedor
-    - Ubicacion: Pasillo 3, estante 2, seccion A
-    - imageUrl
-*/
+    contentUnit?: string;
+
+    @IsString()
+    @IsOptional()
+    baseUnit?: string;
+
+    @IsString()
+    @IsOptional()
+    category?: string;
+
+    @IsString()
+    @IsOptional()
+    description?: string;
+
+    @IsNumber()
+    @IsOptional()
+    stock?: number;
+
+    @IsOptional()
+    barCode?: string | number;
+
+    @IsOptional()
+    @IsString()
+    imageUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    source?: string;
+
+    @IsOptional()
+    nutriments?: Record<string, any>;
+
+    @IsOptional()
+    @IsString()
+    servingSize?: string;
+}

@@ -7,9 +7,7 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
     namespace: 'waiter',
-    cors: {
-        origin: ['http://localhost:5175, http://localhost:5173'],
-    },
+    cors: true,
 })
 
 export class WaiterGateway implements OnGatewayConnection, OnGatewayDisconnect {

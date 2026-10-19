@@ -1,26 +1,33 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, UnauthorizedException, ForbiddenException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Recipe } from "../schemasMongo/recipe.schema";
+import { Recipe, RecipeDocument } from "../schemasMongo/recipe.schema";
 import { CreateRecipeDto } from "./dto/create-recipe.dto";
 import { UpdateRecipeDto } from "./dto/update-recipe.dto";
+import { DeleteRecipeDto } from "./dto/delete-recipe.dto";
 import { RecipeResponseDto } from "./dto/recipe-response.dto";
 import { Types } from "mongoose";
+import { AuthService } from "../auth/auth.service";
+
 @Injectable()
 export class RecipesService {
-  constructor(@InjectModel(Recipe.name) private recipeModel: Model<Recipe>) {}
+  constructor(
+    @InjectModel(Recipe.name) private recipeModel: Model<RecipeDocument>,
+    private authService: AuthService,
+  ) {}
 
   async getAllRecipes(): Promise<RecipeResponseDto[]> {
-    try{
-      const recipes = await this.recipeModel.find({}).populate('ingredients.ingredientId', 'name');
+    try {
+      const recipes = await this.recipeModel.find({ isActive: { $ne: false } }).populate('ingredients.ingredientId', 'name');
       return recipes.map(recipe => {
-        const formattedIngredients = recipe.ingredients.map(ing => ({
-          name: ing.ingredientId['name'],
+        const formattedIngredients = (recipe.ingredients || []).map(ing => ({
+          ingredientId: (ing.ingredientId as any)?._id?.toString() || (ing.ingredientId as any)?.toString() || '',
+          name: (ing.ingredientId as any)?.name ?? 'Insumo',
           quantity: ing.quantity,
           unitMesure: ing.unitMesure,
         }));
-      return {
-        id: recipe['_id'] as any,
+        return {
+          id: recipe['_id'] as any,
           name: recipe.name,
           steps: recipe.steps,
           price: recipe.price,
@@ -35,13 +42,14 @@ export class RecipesService {
   }
 
   async getRecipeById(id: string): Promise<RecipeResponseDto> {
-    try{
+    try {
       const recipe = await this.recipeModel.findById(id).populate('ingredients.ingredientId', 'name');
 
-      if (!recipe) throw new NotFoundException('Receta no encontrada');
+      if (!recipe || recipe.isActive === false) throw new NotFoundException('Receta no encontrada');
 
-      const formattedIngredients = recipe.ingredients.map((ing) => ({
-        name: ing.ingredientId['name'],
+      const formattedIngredients = (recipe.ingredients || []).map((ing) => ({
+        ingredientId: (ing.ingredientId as any)?._id?.toString() || (ing.ingredientId as any)?.toString() || '',
+        name: (ing.ingredientId as any)?.name ?? 'Insumo',
         quantity: ing.quantity,
         unitMesure: ing.unitMesure,
       }));
@@ -53,18 +61,20 @@ export class RecipesService {
         price: recipe.price,
         ingredients: formattedIngredients,
         imageUrl: recipe.imageUrl,
-        category:recipe.category,
+        category: recipe.category,
       };
     } catch(e) {
       throw e;
     }
   }
 
-
   async addRecipe(recipe: CreateRecipeDto) {
-    try{
-      const newRecipe = new this.recipeModel(recipe);
-    return await newRecipe.save();
+    try {
+      const newRecipe = new this.recipeModel({
+        ...recipe,
+        isActive: true,
+      });
+      return await newRecipe.save();
     } catch (e) {
       throw e;
     }
@@ -73,7 +83,7 @@ export class RecipesService {
   async updateRecipe(id: string, dto: UpdateRecipeDto) {
     try {
       const recipe = await this.recipeModel.findById(id);
-      if (!recipe) throw new NotFoundException("Receta no encontrada");
+      if (!recipe || recipe.isActive === false) throw new NotFoundException("Receta no encontrada");
 
       if (dto.name !== undefined) recipe.name = dto.name;
       if (dto.steps !== undefined) recipe.steps = dto.steps;
@@ -89,10 +99,10 @@ export class RecipesService {
           }));
 
         recipe.ingredients = formattedIngredients as {
-      ingredientId: Types.ObjectId;
-      quantity: number;
-      unitMesure: string;
-    }[];
+          ingredientId: Types.ObjectId;
+          quantity: number;
+          unitMesure: string;
+        }[];
       }
 
       return await recipe.save();
@@ -101,20 +111,44 @@ export class RecipesService {
     }
   }
 
+  async deleteRecipeById(id: string, dto?: DeleteRecipeDto) {
+    try {
+      const recipe = await this.recipeModel.findById(id);
+      if (!recipe) throw new NotFoundException("Receta no encontrada");
 
+      let managerUser = 'administrador';
+      let deleteReason = 'Eliminada por gerencia';
 
-  async deleteRecipeById(id: string) {
-    try{const deleted = await this.recipeModel.findByIdAndDelete(id);
-      if (!deleted) throw new NotFoundException("Receta no encontrada");
-      return deleted;
+      if (dto) {
+        const auth = await this.authService.verifyManager({
+          username: dto.username,
+          password: dto.password,
+        });
+        if (!auth.valid) {
+          throw new UnauthorizedException('Credenciales de gerente no válidas');
+        }
+        managerUser = auth.manager.username;
+        deleteReason = dto.reason;
+      } else {
+        throw new ForbiddenException('Se requieren credenciales de gerente o administrador para eliminar una receta');
+      }
+
+      // Baja lógica (soft delete) para proteger integridad histórica de órdenes y ventas
+      recipe.isActive = false;
+      recipe.deletedBy = managerUser;
+      recipe.deletedAt = new Date();
+      recipe.deleteReason = deleteReason;
+
+      await recipe.save();
+      return { success: true, message: `Receta "${recipe.name}" eliminada correctamente por ${managerUser}` };
     } catch (e) {
       throw e;
     }
   }
 
   async searchRecipes(query: any): Promise<Recipe[]> {
-    try{
-      const mongoQuery: any = {};
+    try {
+      const mongoQuery: any = { isActive: { $ne: false } };
 
       if (query.name) {
         mongoQuery.name = { $regex: query.name, $options: 'i' }; 
@@ -122,9 +156,9 @@ export class RecipesService {
 
       if (query.price) {
         mongoQuery.price = Number(query.price);
-       }
+      }
 
-       if (query.category) {
+      if (query.category) {
         mongoQuery.category = query.category;
       }
 

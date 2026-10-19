@@ -2,6 +2,7 @@ import { Controller, Get, Param, Post, Body, Patch, Query, } from '@nestjs/commo
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { PaySaleDto } from './dto/pay-sale.dto';
+import { CancelSaleDto } from './dto/cancel-sale.dto';
 @Controller('sales')
 export class SalesController {
   constructor(private readonly salesService: SalesService) { }
@@ -24,6 +25,11 @@ export class SalesController {
   @Patch(':id/pay')
   paySale(@Param('id') id: string, @Body() dto: PaySaleDto) {
     return this.salesService.paySale(id, dto);
+  }
+
+  @Patch(':id/cancel')
+  cancelSale(@Param('id') id: string, @Body() dto: CancelSaleDto) {
+    return this.salesService.cancelSale(id, dto);
   }
 
   @Get(':id/print')

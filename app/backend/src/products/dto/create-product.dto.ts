@@ -1,38 +1,62 @@
-import { IsInt, IsNumber, IsOptional, IsString } from "class-validator"
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
-export class CreateProductDto{
+export class CreateProductDto {
     @IsString()
-    name: string
+    name: string;
 
     @IsString()
-    brand: string
+    brand: string;
 
     @IsNumber()
-    price: number
+    price: number;
 
-    @IsInt()
-    quantity: number
+    @IsNumber()
+    quantity: number;
 
     @IsOptional()
     @IsString()
-    unitMesure?: string //deberia de ser un array [ml, l, g, kg, oz, li, ...]
+    unitMesure?: string;
+
+    @IsOptional()
+    @IsString()
+    purchaseUnit?: string;
+
+    @IsOptional()
+    @IsNumber()
+    contentPerUnit?: number;
+
+    @IsOptional()
+    @IsString()
+    contentUnit?: string;
+
+    @IsOptional()
+    @IsString()
+    baseUnit?: string;
 
     @IsString()
-    category: string //deberia de ser un array [verduras, lacteos, ...]
+    category: string;
 
     @IsString()
-    description: string
+    description: string;
 
-    @IsInt()
-    stock: number
+    @IsNumber()
+    stock: number;
 
-    @IsInt()
-    barCode: number
-} 
+    @IsOptional()
+    barCode?: string | number;
 
-/*
-Posibles campos:
-    - Proveedor
-    - Ubicacion: Pasillo 3, estante 2, seccion A
-    - imageUrl
-*/
+    @IsOptional()
+    @IsString()
+    imageUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    source?: string;
+
+    @IsOptional()
+    nutriments?: Record<string, any>;
+
+    @IsOptional()
+    @IsString()
+    servingSize?: string;
+}

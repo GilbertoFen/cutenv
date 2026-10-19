@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "api-security-best-practices": {
+      "source": "sickn33/agentic-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-security-best-practices/SKILL.md",
+      "computedHash": "acbfe4f3c173162aa0b1ba8e78779728e574505d126ed4f858668cac7274cee6"
+    },
+    "nestjs-best-practices": {
+      "source": "kadajett/agent-nestjs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nestjs-best-practices/SKILL.md",
+      "computedHash": "58f8a630637be3acce1f118c747d68160346ada8a43d76cb52a5b4c4edaa2d37"
+    },
+    "next-best-practices": {
+      "source": "vercel-labs/openreview",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/next-best-practices/SKILL.md",
+      "computedHash": "db85045827ebeb83ac8dbc992b69188755eeb74dcf01cbf5e694d58aa494a106"
+    },
+    "ui-ux-designer": {
+      "source": "sickn33/agentic-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ux-designer/SKILL.md",
+      "computedHash": "8f5100f900578f807a4c81007160033b83893e9bd4bfc2e66c836b46c642ecf8"
+    },
+    "web-security-expert": {
+      "source": "duck4nh/antigravity-kit",
+      "sourceType": "github",
+      "skillPath": "templates/.agent/skills/web-security-expert/SKILL.md",
+      "computedHash": "3d13407850409ff95d1c6132d0b575e5ed523667cf789caace1550b449b20ae5"
+    }
+  }
+}
