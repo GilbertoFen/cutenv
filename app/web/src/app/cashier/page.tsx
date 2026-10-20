@@ -88,6 +88,8 @@ export default function CashierPage() {
   };
 
   useEffect(() => {
+    if (authLoading || !hasWorkerAccess) return;
+
     // Cargar promociones vigentes hoy desde el servidor
     getValidPromotionsToday()
       .then(setPromotions)
@@ -263,6 +265,21 @@ export default function CashierPage() {
       setPaying(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="text-center text-slate-400 text-sm">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          Validando credenciales de caja…
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasWorkerAccess) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

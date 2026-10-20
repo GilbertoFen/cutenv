@@ -218,7 +218,7 @@ export default function SalesAnalyticsDashboard() {
             Sin información comercial para el periodo seleccionado
           </h2>
           <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
-            No se registraron ventas válidas en el rango <strong>"{data.overview.periodLabel}"</strong>.
+            No se registraron ventas válidas en el rango <strong>&quot;{data.overview.periodLabel}&quot;</strong>.
             Los indicadores no muestran ceros ficticios ni tendencias simuladas. Prueba seleccionando otro
             rango de fechas o registra ventas desde la terminal de caja.
           </p>

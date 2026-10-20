@@ -33,7 +33,9 @@ export class TablesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { ok: true };
   }
 
-  emitTableStatusChanged(load : TableStatusChangeLoad) {
+  emitTableStatusChanged(load: TableStatusChangeLoad) {
+    if (!this.server) return;
+    this.server.emit('table.status.changed', load);
     this.server.to(`table:${load.tableId}`).emit('table.status.changed', load);
     this.server.to('role:reception').emit('table.status.changed', load);
   }

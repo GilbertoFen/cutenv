@@ -15,6 +15,6 @@ import { TablesGateway } from 'src/gateways/tables.gateway';
   ],
   controllers: [TablesController],
   providers: [TablesService, TablesGateway],
-  exports: [TablesService]
+  exports: [TablesService, TablesGateway]
 })
 export class TablesModule {}

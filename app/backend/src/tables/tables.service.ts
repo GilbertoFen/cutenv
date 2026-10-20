@@ -83,17 +83,26 @@ export class TablesService {
         });
 
         if (activeSale) {
-          const hasPending =
-            Array.isArray(activeSale.orders) &&
-            activeSale.orders.some((o: any) => o.status !== 'delivered');
+          // Si la venta está vacía (sin órdenes y $0), se limpia automáticamente al liberar la mesa
+          if (
+            dto.status === 'disponible' &&
+            (!activeSale.orders || activeSale.orders.length === 0) &&
+            (activeSale.totalAmount ?? 0) === 0
+          ) {
+            await this.saleModel.findByIdAndDelete(activeSale._id);
+          } else {
+            const hasPending =
+              Array.isArray(activeSale.orders) &&
+              activeSale.orders.some((o: any) => o.status && o.status !== 'delivered');
 
-          const reason = hasPending
-            ? 'hay órdenes pendientes en la venta activa'
-            : 'la venta de esta mesa sigue abierta';
+            const reason = hasPending
+              ? 'hay órdenes pendientes en la venta activa'
+              : 'la venta de esta mesa sigue abierta';
 
-          throw new ConflictException(
-            `No puedes ${dto.status === 'disponible' ? 'desocupar' : 'reservar'} la mesa: ${reason}. Cierra o cancela la venta primero.`,
-          );
+            throw new ConflictException(
+              `No puedes ${dto.status === 'disponible' ? 'desocupar' : 'reservar'} la mesa: ${reason}. Cierra o cancela la venta primero.`,
+            );
+          }
         }
       }
 
@@ -114,7 +123,7 @@ export class TablesService {
           });
         }
       }
-      const prevStatus = table.status as 'disponible' | 'ocupada' | 'reservada';;
+      const prevStatus = table.status as 'disponible' | 'ocupada' | 'reservada';
       table.status = dto.status;
       await table.save();
 

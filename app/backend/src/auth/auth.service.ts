@@ -146,7 +146,7 @@ export class AuthService {
       id: user._id.toString(),
       username: user.username,
       name: user.name,
-      role: user.role as 'owner' | 'manager',
+      role: user.role,
     };
 
     const token = this.jwtService.sign({
@@ -204,7 +204,7 @@ export class AuthService {
       id: user._id.toString(),
       username: user.username,
       name: user.name,
-      role: user.role as 'owner' | 'manager' | 'worker',
+      role: user.role,
       status: user.status,
     };
 
@@ -243,7 +243,7 @@ export class AuthService {
       id: user._id.toString(),
       username: user.username,
       name: user.name,
-      role: user.role as 'owner' | 'manager' | 'worker',
+      role: user.role,
     };
   }
 

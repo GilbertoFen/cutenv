@@ -5,7 +5,8 @@ import { Model, Types } from 'mongoose';
 import { Reservation, ReservationDocument } from '../schemasMongo/reservation.schema';
 import { Table, TableDocument } from '../schemasMongo/table.schema';
 import { Sale, SaleDocument } from '../schemasMongo/sale.schema';
-import { LEAD_MIN, NOSHOW_GRACE } from '../utils/const'
+import { LEAD_MIN, NOSHOW_GRACE } from '../utils/const';
+import { TablesGateway } from 'src/gateways/tables.gateway';
 
 @Injectable()
 export class ReservationsCron {
@@ -15,6 +16,7 @@ export class ReservationsCron {
     @InjectModel(Reservation.name) private reservationModel: Model<ReservationDocument>,
     @InjectModel(Table.name) private tableModel: Model<TableDocument>,
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
+    private readonly tablesGateway: TablesGateway,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -41,8 +43,16 @@ export class ReservationsCron {
       if (activeSale) continue;
 
       if (table.status === 'disponible') {
+        const prevStatus = table.status;
         table.status = 'reservada';
         await table.save();
+        this.tablesGateway.emitTableStatusChanged({
+          tableId: table._id.toString(),
+          number: table.number,
+          prevStatus,
+          status: 'reservada',
+          at: Date.now(),
+        });
       }
     }
     const expired = await this.reservationModel.find({
@@ -55,15 +65,23 @@ export class ReservationsCron {
       await r.save();
 
       if (r.table) {
-        const table = await this.tableModel.findById(r.table as Types.ObjectId);
+        const table = await this.tableModel.findById(r.table);
         if (table && table.status === 'reservada') {
           const activeSale = await this.saleModel.findOne({
             table: table._id,
             status: { $in: ['unpaid', 'partial'] },
           });
           if (!activeSale) {
+            const prevStatus = table.status;
             table.status = 'disponible';
             await table.save();
+            this.tablesGateway.emitTableStatusChanged({
+              tableId: table._id.toString(),
+              number: table.number,
+              prevStatus,
+              status: 'disponible',
+              at: Date.now(),
+            });
           }
         }
       }

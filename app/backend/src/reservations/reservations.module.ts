@@ -7,6 +7,8 @@ import { Reservation, ReservationSchema } from '../schemasMongo/reservation.sche
 import { Table, TableSchema } from '../schemasMongo/table.schema';
 import { Sale, SaleSchema } from '../schemasMongo/sale.schema';
 import { ReservationsCron } from './reservations.cron';
+import { TablesModule } from '../tables/tables.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -14,6 +16,7 @@ import { ReservationsCron } from './reservations.cron';
       { name: Table.name, schema: TableSchema },
       { name: Sale.name, schema: SaleSchema },
     ]),
+    TablesModule,
   ],
   controllers: [ReservationsController],
   providers: [ReservationsService, ReservationsCron],

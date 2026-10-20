@@ -1,8 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { MongooseModule } from "@nestjs/mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose, { Mongoose } from "mongoose";
-import { AppModule } from "src/app.module";
+import mongoose from "mongoose";
 
 describe('Integration sample', () => {
     let mongod: MongoMemoryServer;
@@ -11,10 +10,9 @@ describe('Integration sample', () => {
         mongod = await MongoMemoryServer.create();
         const uri = mongod.getUri();
 
-        const moduleRef = await Test.createTestingModule({
+        await Test.createTestingModule({
             imports: [
                 MongooseModule.forRoot(uri),
-                AppModule,
             ]
         }).compile();
     });

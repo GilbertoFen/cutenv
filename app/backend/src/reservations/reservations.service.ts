@@ -21,6 +21,8 @@ import {dayUtcRange} from 'src/common/utils/dateRange.util';
 import { computeEnd } from './utils/computed-end.util';
 import { mapLean, ReservationLean, ReservationDto } from './utils/reservation.map';
 
+import { TablesGateway } from 'src/gateways/tables.gateway';
+
 @Injectable()
 export class ReservationsService {
   constructor(
@@ -30,6 +32,7 @@ export class ReservationsService {
     private readonly tableModel: Model<TableDocument>,
     @InjectModel(Sale.name)
     private readonly saleModel: Model<SaleDocument>,
+    private readonly tablesGateway: TablesGateway,
   ) { }
   private static readonly LEAD_MINUTES = 15;
   private async applyLeadWindow(tableId: Types.ObjectId, start: Date, end: Date): Promise<void> {
@@ -40,10 +43,18 @@ export class ReservationsService {
     const t = await this.tableModel.findById(tableId);
     if (!t) return;
 
+    const prevStatus = t.status as 'disponible' | 'ocupada' | 'reservada';
     if (inLeadWindow) {
       if (t.status !== 'ocupada' && t.status !== 'reservada') {
         t.status = 'reservada';
         await t.save();
+        this.tablesGateway.emitTableStatusChanged({
+          tableId: t._id.toString(),
+          number: t.number,
+          prevStatus,
+          status: 'reservada',
+          at: Date.now(),
+        });
       }
     } else {
       if (t.status === 'reservada') {
@@ -54,6 +65,13 @@ export class ReservationsService {
         if (!activeSale) {
           t.status = 'disponible';
           await t.save();
+          this.tablesGateway.emitTableStatusChanged({
+            tableId: t._id.toString(),
+            number: t.number,
+            prevStatus,
+            status: 'disponible',
+            at: Date.now(),
+          });
         }
       }
     }
@@ -213,10 +231,19 @@ export class ReservationsService {
       status: { $in: ['unpaid', 'partial'] },
     });
 
+    const prevStatus = table.status as 'disponible' | 'ocupada' | 'reservada';
     r.status = 'sentada';
     await r.save();
     table.status = 'ocupada';
     await table.save();
+
+    this.tablesGateway.emitTableStatusChanged({
+      tableId: table._id.toString(),
+      number: table.number,
+      prevStatus,
+      status: 'ocupada',
+      at: Date.now(),
+    });
 
     if (!existingSale) {
       const folio = randomBytes(4).toString('hex').toUpperCase();
@@ -248,8 +275,16 @@ export class ReservationsService {
           status: { $in: ['unpaid', 'partial'] },
         });
         if (!active) {
+          const prevStatus = table.status as 'disponible' | 'ocupada' | 'reservada';
           table.status = 'disponible';
           await table.save();
+          this.tablesGateway.emitTableStatusChanged({
+            tableId: table._id.toString(),
+            number: table.number,
+            prevStatus,
+            status: 'disponible',
+            at: Date.now(),
+          });
         }
       }
     }
@@ -275,8 +310,16 @@ export class ReservationsService {
           status: { $in: ['unpaid', 'partial'] },
         });
         if (!active) {
+          const prevStatus = table.status as 'disponible' | 'ocupada' | 'reservada';
           table.status = 'disponible';
           await table.save();
+          this.tablesGateway.emitTableStatusChanged({
+            tableId: table._id.toString(),
+            number: table.number,
+            prevStatus,
+            status: 'disponible',
+            at: Date.now(),
+          });
         }
       }
     }

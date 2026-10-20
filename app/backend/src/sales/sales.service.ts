@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Sale, SaleDocument } from '../schemasMongo/sale.schema';
 import { Model, Types } from 'mongoose';
@@ -13,6 +13,7 @@ import { normalizeId, isPopulatedTable, normalizeIdStrict } from 'src/common/uti
 import { AuthService } from 'src/auth/auth.service';
 import { CancelSaleDto } from './dto/cancel-sale.dto';
 import { PromotionsService } from 'src/promotions/promotions.service';
+import { OrdersService } from 'src/orders/orders.service';
 
 @Injectable()
 export class SalesService {
@@ -24,6 +25,7 @@ export class SalesService {
     private readonly cashierGateway: CashierGateway,
     private readonly authService: AuthService,
     private readonly promotionsService: PromotionsService,
+    @Inject(forwardRef(() => OrdersService)) private readonly ordersService: OrdersService,
   ) { }
 
   async getAllSales(): Promise<SaleResponseDto[]> {
@@ -542,13 +544,40 @@ console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
       sale.cancelledAt = new Date();
       await sale.save();
 
-      // 4. Liberar mesa si estaba ocupada
+      // 4. Cancelar órdenes asociadas y restituir insumos al inventario
+      if (Array.isArray(sale.orders) && sale.orders.length > 0) {
+        const orderDocs = await this.orderModel.find({
+          _id: { $in: sale.orders as any[] },
+          status: { $ne: 'cancelled' },
+        });
+
+        for (const ord of orderDocs) {
+          ord.status = 'cancelled';
+          if (Array.isArray(ord.items)) {
+            ord.items.forEach((it: any) => {
+              it.status = 'cancelled';
+            });
+          }
+          await ord.save();
+
+          if (this.ordersService && Array.isArray(ord.items)) {
+            await this.ordersService.restoreStockForItems(
+              ord.items,
+              ord._id.toString(),
+              `Restitución por cancelación de cuenta ${sale.folio || sale._id}`,
+              managerAuth.manager.username,
+            );
+          }
+        }
+      }
+
+      // 5. Liberar mesa si estaba ocupada
       const tableId = normalizeIdStrict(sale.table);
       if (tableId) {
         await this.tablesService.updateTableStatus(tableId, { status: 'disponible' });
       }
 
-      // 5. Emitir socket para caja y mesas
+      // 6. Emitir socket para caja y mesas
       this.cashierGateway.emitSalePaid({ saleId: sale._id.toString() });
 
       return {

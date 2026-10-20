@@ -34,19 +34,26 @@ export default function WaiterPage() {
     }));
 
   const refresh = useCallback(() => {
+    if (authLoading || !hasWorkerAccess) return;
     getAllTables().then((rows: any[]) => setTables(normalizeRows(rows)));
-  }, []);
+  }, [authLoading, hasWorkerAccess]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   useEffect(() => {
+    if (authLoading || !hasWorkerAccess) return;
+
     const s = getTablesSocket();
 
     const onConnect = () => {
       s.emit("joinReception");
     };
+
+    if (s.connected) {
+      s.emit("joinReception");
+    }
 
     const onChange = (load: TableStatusLoad) => {
       setTables((prev) => {
@@ -90,6 +97,21 @@ export default function WaiterPage() {
   };
 
   const filteredTables = filterStatus === 'all' ? tables : tables.filter((t) => t.status === filterStatus);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="text-center text-slate-400 text-sm">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          Validando credenciales de mesero…
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasWorkerAccess) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

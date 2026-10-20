@@ -88,7 +88,6 @@ export class Product {
     stock: number
 
     @Prop({
-        sparse: true,
         trim: true,
         type: String,
     })

@@ -44,18 +44,33 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
     try {
       await paySale(sale.id, { orderType, paymentMethod });
       onPaid();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e?.message || "Error al procesar el pago. Verifique que no haya platillos pendientes de entrega.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (loading) return null;
   if (!sale) {
     return (
-      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-        <div className="bg-white text-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+      <div
+        className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fadeIn"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white text-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200"
+          onClick={(e) => e.stopPropagation()}
+        >
           <h3 className="text-lg font-bold mb-2 text-slate-900">Cobrar</h3>
           <p className="text-sm text-rose-600">{error || "No hay venta abierta"}</p>
           <div className="mt-4 text-right">
@@ -69,8 +84,14 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white text-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fadeIn"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white text-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-bold text-slate-900">Cobrar — Folio {sale.folio}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl font-bold">

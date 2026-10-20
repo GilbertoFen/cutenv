@@ -489,8 +489,67 @@ export class OrdersService {
     }
   }
 
+  async restoreStockForItems(
+    items: Array<{ recipe: any; quantity: number }>,
+    referenceId: string,
+    reasonPrefix: string,
+    user: string = 'sistema_pos',
+  ): Promise<void> {
+    for (const item of items) {
+      const recipeId = item.recipe?._id ?? item.recipe;
+      const recipe = await this.recipeModel.findById(recipeId);
+      if (recipe && Array.isArray(recipe.ingredients)) {
+        for (const ing of recipe.ingredients) {
+          try {
+            if (ing.ingredientId && Number.isFinite(ing.quantity) && ing.quantity > 0) {
+              const product = await this.productModel.findById(ing.ingredientId);
+              if (product) {
+                const targetUnit = product.baseUnit || product.unitMesure || 'pieza';
+                const qtyToRestore = this.computeDeduction(
+                  ing.quantity * (item.quantity || 1),
+                  ing.unitMesure,
+                  targetUnit,
+                );
+
+                const prevStock = product.stock ?? 0;
+                const newStock = +(prevStock + qtyToRestore).toFixed(4);
+                product.stock = newStock;
+                await product.save();
+
+                await this.stockMovementModel.create({
+                  product: product._id,
+                  type: 'adjustment',
+                  quantity: qtyToRestore,
+                  previousStock: prevStock,
+                  newStock,
+                  reason: `${reasonPrefix}: "${recipe.name}" (x${item.quantity})`,
+                  reference: referenceId,
+                  user,
+                });
+              }
+            }
+          } catch (restoreErr) {
+            console.warn('[OrdersService] Error restituyendo inventario:', restoreErr);
+          }
+        }
+      }
+    }
+  }
+
   async deleteOrder(id: string) {
     try {
+      const orderToDelete = await this.orderModel.findById(id);
+      if (!orderToDelete) throw new NotFoundException('Orden no encontrada');
+
+      // Si la comanda no estaba entregada, restaurar inventario consumido
+      if (orderToDelete.status !== 'delivered' && Array.isArray(orderToDelete.items)) {
+        await this.restoreStockForItems(
+          orderToDelete.items,
+          orderToDelete._id.toString(),
+          'Restitución por comanda eliminada',
+        );
+      }
+
       const deleted = await this.orderModel.findByIdAndDelete(id);
       if (!deleted) throw new NotFoundException('Orden no encontrada');
 
@@ -549,7 +608,17 @@ export class OrdersService {
     );
     if (!item) throw new NotFoundException('Platillo no encontrado en la comanda');
 
+    const prevItemStatus = item.status;
     item.status = status;
+
+    // Si se cancela un platillo individual, restituir sus insumos
+    if (status === 'cancelled' && prevItemStatus !== 'cancelled') {
+      await this.restoreStockForItems(
+        [item],
+        order._id.toString(),
+        'Restitución por platillo cancelado',
+      );
+    }
 
     // Calcular estado global de la comanda
     const statuses = (order.items as any[]).map((it) => it.status || 'preparing');

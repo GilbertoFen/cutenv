@@ -101,6 +101,10 @@ export default function ReceptionistPage() {
       });
     };
 
+    if (s.connected) {
+      s.emit("joinReception");
+    }
+
     s.on("connect", onConnect);
     s.on("table.status.changed", onChange);
 
@@ -111,6 +115,21 @@ export default function ReceptionistPage() {
   }, [refresh]);
 
   const bumpReservations = () => setResvVersion((v) => v + 1);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="text-center text-slate-400 text-sm">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          Validando credenciales de recepción…
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasWorkerAccess) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
