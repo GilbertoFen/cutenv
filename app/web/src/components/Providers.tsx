@@ -5,44 +5,51 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { adminUser, workerUser, loading } = useAuth();
+  const { adminUser, workerUser, hasWorkerAccess, hasAdminAccess, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
 
-    // Rutas públicas o que renderizan su propio formulario de autenticación:
-    const isPublicOrSelfAuth =
+    // 1. Rutas públicas de autenticación o acceso explícito:
+    const isPublic =
       pathname === '/' ||
       pathname === '/login' ||
       pathname === '/worker' ||
       pathname === '/worker/login' ||
       pathname === '/root-admin';
 
-    if (isPublicOrSelfAuth) {
+    if (isPublic) {
       return;
     }
 
-    // Rutas operativas de trabajador (/waiter, /cook, /cashier, /receptionist):
-    const isWorkerRoute =
+    // 2. Rutas operativas de la estación tablet (/waiter, /cook, /cashier, /receptionist):
+    const isOperationalRoute =
       pathname.startsWith('/waiter') ||
       pathname.startsWith('/cook') ||
       pathname.startsWith('/cashier') ||
       pathname.startsWith('/receptionist');
 
-    if (isWorkerRoute && (!workerUser || workerUser.role !== 'worker')) {
+    if (isOperationalRoute && !hasWorkerAccess) {
       router.replace('/worker');
       return;
     }
 
-    // Rutas administrativas (/manager):
-    const isAdminRoute = pathname.startsWith('/manager');
-    if (isAdminRoute && !adminUser) {
-      router.replace('/login');
-      return;
+    // 3. Rutas administrativas (/manager, /admin):
+    const isAdminRoute = pathname.startsWith('/manager') || pathname.startsWith('/admin');
+    if (isAdminRoute) {
+      if (!hasAdminAccess) {
+        if (workerUser) {
+          // Si es un trabajador intentando entrar al administrador: rechazar y devolver a la tablet
+          router.replace('/worker');
+          return;
+        }
+        router.replace('/login');
+        return;
+      }
     }
-  }, [adminUser, workerUser, loading, pathname, router]);
+  }, [adminUser, workerUser, hasWorkerAccess, hasAdminAccess, loading, pathname, router]);
 
   if (loading) {
     return (
@@ -55,14 +62,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Prevenir parpadeo en rutas operativas sin sesión mientras se ejecuta la redirección
-  const isWorkerRoute =
+  // Prevenir parpadeo en rutas protegidas mientras se resuelve la redirección
+  const isOperationalRoute =
     pathname.startsWith('/waiter') ||
     pathname.startsWith('/cook') ||
     pathname.startsWith('/cashier') ||
     pathname.startsWith('/receptionist');
 
-  if (isWorkerRoute && (!workerUser || workerUser.role !== 'worker')) {
+  if (isOperationalRoute && !hasWorkerAccess) {
+    return null;
+  }
+
+  const isAdminRoute = pathname.startsWith('/manager') || pathname.startsWith('/admin');
+  if (isAdminRoute && !hasAdminAccess) {
     return null;
   }
 

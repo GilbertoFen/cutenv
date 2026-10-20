@@ -15,15 +15,15 @@ import { AppIcon } from "@/components/icons";
 
 export default function WaiterPage() {
   const router = useRouter();
-  const { workerUser, loading: authLoading } = useAuth();
+  const { hasWorkerAccess, loading: authLoading } = useAuth();
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && (!workerUser || workerUser.role !== 'worker')) {
+    if (!authLoading && !hasWorkerAccess) {
       router.replace('/worker');
     }
-  }, [workerUser, authLoading, router]);
+  }, [hasWorkerAccess, authLoading, router]);
 
   const normalizeRows = (rows: any[]): Table[] =>
     (rows ?? []).map((t: any) => ({

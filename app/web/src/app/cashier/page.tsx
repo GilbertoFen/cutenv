@@ -35,15 +35,15 @@ const dedupeBySaleId = (rows: Ticket[]): Ticket[] => {
 
 export default function CashierPage() {
   const router = useRouter();
-  const { workerUser, loading: authLoading } = useAuth();
+  const { hasWorkerAccess, loading: authLoading } = useAuth();
   const [orderType, setOrderType] = useState<OrderType>('local');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
 
   useEffect(() => {
-    if (!authLoading && (!workerUser || workerUser.role !== 'worker')) {
+    if (!authLoading && !hasWorkerAccess) {
       router.replace('/worker');
     }
-  }, [workerUser, authLoading, router]);
+  }, [hasWorkerAccess, authLoading, router]);
   const [queue, setQueue] = useState<Ticket[]>([]);
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [sale, setSale] = useState<any>(null);

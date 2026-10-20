@@ -1,6 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: '/inventory',
+        destination: '/manager?tab=inventory',
+        permanent: false,
+      },
+      {
+        source: '/inventory/:path*',
+        destination: '/manager?tab=inventory',
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||

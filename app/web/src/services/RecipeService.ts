@@ -1,14 +1,14 @@
 import type { Recipe } from "@/types";
-import { getApiUrl } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 
 export const getAllRecipes = async (): Promise<Recipe[]> => {
-  const res = await fetch(getApiUrl("/recipes"));
+  const res = await apiFetch("/recipes");
   if (!res.ok) throw new Error("Error al cargar las recetas");
   return res.json();
 };
 
 export const getRecipeById = async (id: string): Promise<Recipe> => {
-  const res = await fetch(getApiUrl(`/recipes/${id}`));
+  const res = await apiFetch(`/recipes/${id}`);
   if (!res.ok) throw new Error("Error al obtener la receta");
   return res.json();
 };
@@ -21,9 +21,8 @@ export const createRecipe = async (data: {
   imageUrl?: string;
   ingredients: { ingredientId: string; quantity: number; unitMesure: string }[];
 }): Promise<any> => {
-  const res = await fetch(getApiUrl("/recipes"), {
+  const res = await apiFetch("/recipes", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -41,9 +40,8 @@ export const updateRecipe = async (id: string, data: Partial<{
   imageUrl?: string;
   ingredients: { ingredientId: string; quantity: number; unit: string }[];
 }>): Promise<any> => {
-  const res = await fetch(getApiUrl(`/recipes/${id}`), {
+  const res = await apiFetch(`/recipes/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -57,9 +55,8 @@ export const deleteRecipe = async (
   id: string,
   authData: { username: string; password: string; reason: string }
 ): Promise<any> => {
-  const res = await fetch(getApiUrl(`/recipes/${id}`), {
+  const res = await apiFetch(`/recipes/${id}`, {
     method: "DELETE",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(authData),
   });
   if (!res.ok) {

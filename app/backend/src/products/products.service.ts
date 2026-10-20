@@ -70,43 +70,53 @@ export class ProductService {
     }
 
     async updateProduct(id: string | number, productDto: UpdateProductDto) {
-        const query = Types.ObjectId.isValid(String(id))
-            ? { _id: new Types.ObjectId(String(id)) }
-            : { $or: [{ id }, { barCode: String(id) }] };
+        try {
+            const query = Types.ObjectId.isValid(String(id))
+                ? { _id: new Types.ObjectId(String(id)) }
+                : { $or: [{ id }, { barCode: String(id) }] };
 
-        const current = await this.productModel.findOne(query);
-        if (!current) throw new NotFoundException("Producto no encontrado");
+            const current = await this.productModel.findOne(query);
+            if (!current) throw new NotFoundException("Producto no encontrado");
 
-        // Si cambia el stock, auditar movimiento
-        if (productDto.stock !== undefined && Number(productDto.stock) !== current.stock) {
-            const newStockVal = Math.max(0, Number(productDto.stock));
-            const delta = newStockVal - current.stock;
-            await this.stockMovementModel.create({
-                product: current._id,
-                type: delta > 0 ? 'entry' : 'adjustment',
-                quantity: delta,
-                previousStock: current.stock,
-                newStock: newStockVal,
-                reason: 'Ajuste manual de inventario',
-                reference: 'AJUSTE-MANUAL',
-                user: 'gerente',
-            });
-            current.stock = newStockVal;
+            // Si cambia el stock, auditar movimiento
+            if (productDto.stock !== undefined && Number(productDto.stock) !== current.stock) {
+                const newStockVal = Math.max(0, Number(productDto.stock));
+                const delta = newStockVal - current.stock;
+                try {
+                    await this.stockMovementModel.create({
+                        product: current._id,
+                        type: delta > 0 ? 'entry' : 'adjustment',
+                        quantity: delta,
+                        previousStock: current.stock,
+                        newStock: newStockVal,
+                        reason: 'Ajuste manual de inventario',
+                        reference: 'AJUSTE-MANUAL',
+                        user: 'gerente',
+                    });
+                } catch (movErr) {
+                    console.warn('[updateProduct] Error guardando movimiento de stock:', movErr);
+                }
+                current.stock = newStockVal;
+            }
+
+            if (productDto.name !== undefined) current.name = productDto.name;
+            if (productDto.brand !== undefined) current.brand = productDto.brand;
+            if (productDto.price !== undefined) current.price = Number(productDto.price);
+            if (productDto.quantity !== undefined) current.quantity = Number(productDto.quantity);
+            if (productDto.unitMesure !== undefined) current.unitMesure = productDto.unitMesure;
+            if (productDto.category !== undefined) current.category = productDto.category;
+            if (productDto.description !== undefined) current.description = productDto.description;
+            if (productDto.imageUrl !== undefined) current.imageUrl = productDto.imageUrl;
+            if (productDto.barCode !== undefined) current.barCode = String(productDto.barCode).trim();
+            if (productDto.servingSize !== undefined) current.servingSize = productDto.servingSize;
+            if (productDto.nutriments !== undefined) current.nutriments = productDto.nutriments;
+
+            return await current.save();
+        } catch (err: any) {
+            console.error('[updateProduct] Error:', err);
+            if (err instanceof NotFoundException) throw err;
+            throw new BadRequestException(err.message || 'Error al actualizar producto');
         }
-
-        if (productDto.name !== undefined) current.name = productDto.name;
-        if (productDto.brand !== undefined) current.brand = productDto.brand;
-        if (productDto.price !== undefined) current.price = Number(productDto.price);
-        if (productDto.quantity !== undefined) current.quantity = Number(productDto.quantity);
-        if (productDto.unitMesure !== undefined) current.unitMesure = productDto.unitMesure;
-        if (productDto.category !== undefined) current.category = productDto.category;
-        if (productDto.description !== undefined) current.description = productDto.description;
-        if (productDto.imageUrl !== undefined) current.imageUrl = productDto.imageUrl;
-        if (productDto.barCode !== undefined) current.barCode = String(productDto.barCode).trim();
-        if (productDto.servingSize !== undefined) current.servingSize = productDto.servingSize;
-        if (productDto.nutriments !== undefined) current.nutriments = productDto.nutriments;
-
-        return await current.save();
     }
 
     async deleteProductById(id: string | number) {

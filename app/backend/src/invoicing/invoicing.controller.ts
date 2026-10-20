@@ -7,6 +7,7 @@ import {
   Query,
   Res,
   Headers,
+  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { InvoicingService } from './invoicing.service';
@@ -15,6 +16,9 @@ import { IssueIndividualInvoiceDto } from './dto/issue-invoice.dto';
 import { IssueGlobalInvoiceDto } from './dto/issue-global-invoice.dto';
 import { CancelInvoiceDto } from './dto/cancel-invoice.dto';
 import { SaveFiscalCustomerDto } from './dto/fiscal-customer.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import {
   SAT_REGIMENES_FISCALES,
   SAT_USOS_CFDI,
@@ -38,16 +42,22 @@ export class InvoicingController {
   // ==========================================
 
   @Get('config')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   async getConfig(@Headers() headers: Record<string, any>) {
     return this.invoicingService.getFiscalConfig(this.getRestaurantId(headers));
   }
 
   @Post('config')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   async saveConfig(@Headers() headers: Record<string, any>, @Body() dto: SaveFiscalConfigDto) {
     return this.invoicingService.saveFiscalConfig(this.getRestaurantId(headers), dto);
   }
 
   @Post('config/validate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   async validatePac(@Headers() headers: Record<string, any>) {
     return this.invoicingService.validatePacCredentials(this.getRestaurantId(headers));
   }
@@ -66,6 +76,8 @@ export class InvoicingController {
   }
 
   @Get('global/preview')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   async previewGlobal(
     @Headers() headers: Record<string, any>,
     @Query('startDate') startDate: string,
@@ -75,6 +87,8 @@ export class InvoicingController {
   }
 
   @Post('issue/global')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   async issueGlobal(@Headers() headers: Record<string, any>, @Body() dto: IssueGlobalInvoiceDto) {
     return this.invoicingService.issueGlobalInvoice(this.getRestaurantId(headers), dto);
   }
@@ -118,6 +132,8 @@ export class InvoicingController {
   }
 
   @Post('invoices/:id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   async cancelInvoice(
     @Headers() headers: Record<string, any>,
     @Param('id') id: string,

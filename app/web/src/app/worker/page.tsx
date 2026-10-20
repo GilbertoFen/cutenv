@@ -9,7 +9,7 @@ import WorkerLoginForm from '@/components/Worker/WorkerLoginForm';
 
 export default function WorkerPage() {
   const router = useRouter();
-  const { workerUser, loading, logoutWorker } = useAuth();
+  const { adminUser, workerUser, loading, logoutWorker, logoutAdmin } = useAuth();
 
   if (loading) {
     return (
@@ -22,13 +22,26 @@ export default function WorkerPage() {
     );
   }
 
-  if (!workerUser || workerUser.role !== 'worker') {
+  // El administrador o gerente logueado tiene autorización completa para operar la estación
+  const currentUser =
+    workerUser ||
+    (adminUser && (adminUser.role === 'owner' || adminUser.role === 'manager')
+      ? adminUser
+      : null);
+
+  if (!currentUser) {
     return (
       <div className="min-h-[75vh] flex items-center justify-center p-4">
         <WorkerLoginForm />
       </div>
     );
   }
+
+  const isOperatorAdmin = Boolean(
+    adminUser &&
+      (adminUser.role === 'owner' || adminUser.role === 'manager') &&
+      (!workerUser || workerUser.role !== 'worker')
+  );
 
   const modules = [
     {
@@ -81,24 +94,36 @@ export default function WorkerPage() {
           <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-              Estación Operativa Tablet
+              {isOperatorAdmin ? 'Modo Operativo (Administrador)' : 'Estación Operativa Tablet'}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Hola, {workerUser.name}
+            Hola, {currentUser.name}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Selecciona tu módulo de atención o preparación para comenzar
           </p>
         </div>
 
-        <button
-          onClick={logoutWorker}
-          className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 active:scale-95 shadow-sm"
-        >
-          <AppIcon name="logout" size={18} className="text-rose-600" />
-          <span>Cerrar Turno / Salir</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {isOperatorAdmin && (
+            <Link
+              href="/manager"
+              className="px-4 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs sm:text-sm font-bold transition flex items-center gap-1.5 shadow-sm"
+            >
+              <AppIcon name="manager" size={16} />
+              <span>Ir a Panel Gerente</span>
+            </Link>
+          )}
+
+          <button
+            onClick={workerUser ? logoutWorker : logoutAdmin}
+            className="px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+          >
+            <AppIcon name="logout" size={16} className="text-rose-600" />
+            <span>Cerrar Turno / Salir</span>
+          </button>
+        </div>
       </header>
 
       {/* Grid de 4 Grandes Tarjetas Táctiles */}
@@ -127,7 +152,7 @@ export default function WorkerPage() {
                   <AppIcon name={m.icon} size={30} />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-indigo-900 transition-colors">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
                     {m.title}
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">
@@ -137,9 +162,9 @@ export default function WorkerPage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-              <span className="font-semibold text-slate-600">Toque para ingresar</span>
-              <span className="w-2 h-2 rounded-full bg-slate-300 group-hover:bg-indigo-600 transition-colors"></span>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400">
+              <span>Módulo táctil</span>
+              <span className="text-slate-600 font-bold group-hover:text-indigo-600">Acceder ahora</span>
             </div>
           </Link>
         ))}

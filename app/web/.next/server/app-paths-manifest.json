@@ -1,7 +1,0 @@
-{
-  "/manager/page": "app/manager/page.js",
-  "/root-admin/page": "app/root-admin/page.js",
-  "/page": "app/page.js",
-  "/cook/page": "app/cook/page.js",
-  "/receptionist/page": "app/receptionist/page.js"
-}

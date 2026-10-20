@@ -1,7 +1,10 @@
-import { Controller, Get, Param, Patch, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableStatusDto } from './dto/update-table-status.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('tables')
 export class TablesController {
@@ -18,6 +21,8 @@ export class TablesController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'manager')
   createTable(@Body() dto: CreateTableDto) {
     return this.tablesService.createTable(dto);
   }

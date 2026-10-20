@@ -10,12 +10,16 @@ import { Model } from 'mongoose';
 import * as crypto from 'crypto';
 import { User, UserDocument } from '../schemasMongo/user.schema';
 import { CreateUserDto, LoginDto, VerifyManagerDto } from './dto/auth.dto';
+import { JwtService } from './jwt.service';
 
 @Injectable()
 export class AuthService {
   private readonly rootPassword = process.env.ROOT_ADMIN_PASSWORD || 'root';
 
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly jwtService: JwtService,
+  ) {}
 
   private hashPassword(password: string): string {
     const salt = crypto.randomBytes(16).toString('hex');
@@ -102,13 +106,24 @@ export class AuthService {
   async login(dto: LoginDto) {
     const userLower = dto.username.toLowerCase().trim();
     if ((userLower === 'root' || userLower === 'admin') && dto.password === 'root') {
+      const user = {
+        id: 'root-user-id',
+        username: 'root',
+        name: 'Administrador Root',
+        role: 'owner' as const,
+      };
+      const token = this.jwtService.sign({
+        sub: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+      });
+
       return {
-        user: {
-          id: 'root-user-id',
-          username: 'root',
-          name: 'Administrador Root',
-          role: 'owner',
-        },
+        success: true,
+        user,
+        token,
+        access_token: token,
       };
     }
 
@@ -127,22 +142,52 @@ export class AuthService {
       );
     }
 
+    const userData = {
+      id: user._id.toString(),
+      username: user.username,
+      name: user.name,
+      role: user.role as 'owner' | 'manager',
+    };
+
+    const token = this.jwtService.sign({
+      sub: userData.id,
+      username: userData.username,
+      name: userData.name,
+      role: userData.role,
+    });
+
     return {
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        name: user.name,
-        role: user.role, // 'owner' | 'manager'
-      },
+      success: true,
+      user: userData,
+      token,
+      access_token: token,
     };
   }
 
   async workerLogin(dto: LoginDto) {
     const userLower = dto.username.toLowerCase().trim();
+    // Administrador root tiene acceso universal autorizado también a la estación de trabajo
     if ((userLower === 'root' || userLower === 'admin') && dto.password === 'root') {
-      throw new ForbiddenException(
-        'Las credenciales corresponden al Administrador Root. Para acceder a la Estación de Trabajo debe usar una cuenta con rol Trabajador.'
-      );
+      const user = {
+        id: 'root-user-id',
+        username: 'root',
+        name: 'Administrador Root',
+        role: 'owner' as const,
+      };
+      const token = this.jwtService.sign({
+        sub: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+      });
+
+      return {
+        success: true,
+        user,
+        token,
+        access_token: token,
+        workerToken: token,
+      };
     }
 
     const user = await this.userModel.findOne({
@@ -154,23 +199,51 @@ export class AuthService {
       throw new UnauthorizedException('Usuario o contraseña de trabajador incorrectos');
     }
 
-    if (user.role !== 'worker') {
-      const rolName = user.role === 'owner' ? 'Dueño/Administrador' : 'Gerente';
-      throw new ForbiddenException(
-        `La cuenta "${user.username}" tiene perfil de ${rolName}, no de Trabajador. Para acceder a las funciones operativas en tablet debe autenticarse con una cuenta de rol Trabajador.`
-      );
-    }
+    // Tanto trabajadores como administradores/gerentes pueden operar la tablet
+    const userData = {
+      id: user._id.toString(),
+      username: user.username,
+      name: user.name,
+      role: user.role as 'owner' | 'manager' | 'worker',
+      status: user.status,
+    };
+
+    const token = this.jwtService.sign({
+      sub: userData.id,
+      username: userData.username,
+      name: userData.name,
+      role: userData.role,
+    });
 
     return {
       success: true,
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        name: user.name,
-        role: 'worker',
-        status: user.status,
-      },
-      workerToken: `worker-token-${user._id.toString()}-${Date.now()}`,
+      user: userData,
+      token,
+      access_token: token,
+      workerToken: token,
+    };
+  }
+
+  async getMe(userId: string) {
+    if (userId === 'root-user-id') {
+      return {
+        id: 'root-user-id',
+        username: 'root',
+        name: 'Administrador Root',
+        role: 'owner' as const,
+      };
+    }
+
+    const user = await this.userModel.findById(userId).select('-password');
+    if (!user || user.status !== 'active') {
+      throw new UnauthorizedException('Usuario inactivo o no encontrado');
+    }
+
+    return {
+      id: user._id.toString(),
+      username: user.username,
+      name: user.name,
+      role: user.role as 'owner' | 'manager' | 'worker',
     };
   }
 

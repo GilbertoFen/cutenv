@@ -1,4 +1,4 @@
-import { getApiUrl } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 import type { BarcodeLookupResponse } from "@/types";
 
 export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResponse> {
@@ -7,11 +7,9 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupRespo
     throw new Error("El código de barras no puede estar vacío");
   }
 
-  const res = await fetch(getApiUrl("/products/barcode/lookup"), {
+  const res = await apiFetch("/products/barcode/lookup", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ barcode: cleanCode }),
-    credentials: "include",
   });
 
   if (!res.ok) {
@@ -28,11 +26,9 @@ export async function registerStockEntry(
   notes?: string,
   reference?: string
 ) {
-  const res = await fetch(getApiUrl(`/products/${productId}/stock-entry`), {
+  const res = await apiFetch(`/products/${productId}/stock-entry`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ quantity, notes, reference }),
-    credentials: "include",
   });
 
   if (!res.ok) {
@@ -45,10 +41,10 @@ export async function registerStockEntry(
 
 export async function getStockMovements(productId?: string) {
   const url = productId
-    ? getApiUrl(`/products/movements/all?productId=${productId}`)
-    : getApiUrl("/products/movements/all");
+    ? `/products/movements/all?productId=${productId}`
+    : "/products/movements/all";
 
-  const res = await fetch(url, { credentials: "include" });
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("Error al consultar movimientos");
   return await res.json();
 }

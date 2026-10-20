@@ -1,21 +1,21 @@
 import type { SaleData } from "@/types";
 import { normalizeSalesResponse } from "@/utils/saleFunctions";
-import { getApiUrl } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 
 export type OrderType = 'local' | 'para llevar' | 'evento' | 'domicilio';
 export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
 
 export async function getAllSales(): Promise<SaleData[]> {
-  const res = await fetch(getApiUrl("/sales"), { credentials: "include" });
+  const res = await apiFetch("/sales");
   if (!res.ok) throw new Error("Error al obtener ventas");
   const json: unknown = await res.json();
   return normalizeSalesResponse(json);
 }
 
 export async function getUnpaidSaleByTable(tableId: string) {
-  const url = getApiUrl(`/sales/search?table=${encodeURIComponent(tableId)}&status=unpaid`);
+  const url = `/sales/search?table=${encodeURIComponent(tableId)}&status=unpaid`;
   console.debug('[getUnpaidSaleByTable] GET', url);
-  const res = await fetch(url, { credentials: 'include' });
+  const res = await apiFetch(url);
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
     throw new Error(`GET search failed: ${res.status} ${res.statusText} ${txt}`);
@@ -26,7 +26,7 @@ export async function getUnpaidSaleByTable(tableId: string) {
 }
 
 export async function getSaleById(saleId: string) {
-  const res = await fetch(getApiUrl(`/sales/search?_id=${saleId}`));
+  const res = await apiFetch(`/sales/search?_id=${saleId}`);
   if (!res.ok) throw new Error("Error al obtener venta");
   const data = await res.json();
   return data[0];
@@ -60,9 +60,8 @@ export async function paySale(
 
   let res: Response;
   try {
-    res = await fetch(getApiUrl(`/sales/${saleId}/pay`), {
+    res = await apiFetch(`/sales/${saleId}/pay`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
   } catch (netErr: unknown) {
@@ -98,19 +97,19 @@ export async function paySale(
 }
 
 export async function requestTicket(saleId: string) {
-  const r = await fetch(getApiUrl(`/sales/${saleId}/request-ticket`), { method: 'POST' });
+  const r = await apiFetch(`/sales/${saleId}/request-ticket`, { method: 'POST' });
   if (!r.ok) throw new Error('request-ticket failed');
   return r.json();
 }
 
 export async function markPrinted(saleId: string) {
-  const r = await fetch(getApiUrl(`/sales/${saleId}/mark-printed`), { method: 'POST' });
+  const r = await apiFetch(`/sales/${saleId}/mark-printed`, { method: 'POST' });
   if (!r.ok) throw new Error('mark-printed failed');
   return r.json();
 }
 
 export async function getTicketQueue(status: 'requested' | 'printed' = 'requested') {
-  const r = await fetch(getApiUrl(`/sales/tickets?status=${status}`));
+  const r = await apiFetch(`/sales/tickets?status=${status}`);
   if (!r.ok) throw new Error('ticket queue failed');
   return r.json();
 }
@@ -119,9 +118,8 @@ export async function cancelSale(
   saleId: string,
   credentials: { username: string; password: string; reason: string }
 ) {
-  const res = await fetch(getApiUrl(`/sales/${saleId}/cancel`), {
+  const res = await apiFetch(`/sales/${saleId}/cancel`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
   });
 

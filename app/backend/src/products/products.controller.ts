@@ -4,13 +4,18 @@ import {
     Get,
     Patch,
     Post,
+    Put,
     Body,
     Query,
     Param,
+    UseGuards,
 } from "@nestjs/common";
 import { ProductService } from "./products.service";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { CreateProductDto } from "./dto/create-product.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
 
 @Controller("/products")
 export class ProductController {
@@ -35,12 +40,16 @@ export class ProductController {
 
     // Historial de movimientos de stock
     @Get("/movements/all")
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('owner', 'manager')
     async getMovements(@Query("productId") productId?: string) {
         return await this.productService.getStockMovements(productId);
     }
 
     // Entrada / Recepción de mercancía auditada
     @Post("/:id/stock-entry")
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('owner', 'manager')
     async registerStockEntry(
         @Param("id") id: string,
         @Body() body: { quantity: number; notes?: string; reference?: string; user?: string }
@@ -60,16 +69,23 @@ export class ProductController {
     }
 
     @Post("/")
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('owner', 'manager')
     async addProduct(@Body() product: CreateProductDto) {
         return await this.productService.addProduct(product);
     }
 
     @Patch("/:id")
+    @Put("/:id")
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('owner', 'manager')
     async updateProduct(@Param("id") id: string, @Body() product: UpdateProductDto) {
         return await this.productService.updateProduct(id, product);
     }
 
     @Delete("/:id")
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('owner', 'manager')
     async deleteProductById(@Param("id") id: string) {
         return await this.productService.deleteProductById(id);
     }

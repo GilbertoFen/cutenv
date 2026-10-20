@@ -1,14 +1,14 @@
-import { getApiUrl } from '@/lib/config';
+import { apiFetch } from '@/lib/api';
 import type { Promotion } from '@/types';
 
 export async function getAllPromotions(activeOnly = false): Promise<Promotion[]> {
-  const res = await fetch(getApiUrl(`/promotions?activeOnly=${activeOnly}`));
+  const res = await apiFetch(`/promotions?activeOnly=${activeOnly}`);
   if (!res.ok) throw new Error('Error al cargar promociones');
   return res.json();
 }
 
 export async function getValidPromotionsToday(): Promise<Promotion[]> {
-  const res = await fetch(getApiUrl('/promotions/valid-today'));
+  const res = await apiFetch('/promotions/valid-today');
   if (!res.ok) throw new Error('Error al consultar promociones vigentes hoy');
   return res.json();
 }
@@ -29,9 +29,8 @@ export async function createPromotion(data: {
   authUsername: string;
   authPassword: string;
 }): Promise<Promotion> {
-  const res = await fetch(getApiUrl('/promotions'), {
+  const res = await apiFetch('/promotions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -45,9 +44,8 @@ export async function updatePromotion(
   id: string,
   data: Partial<Promotion> & { authUsername: string; authPassword: string }
 ): Promise<Promotion> {
-  const res = await fetch(getApiUrl(`/promotions/${id}`), {
+  const res = await apiFetch(`/promotions/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -61,9 +59,8 @@ export async function deletePromotion(
   id: string,
   auth: { authUsername: string; authPassword: string }
 ): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(getApiUrl(`/promotions/${id}`), {
+  const res = await apiFetch(`/promotions/${id}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(auth),
   });
   if (!res.ok) {
@@ -87,9 +84,8 @@ export async function calculatePromotionDiscount(
   finalTotal: number;
   message?: string;
 }> {
-  const res = await fetch(getApiUrl('/promotions/calculate'), {
+  const res = await apiFetch('/promotions/calculate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ promotionId, items, accountTotal }),
   });
   if (!res.ok) {

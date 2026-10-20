@@ -1,8 +1,8 @@
 import type { InventoryItem } from "@/types";
-import { getApiUrl } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 
 export async function getInventory(): Promise<InventoryItem[]> {
-  const res = await fetch(getApiUrl("/products"), { credentials: "include" });
+  const res = await apiFetch("/products");
   if (!res.ok) throw new Error("Error al obtener inventario");
   const data = await res.json();
   return (Array.isArray(data) ? data : []).map((r: any): InventoryItem => ({
@@ -21,11 +21,9 @@ export async function getInventory(): Promise<InventoryItem[]> {
 }
 
 export async function updateProductStock(productId: string, newStock: number) {
-  const res = await fetch(getApiUrl(`/products/${productId}`), {
+  const res = await apiFetch(`/products/${productId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ stock: newStock }),
-    credentials: "include",
   });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
@@ -41,11 +39,9 @@ export async function adjustStock(product: InventoryItem, delta: number) {
 }
 
 export async function createProduct(productData: Record<string, any>) {
-  const res = await fetch(getApiUrl("/products"), {
+  const res = await apiFetch("/products", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(productData),
-    credentials: "include",
   });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
@@ -55,9 +51,8 @@ export async function createProduct(productData: Record<string, any>) {
 }
 
 export async function deleteProduct(productId: string | number) {
-  const res = await fetch(getApiUrl(`/products/${productId}`), {
+  const res = await apiFetch(`/products/${productId}`, {
     method: "DELETE",
-    credentials: "include",
   });
   if (!res.ok) {
     throw new Error(`Error al eliminar producto: ${res.status}`);

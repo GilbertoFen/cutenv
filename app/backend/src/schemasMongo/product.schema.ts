@@ -15,10 +15,11 @@ export class Product {
     name: string
 
     @Prop({
-        required: true,
-        trim: true
+        required: false,
+        trim: true,
+        default: 'Sin marca'
     })
-    brand: string
+    brand?: string
 
     @Prop({
         required: true,
@@ -28,11 +29,11 @@ export class Product {
     price: number
 
     @Prop({
-        required: true,
-        trim: true,
+        required: false,
+        default: 1,
         min: 0
     })
-    quantity: number
+    quantity?: number
 
     @Prop({
         trim: true,
@@ -72,10 +73,11 @@ export class Product {
     category: string //deberia de ser un array [verduras, lacteos, ...]
 
     @Prop({
-        required: true,
-        trim: true
+        required: false,
+        trim: true,
+        default: ''
     })
-    description: string
+    description?: string
 
     @Prop({
         required: true,

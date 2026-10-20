@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api';
 import { getApiUrl } from '@/lib/config';
 import type {
   FiscalConfigData,
@@ -8,17 +9,15 @@ import type {
 } from '@/types';
 
 export async function getFiscalConfig(): Promise<FiscalConfigData> {
-  const res = await fetch(getApiUrl('/invoicing/config'), { credentials: 'include' });
+  const res = await apiFetch('/invoicing/config');
   if (!res.ok) throw new Error('Error al obtener la configuración fiscal');
   return res.json();
 }
 
 export async function saveFiscalConfig(data: Partial<FiscalConfigData>) {
-  const res = await fetch(getApiUrl('/invoicing/config'), {
+  const res = await apiFetch('/invoicing/config', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
@@ -28,9 +27,8 @@ export async function saveFiscalConfig(data: Partial<FiscalConfigData>) {
 }
 
 export async function validatePacCredentials() {
-  const res = await fetch(getApiUrl('/invoicing/config/validate'), {
+  const res = await apiFetch('/invoicing/config/validate', {
     method: 'POST',
-    credentials: 'include',
   });
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
@@ -54,11 +52,9 @@ export async function issueIndividualInvoice(
     saveCustomer?: boolean;
   }
 ): Promise<InvoiceData> {
-  const res = await fetch(getApiUrl(`/invoicing/issue/sale/${saleId}`), {
+  const res = await apiFetch(`/invoicing/issue/sale/${saleId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -70,9 +66,7 @@ export async function issueIndividualInvoice(
 
 export async function previewGlobalInvoice(startDate: string, endDate: string): Promise<GlobalInvoicePreview> {
   const params = new URLSearchParams({ startDate, endDate });
-  const res = await fetch(getApiUrl(`/invoicing/global/preview?${params.toString()}`), {
-    credentials: 'include',
-  });
+  const res = await apiFetch(`/invoicing/global/preview?${params.toString()}`);
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
     throw new Error(errorJson?.message || 'Error al previsualizar la factura global');
@@ -88,11 +82,9 @@ export async function issueGlobalInvoice(payload: {
   endDate: string;
   paymentMethod?: string;
 }): Promise<InvoiceData> {
-  const res = await fetch(getApiUrl('/invoicing/issue/global'), {
+  const res = await apiFetch('/invoicing/issue/global', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -108,13 +100,13 @@ export async function getInvoices(filters?: { type?: string; status?: string; se
   if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
   if (filters?.search) params.append('search', filters.search);
 
-  const res = await fetch(getApiUrl(`/invoicing/invoices?${params.toString()}`), { credentials: 'include' });
+  const res = await apiFetch(`/invoicing/invoices?${params.toString()}`);
   if (!res.ok) throw new Error('Error al obtener el historial de facturas');
   return res.json();
 }
 
 export async function getInvoiceById(id: string): Promise<InvoiceData> {
-  const res = await fetch(getApiUrl(`/invoicing/invoices/${id}`), { credentials: 'include' });
+  const res = await apiFetch(`/invoicing/invoices/${id}`);
   if (!res.ok) throw new Error('Error al consultar la factura');
   return res.json();
 }
@@ -132,11 +124,9 @@ export async function cancelInvoice(
   reason: '01' | '02' | '03' | '04',
   replacementUuid?: string
 ) {
-  const res = await fetch(getApiUrl(`/invoicing/invoices/${id}/cancel`), {
+  const res = await apiFetch(`/invoicing/invoices/${id}/cancel`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason, replacementUuid: replacementUuid || undefined }),
-    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -148,17 +138,15 @@ export async function cancelInvoice(
 
 export async function getFiscalCustomers(q?: string): Promise<FiscalCustomerData[]> {
   const params = q ? `?q=${encodeURIComponent(q)}` : '';
-  const res = await fetch(getApiUrl(`/invoicing/customers${params}`), { credentials: 'include' });
+  const res = await apiFetch(`/invoicing/customers${params}`);
   if (!res.ok) throw new Error('Error al obtener clientes fiscales');
   return res.json();
 }
 
 export async function saveFiscalCustomer(customer: Partial<FiscalCustomerData>): Promise<FiscalCustomerData> {
-  const res = await fetch(getApiUrl('/invoicing/customers'), {
+  const res = await apiFetch('/invoicing/customers', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(customer),
-    credentials: 'include',
   });
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
@@ -168,7 +156,7 @@ export async function saveFiscalCustomer(customer: Partial<FiscalCustomerData>):
 }
 
 export async function getSatCatalogs(): Promise<SatCatalogsData> {
-  const res = await fetch(getApiUrl('/invoicing/catalogs'), { credentials: 'include' });
+  const res = await apiFetch('/invoicing/catalogs');
   if (!res.ok) throw new Error('Error al obtener los catálogos del SAT');
   return res.json();
 }

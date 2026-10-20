@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import ManagerUnlockModal from '@/components/Manager/ManagerUnlockModal';
 import WorkdayModule from '@/components/Workday/WorkdayModule';
 import { AppIcon } from '@/components/icons';
+import LoginPage from './login/page';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -14,7 +14,8 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState<'overview' | 'workday'>('overview');
   const [showManagerModal, setShowManagerModal] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // Si la sesión activa corresponde únicamente a un trabajador operativo, dirigir a su estación
     if (!loading && workerUser && !adminUser) {
       router.replace('/worker');
     }
@@ -25,44 +26,22 @@ export default function DashboardPage() {
       <div className="min-h-[50vh] flex items-center justify-center">
         <div className="text-center text-slate-400 text-sm">
           <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          Cargando entorno del restaurante…
+          Comprobando sesión del restaurante…
         </div>
       </div>
     );
   }
 
+  // Regla 1: La ruta / debe mostrar el login cuando no exista una sesión administrativa válida
   if (!adminUser) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center animate-fadeIn">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-sm">
-            <AppIcon name="utensils" size={32} />
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">Bienvenido al POS del Restaurante</h1>
-          <p className="text-xs text-slate-500 mt-2 mb-6">
-            Seleccione el punto de acceso correspondiente a su rol operativo o administrativo.
-          </p>
-          <div className="space-y-3">
-            <Link
-              href="/worker"
-              className="block w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm"
-            >
-              Estación de Trabajo Tablet (Mesero, Cocina, Caja, Recepción)
-            </Link>
-            <Link
-              href="/login"
-              className="block w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm"
-            >
-              Acceso Administrativo (Gerente / Dueño)
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    if (workerUser) {
+      return null; // Redirigiendo a /worker vía useEffect
+    }
+    return <LoginPage />;
   }
 
   const handleOpenManagerSection = () => {
-    if (isManagerUnlocked || adminUser.role === 'manager') {
+    if (isManagerUnlocked || adminUser.role === 'manager' || adminUser.role === 'owner') {
       router.push('/manager');
     } else {
       setShowManagerModal(true);
@@ -87,7 +66,7 @@ export default function DashboardPage() {
                 size={13}
                 className={adminUser.role === 'owner' ? 'text-purple-700' : 'text-indigo-700'}
               />
-              <span>{adminUser.role === 'owner' ? 'Dueño con permisos' : 'Gerente'}</span>
+              <span>{adminUser.role === 'owner' ? 'Dueño / Administrador' : 'Gerente'}</span>
             </span>
             <span className="text-xs text-slate-400">Sesión iniciada</span>
           </div>
@@ -145,36 +124,27 @@ export default function DashboardPage() {
                 <div className="space-y-2.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
                   <div className="flex items-start gap-2">
                     <AppIcon name="check" size={14} className="text-purple-600 mt-0.5 shrink-0" />
-                    <span><strong>Métricas y KPIs:</strong> Observar ventas del día, ticket promedio y balances.</span>
+                    <span><strong>Métricas y KPIs:</strong> Analíticas de ventas reales, ticket promedio y balances.</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <AppIcon name="check" size={14} className="text-purple-600 mt-0.5 shrink-0" />
-                    <span><strong>Control de Inventario:</strong> Existencias actuales, ajustes manuales y <strong>generador de reporte oficial</strong>.</span>
+                    <span><strong>Control de Inventario:</strong> Existencias actuales, ajustes manuales y reporte oficial.</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <AppIcon name="check" size={14} className="text-purple-600 mt-0.5 shrink-0" />
-                    <span><strong>Añadir elementos:</strong> Registro de alimentos (insumos del almacén) y recetas del menú.</span>
+                    <span><strong>Recetas y Menú:</strong> Gestionar, añadir, modificar o eliminar platillos a la venta.</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <AppIcon name="check" size={14} className="text-purple-600 mt-0.5 shrink-0" />
-                    <span><strong>Recetas de cocina:</strong> Gestionar, añadir, modificar o eliminar platillos a la venta.</span>
+                    <span><strong>Auditoría de Cuentas:</strong> Cuentas activas, pagadas y cancelaciones auditadas.</span>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <AppIcon name="check" size={14} className="text-purple-600 mt-0.5 shrink-0" />
-                    <span><strong>Revisión de cuentas:</strong> Cuentas activas, pagadas y <strong>cancelación manual protegida con contraseña y nota explicativa</strong>.</span>
-                  </div>
-                </div>
-
-                <div className="mt-4 p-3 bg-purple-50/70 rounded-xl border border-purple-100 text-[11px] text-purple-900 flex items-center gap-2">
-                  <AppIcon name="warning" size={15} className="text-purple-700 shrink-0" />
-                  <span><strong>Regla de seguridad:</strong> Para entrar es necesario validar las credenciales de un Gerente previamente dado de alta.</span>
                 </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs text-slate-400 flex items-center gap-1.5">
                   <AppIcon name={isManagerUnlocked ? 'unlock' : 'lock'} size={13} />
-                  <span>Estado: {isManagerUnlocked ? 'Desbloqueado' : 'Bloqueado'}</span>
+                  <span>Estado: {isManagerUnlocked || adminUser.role === 'owner' ? 'Autorizado' : 'Requiere Clave'}</span>
                 </span>
                 <button
                   onClick={handleOpenManagerSection}
@@ -195,9 +165,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <h2 className="text-xl font-bold text-slate-900">2. Día de Trabajo</h2>
+                <h2 className="text-xl font-bold text-slate-900">2. Día de Trabajo y Estaciones</h2>
                 <p className="text-xs text-slate-500 mt-1 mb-4">
-                  Estación operativa central con navegación superior rápida entre módulos sin reautenticación.
+                  Estación operativa central con acceso directo a todos los módulos de servicio en sala y cocina.
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
@@ -207,7 +177,7 @@ export default function DashboardPage() {
                       <span>Mesero</span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Mesas disponibles. Clic abre modal con detalle, botón para ocupar mesa y órdenes.
+                      Mesas, comensales y entrega de platillos.
                     </p>
                   </div>
 
@@ -217,7 +187,7 @@ export default function DashboardPage() {
                       <span>Cocina</span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Órdenes en preparación, notas especiales y mesa vinculada en tiempo real.
+                      Órdenes en preparación y pase de platillos listos.
                     </p>
                   </div>
 
@@ -227,7 +197,7 @@ export default function DashboardPage() {
                       <span>Cajero</span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Cuentas en formato ticket, detalle de consumo, impresión y cobro.
+                      Tickets, cobros y promociones.
                     </p>
                   </div>
 
@@ -237,19 +207,14 @@ export default function DashboardPage() {
                       <span>Recepción</span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Reservaciones vigentes, control de aforo y registro de nuevas reservas.
+                      Reservaciones y asignación de mesas.
                     </p>
                   </div>
-                </div>
-
-                <div className="mt-4 p-3 bg-indigo-50/70 rounded-xl border border-indigo-100 text-[11px] text-indigo-900 flex items-center gap-2">
-                  <AppIcon name="sparkles" size={15} className="text-indigo-600 shrink-0" />
-                  <span><strong>Turno continuo:</strong> No se solicitarán credenciales adicionales durante el día de trabajo.</span>
                 </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-400">4 estaciones sincronizadas</span>
+                <span className="text-xs text-slate-400">4 estaciones disponibles</span>
                 <button
                   onClick={() => setActiveSection('workday')}
                   className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5"

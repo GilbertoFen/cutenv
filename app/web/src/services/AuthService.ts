@@ -1,4 +1,5 @@
 import { getApiUrl } from '@/lib/config';
+import { apiFetch, setAuthToken, getAuthToken, clearAuthToken } from '@/lib/api';
 import type { User, UserRole } from '@/types';
 
 const USER_STORAGE_KEY = 'pos_current_user';
@@ -48,7 +49,7 @@ export function clearRootSession(): void {
 
 export async function getRootUsers(rootKey: string): Promise<User[]> {
   try {
-    const res = await fetch(getApiUrl('/auth/users'), {
+    const res = await apiFetch('/auth/users', {
       headers: { 'x-root-key': rootKey },
     });
     if (res.ok) {
@@ -73,10 +74,9 @@ export async function createRootUser(
   rootKey: string,
   user: { username: string; name: string; password: string; role: UserRole }
 ): Promise<User> {
-  const res = await fetch(getApiUrl('/auth/users'), {
+  const res = await apiFetch('/auth/users', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'x-root-key': rootKey,
     },
     body: JSON.stringify(user),
@@ -89,7 +89,7 @@ export async function createRootUser(
 }
 
 export async function deleteRootUser(rootKey: string, userId: string): Promise<void> {
-  const res = await fetch(getApiUrl(`/auth/users/${userId}`), {
+  const res = await apiFetch(`/auth/users/${userId}`, {
     method: 'DELETE',
     headers: { 'x-root-key': rootKey },
   });
@@ -100,53 +100,42 @@ export async function deleteRootUser(rootKey: string, userId: string): Promise<v
 }
 
 export async function loginUser(username: string, password: string): Promise<User> {
-  const isRootBypass = username.trim().toLowerCase() === 'root' && password === 'root';
+  const cleanUsername = username.trim().toLowerCase();
 
-  try {
-    const res = await fetch(getApiUrl('/auth/login'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const user = data.user;
-      setStoredAdminUser(user);
-      setStoredUser(user);
-      return user;
-    } else {
-      const err = await res.json().catch(() => ({}));
-      if (err.message) {
-        throw new Error(err.message);
-      }
-    }
-  } catch (err: any) {
-    if (err.message && !err.message.includes('fetch')) {
-      throw err;
-    }
-    console.warn('[loginUser] Backend error:', err);
+  const res = await fetch(getApiUrl('/auth/login'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: cleanUsername, password }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Usuario o contraseña incorrectos');
   }
 
-  if (isRootBypass) {
-    const rootUser: User = {
-      id: 'root-user-id',
-      username: 'root',
-      name: 'Administrador Root (Dueño)',
-      role: 'owner',
-    };
-    setStoredAdminUser(rootUser);
-    setStoredUser(rootUser);
-    return rootUser;
+  const data = await res.json();
+  const token = data.token || data.access_token;
+  const user: User = {
+    ...data.user,
+    token: token || undefined,
+  };
+
+  if (token) {
+    setAuthToken(token);
   }
 
-  throw new Error('Usuario o contraseña incorrectos');
+  setStoredAdminUser(user);
+  setStoredUser(user);
+  return user;
 }
 
 export async function loginWorker(username: string, password: string): Promise<User> {
+  const cleanUsername = username.trim().toLowerCase();
+
   const res = await fetch(getApiUrl('/auth/worker/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username: cleanUsername, password }),
   });
 
   if (!res.ok) {
@@ -155,9 +144,48 @@ export async function loginWorker(username: string, password: string): Promise<U
   }
 
   const data = await res.json();
-  const workerUser: User = data.user;
+  const token = data.token || data.access_token || data.workerToken;
+  const workerUser: User = {
+    ...data.user,
+    token: token || undefined,
+  };
+
+  if (token) {
+    setAuthToken(token);
+  }
+
   setStoredWorkerUser(workerUser);
+  setStoredUser(workerUser);
   return workerUser;
+}
+
+export async function verifySession(): Promise<User | null> {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const res = await apiFetch('/auth/me');
+    if (res.ok) {
+      const user: User = await res.json();
+      setStoredUser(user);
+      if (user.role === 'owner' || user.role === 'manager') {
+        setStoredAdminUser(user);
+      }
+      if (user.role === 'worker') {
+        setStoredWorkerUser(user);
+      }
+      return user;
+    }
+  } catch (err) {
+    console.warn('[verifySession] Token verification error:', err);
+  }
+
+  // Token expirado o inválido: limpiar estado
+  clearAuthToken();
+  clearStoredUser();
+  clearStoredAdminUser();
+  clearStoredWorkerUser();
+  return null;
 }
 
 export async function verifyManagerCredentials(
@@ -218,6 +246,7 @@ export function clearStoredUser(): void {
   localStorage.removeItem(USER_STORAGE_KEY);
   localStorage.removeItem(ADMIN_STORAGE_KEY);
   localStorage.removeItem(MANAGER_UNLOCKED_KEY);
+  clearAuthToken();
 }
 
 export function getStoredAdminUser(): User | null {
@@ -248,6 +277,7 @@ export function clearStoredAdminUser(): void {
   localStorage.removeItem(ADMIN_STORAGE_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
   localStorage.removeItem(MANAGER_UNLOCKED_KEY);
+  clearAuthToken();
 }
 
 export function getStoredWorkerUser(): User | null {
@@ -273,6 +303,7 @@ export function setStoredWorkerUser(user: User): void {
 export function clearStoredWorkerUser(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(WORKER_STORAGE_KEY);
+  clearAuthToken();
 }
 
 export function getManagerUnlocked(): boolean {

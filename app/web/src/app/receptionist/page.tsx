@@ -18,7 +18,7 @@ import { AppIcon } from "@/components/icons";
 
 export default function ReceptionistPage() {
   const router = useRouter();
-  const { workerUser, loading: authLoading } = useAuth();
+  const { hasWorkerAccess, loading: authLoading } = useAuth();
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [reserveFor, setReserveFor] = useState<Table | null>(null);
@@ -30,10 +30,10 @@ export default function ReceptionistPage() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!authLoading && (!workerUser || workerUser.role !== 'worker')) {
+    if (!authLoading && !hasWorkerAccess) {
       router.replace('/worker');
     }
-  }, [workerUser, authLoading, router]);
+  }, [hasWorkerAccess, authLoading, router]);
 
   const refresh = useCallback(() => {
     setLoading(true);

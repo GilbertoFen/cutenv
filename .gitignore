@@ -43,3 +43,9 @@ dist-ssr
 !.env.example
 atlas-credentials.env
 *.env
+
+# Next.js build
+.next/
+**/.next/
+tsconfig.tsbuildinfo
+**/*.tsbuildinfo

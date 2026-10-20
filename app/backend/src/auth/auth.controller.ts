@@ -6,10 +6,15 @@ import {
   Body,
   Param,
   Headers,
+  UseGuards,
   UnauthorizedException,
+  Request,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto, LoginDto, RootLoginDto, VerifyManagerDto } from './dto/auth.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { JwtPayload } from './jwt.service';
 
 @Controller('auth')
 export class AuthController {
@@ -28,12 +33,21 @@ export class AuthController {
     };
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMe(@CurrentUser() user: JwtPayload) {
+    return this.authService.getMe(user.sub);
+  }
+
   @Get('users')
-  getUsers(@Headers('x-root-key') rootKey?: string) {
-    if (!rootKey || !this.authService.verifyRoot(rootKey)) {
-      throw new UnauthorizedException('Requiere autenticación de administrador root');
+  getUsers(
+    @Headers('x-root-key') rootKey?: string,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    if (rootKey && this.authService.verifyRoot(rootKey)) {
+      return this.authService.getAllUsers();
     }
-    return this.authService.getAllUsers();
+    throw new UnauthorizedException('Requiere autenticación de administrador root');
   }
 
   @Post('users')

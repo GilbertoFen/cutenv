@@ -1,4 +1,5 @@
 import { getApiUrl } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 
 export interface AnalyticsQueryParams {
   period?: 'today' | 'yesterday' | 'last_7_days' | 'last_30_days' | 'this_month' | 'last_month' | 'custom';
@@ -177,8 +178,7 @@ export async function getAnalyticsDashboard(
   if (params.orderType) query.set('orderType', params.orderType);
   if (params.paymentMethod) query.set('paymentMethod', params.paymentMethod);
 
-  const url = getApiUrl(`/analytics/dashboard?${query.toString()}`);
-  const res = await fetch(url, { credentials: 'include' });
+  const res = await apiFetch(`/analytics/dashboard?${query.toString()}`);
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(`Error al obtener analíticas de ventas: ${res.status} ${errorText}`);

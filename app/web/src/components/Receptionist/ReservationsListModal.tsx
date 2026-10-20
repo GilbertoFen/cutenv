@@ -13,6 +13,7 @@ import {
 import { dateFormat, fmt, getTableNumberStr } from '@/utils/Receptionist/receptionist.functions';
 import type { Mode, StatusFilter } from '@/types/Receptionist/receptionist.types';
 import { AppIcon } from '@/components/icons';
+import { apiFetch } from '@/lib/api';
 
 interface Props {
   isOpen: boolean;
@@ -57,8 +58,8 @@ export default function ReservationsListModal({
           const from = startLocal.toISOString();
           const to = endLocal.toISOString();
 
-          const alt = await fetch(
-            `/api/reservations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+          const alt = await apiFetch(
+            `/reservations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
           );
           if (alt.ok) {
             rows = await alt.json();

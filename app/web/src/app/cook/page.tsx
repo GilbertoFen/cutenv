@@ -10,16 +10,16 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function CookPage() {
   const router = useRouter();
-  const { workerUser, loading: authLoading } = useAuth();
+  const { hasWorkerAccess, loading: authLoading } = useAuth();
   const { orders, setOrders } = useKitchenOrders();
   const [updating, setUpdating] = useState<string | null>(null);
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && (!workerUser || workerUser.role !== 'worker')) {
+    if (!authLoading && !hasWorkerAccess) {
       router.replace('/worker');
     }
-  }, [workerUser, authLoading, router]);
+  }, [hasWorkerAccess, authLoading, router]);
 
   const handleReady = async (id: string) => {
     try {
