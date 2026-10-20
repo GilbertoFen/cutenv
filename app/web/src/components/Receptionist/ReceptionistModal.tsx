@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Props } from "@/types/Receptionist/receptionist.types";
 import { createReservation, localToUTCISO } from "@/services/ReservationService";
 import { AppIcon } from "@/components/icons";
@@ -51,11 +51,27 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const assignedTable = tables.find((t) => t.id === selectedTableId) || table;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white text-slate-900 rounded-3xl w-full max-w-2xl shadow-soft-xl border border-slate-200/90 overflow-hidden my-auto animate-fadeIn">
+    <div
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white text-slate-900 rounded-3xl w-full max-w-2xl shadow-soft-xl border border-slate-200/90 overflow-hidden my-auto animate-fadeIn"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Modal Header */}
         <div className="px-6 py-5 bg-white border-b border-slate-100 flex items-center justify-between">

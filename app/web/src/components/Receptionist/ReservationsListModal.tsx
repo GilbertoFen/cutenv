@@ -141,9 +141,27 @@ export default function ReservationsListModal({
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-soft-xl max-w-5xl w-full border border-slate-200/90 overflow-hidden flex flex-col max-h-[90vh] my-auto animate-fadeIn">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-soft-xl max-w-5xl w-full border border-slate-200/90 overflow-hidden flex flex-col max-h-[90vh] my-auto animate-fadeIn"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Encabezado */}
         <header className="px-6 py-5 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">

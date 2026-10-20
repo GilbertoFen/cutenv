@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from "react";
 import type { Reservation, Table } from "@/types";
 import { seatReservation, cancelReservation, noShowReservation } from "@/services/ReservationService";
 import { fmt } from "@/utils/Receptionist/receptionist.functions";
@@ -49,12 +50,32 @@ export default function ReservationDetailsModal({
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white text-slate-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-slate-200">
-        <div className="flex justify-between items-center mb-3 pb-2 border-b">
-          <h3 className="text-lg font-bold text-slate-900">Reservación — Mesa {table.number}</h3>
-          <button onClick={onClose} className="p-1 rounded text-slate-400 hover:text-slate-600 inline-flex items-center justify-center" aria-label="Cerrar">
+    <div
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white text-slate-900 rounded-3xl p-6 w-full max-w-lg shadow-soft-xl border border-slate-200/90 my-auto animate-fadeIn"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+          <h3 className="text-lg font-black text-slate-900 tracking-tight">Reservación — Mesa {table.number}</h3>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 inline-flex items-center justify-center transition active:scale-95"
+            aria-label="Cerrar"
+          >
             <AppIcon name="close" size={18} />
           </button>
         </div>
