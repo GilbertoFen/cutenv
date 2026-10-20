@@ -174,35 +174,37 @@ export default function ManagerPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[82vh]">
+    <div className="bg-white rounded-3xl shadow-soft-xs border border-slate-200/90 overflow-hidden flex flex-col md:flex-row min-h-[85vh]">
       <Sidebar active={tab} onSelect={(t) => setTab(t)} />
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
         {tab === "sales" && (
           <div className="space-y-6">
-            <header className="flex flex-wrap items-end justify-between gap-3 pb-4 border-b border-slate-100">
+            <header className="flex flex-wrap items-end justify-between gap-4 pb-5 border-b border-slate-100">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-indigo-100 text-indigo-800 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">
-                    Operativa y Monitoreo
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="bg-indigo-50 text-indigo-700 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-indigo-100 uppercase tracking-wider">
+                    Supervisión Gerencial
                   </span>
-                  <span className="text-xs text-slate-400">Acceso Gerencial Desbloqueado</span>
+                  <span className="text-xs text-slate-400 font-medium">• Acceso Autorizado</span>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 mt-1">Supervisión Gerencial y Almacén</h1>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Control de inventario, recetas del menú, KPIs y cancelación de cuentas
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  Supervisión Gerencial y Almacén
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Auditoría de cuentas en sala, control de stock, recetas del menú y KPIs en tiempo real
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-600">Fecha:</label>
+                <label className="text-xs font-bold text-slate-700">Fecha:</label>
                 <input
                   type="date"
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs bg-white"
+                  className="rounded-2xl border border-slate-200 px-3.5 py-2 text-xs bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-soft-xs"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                 />
                 <button
-                  className="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors"
+                  className="rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs font-bold transition shadow-soft-xs active:scale-95"
                   onClick={refreshSales}
                 >
                   ↻ Recargar

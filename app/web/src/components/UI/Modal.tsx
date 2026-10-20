@@ -50,30 +50,32 @@ export default function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-6"
       aria-modal="true"
       role="dialog"
     >
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
-        className={`relative w-[95vw] ${maxWidthClass} max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl`}
+        className={`relative w-full ${maxWidthClass} max-h-[92vh] overflow-hidden rounded-3xl bg-white shadow-soft-xl border border-slate-200/80 flex flex-col`}
       >
-        <div className="flex items-center justify-between p-3 border-b">
-          <h2 className="text-lg font-bold text-[#14144f]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
             {title ?? "Detalle"}
           </h2>
           <button
             onClick={onClose}
-            className="rounded px-3 py-1 text-white bg-[#14144f] hover:opacity-90"
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 inline-flex items-center justify-center transition-colors active:scale-95"
+            aria-label="Cerrar modal"
+            title="Cerrar modal"
           >
-            Cerrar
+            ✕
           </button>
         </div>
-        <div className="overflow-y-auto p-4">{children}</div>
+        <div className="overflow-y-auto p-4 sm:p-6">{children}</div>
       </div>
     </div>,
     root

@@ -80,33 +80,128 @@ export default function WaiterPage() {
     };
   }, [refresh]);
 
+  const [filterStatus, setFilterStatus] = useState<'all' | 'disponible' | 'ocupada' | 'reservada'>('all');
+
+  const counts = {
+    all: tables.length,
+    disponible: tables.filter((t) => t.status === 'disponible').length,
+    ocupada: tables.filter((t) => t.status === 'ocupada').length,
+    reservada: tables.filter((t) => t.status === 'reservada').length,
+  };
+
+  const filteredTables = filterStatus === 'all' ? tables : tables.filter((t) => t.status === filterStatus);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      {/* Header Panel */}
+      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-soft-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Mesas del Restaurante</h1>
-          <p className="text-sm text-slate-500">Módulo de mesero para gestión de mesas, órdenes y solicitudes de tickets</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              Servicio en Sala • Módulo Mesero
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Mesas del Restaurante
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Toca una mesa para abrir comanda, consultar consumo o solicitar ticket al cajero
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/worker"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 border border-slate-200 text-slate-700 rounded-lg transition"
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-2xl transition active:scale-95 shadow-soft-xs"
             title="Volver a los 4 módulos operativos"
           >
-            <AppIcon name="arrow-left" size={13} />
-            <span>Volver al inicio de trabajador</span>
+            <AppIcon name="arrow-left" size={14} />
+            <span>Inicio de trabajador</span>
           </Link>
           <button
             onClick={refresh}
-            className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+            className="min-h-[44px] px-4 py-2.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl transition shadow-soft-xs active:scale-95 flex items-center gap-1.5"
           >
-            ↻ Actualizar
+            <span>↻</span>
+            <span>Actualizar</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {tables.map((table) => (
+      {/* Quick Status Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+        <button
+          onClick={() => setFilterStatus('all')}
+          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
+            filterStatus === 'all'
+              ? 'bg-slate-900 text-white shadow-soft-sm'
+              : 'bg-white text-slate-600 border border-slate-200/90 hover:bg-slate-50'
+          }`}
+        >
+          <span>Todas las mesas</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+            filterStatus === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+          }`}>
+            {counts.all}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setFilterStatus('disponible')}
+          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
+            filterStatus === 'disponible'
+              ? 'bg-emerald-600 text-white shadow-soft-sm shadow-emerald-600/20'
+              : 'bg-white text-emerald-800 border border-emerald-200/80 hover:bg-emerald-50/50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Disponibles</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+            filterStatus === 'disponible' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'
+          }`}>
+            {counts.disponible}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setFilterStatus('ocupada')}
+          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
+            filterStatus === 'ocupada'
+              ? 'bg-amber-600 text-white shadow-soft-sm shadow-amber-600/20'
+              : 'bg-white text-amber-900 border border-amber-200/80 hover:bg-amber-50/50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span>Ocupadas</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+            filterStatus === 'ocupada' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'
+          }`}>
+            {counts.ocupada}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setFilterStatus('reservada')}
+          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
+            filterStatus === 'reservada'
+              ? 'bg-purple-600 text-white shadow-soft-sm shadow-purple-600/20'
+              : 'bg-white text-purple-900 border border-purple-200/80 hover:bg-purple-50/50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+          <span>Reservadas</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+            filterStatus === 'reservada' ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-800'
+          }`}>
+            {counts.reservada}
+          </span>
+        </button>
+      </div>
+
+      {/* Tables Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {filteredTables.map((table) => (
           <TableCard
             key={table.id}
             table={table}
@@ -115,10 +210,11 @@ export default function WaiterPage() {
         ))}
       </div>
 
+      {/* Modal with Table Detail */}
       <Modal
         open={!!selectedTableId}
         onClose={() => setSelectedTableId(null)}
-        title={selectedTableId ? `Detalle de mesa` : undefined}
+        title={selectedTableId ? `Mesa en Atención` : undefined}
         maxWidthClass="max-w-6xl"
       >
         {selectedTableId && (

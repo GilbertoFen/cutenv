@@ -25,28 +25,28 @@ export default function Sidebar({
     return (
       <button
         onClick={() => onSelect(id)}
-        className={`w-full rounded-xl px-3.5 py-2.5 text-left text-xs font-semibold transition flex items-center gap-2.5 ${
+        className={`w-full rounded-2xl px-4 py-3 text-left text-xs font-bold transition-all duration-150 flex items-center gap-3 shrink-0 active:scale-[0.99] ${
           isActive
-            ? "bg-[#14144f] text-white shadow-sm"
-            : "text-slate-600 hover:bg-slate-100"
+            ? "bg-indigo-600 text-white shadow-soft-sm shadow-indigo-600/20"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
         }`}
       >
         <AppIcon
           name={icon}
-          size={16}
-          className={isActive ? "text-indigo-300" : "text-slate-500"}
+          size={17}
+          className={isActive ? "text-white" : "text-slate-400"}
         />
-        <span>{label}</span>
+        <span className="truncate">{label}</span>
       </button>
     );
   };
 
   return (
-    <aside className="w-full md:w-[230px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200 p-4 bg-slate-50/50">
-      <div className="mb-3 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-        Módulos Gerenciales
+    <aside className="w-full md:w-[250px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200/90 p-4 sm:p-5 bg-slate-50/50">
+      <div className="mb-3 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
+        Gestión y Almacén
       </div>
-      <nav className="flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0">
+      <nav className="flex md:flex-col gap-1.5 overflow-x-auto no-scrollbar pb-2 md:pb-0">
         <Item id="sales" label="Ventas y Cuentas" icon="sales" />
         <Item id="analytics" label="Analíticas de Ventas" icon="kpis" />
         <Item id="promotions" label="Promociones y Cupones" icon="zap" />

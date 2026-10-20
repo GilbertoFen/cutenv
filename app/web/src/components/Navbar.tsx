@@ -46,21 +46,21 @@ export default function Navbar() {
     const isElevatedUser = activeOperator.role === 'owner' || activeOperator.role === 'manager';
 
     return (
-      <header className="bg-[#0f1035] text-white shadow-md sticky top-0 z-40 border-b border-indigo-950">
+      <header className="bg-slate-900 text-white shadow-soft-sm sticky top-0 z-40 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Marca de la Estación de Trabajo y accesos de retorno */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <Link
                 href="/worker"
-                className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center gap-2"
+                className="font-black text-lg sm:text-xl tracking-tight text-white flex items-center gap-2"
                 title="Ir a Estación de Trabajo"
               >
-                <span className="bg-emerald-600 px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black shadow-sm">
+                <span className="bg-emerald-600 px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black shadow-soft-xs">
                   POS
                 </span>
                 <span className="hidden sm:inline">Restaurante</span>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   Tablet
                 </span>
               </Link>
@@ -68,15 +68,15 @@ export default function Navbar() {
               {/* Botón para regresar a la pantalla principal del trabajador */}
               <Link
                 href="/worker"
-                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all shadow-sm ${
+                className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shadow-soft-xs ${
                   pathname === '/worker'
-                    ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
-                    : 'bg-emerald-700/80 hover:bg-emerald-600 text-white active:scale-95'
+                    ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/50'
+                    : 'bg-slate-800 hover:bg-slate-700 text-white active:scale-95'
                 }`}
                 title="Volver a la pantalla principal de los 4 accesos operativos"
               >
                 <AppIcon name="arrow-left" size={14} />
-                <span className="hidden md:inline">Volver al inicio de trabajador</span>
+                <span className="hidden md:inline">Volver a Estación</span>
                 <span className="md:hidden">Inicio</span>
               </Link>
 
@@ -84,7 +84,7 @@ export default function Navbar() {
               {isElevatedUser && (
                 <Link
                   href="/manager"
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-700/90 hover:bg-indigo-600 text-white flex items-center gap-1.5 transition-all shadow-sm border border-indigo-500/40 active:scale-95"
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600/80 hover:bg-indigo-600 text-white flex items-center gap-1.5 transition-all shadow-soft-xs border border-indigo-400/30 active:scale-95"
                   title="Volver al panel administrativo y de monitoreo"
                 >
                   <AppIcon name="manager" size={14} />
@@ -94,13 +94,13 @@ export default function Navbar() {
             </div>
 
             {/* Módulos Operativos Exclusivos del Trabajador */}
-            <nav className="hidden lg:flex items-center gap-1 overflow-x-auto">
+            <nav className="hidden lg:flex items-center gap-1.5 overflow-x-auto">
               <Link
                 href="/waiter"
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 ${
                   pathname.startsWith('/waiter')
-                    ? 'bg-indigo-700 text-white'
-                    : 'text-indigo-200 hover:bg-[#1a1b4b] hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-soft-xs'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 <AppIcon name="waiter" size={15} />
@@ -108,10 +108,10 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/cook"
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 ${
                   pathname.startsWith('/cook')
-                    ? 'bg-indigo-700 text-white'
-                    : 'text-indigo-200 hover:bg-[#1a1b4b] hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-soft-xs'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 <AppIcon name="cooking" size={15} />
@@ -119,10 +119,10 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/cashier"
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 ${
                   pathname.startsWith('/cashier')
-                    ? 'bg-indigo-700 text-white'
-                    : 'text-indigo-200 hover:bg-[#1a1b4b] hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-soft-xs'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 <AppIcon name="cashier" size={15} />
@@ -130,10 +130,10 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/receptionist"
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5 ${
                   pathname.startsWith('/receptionist')
-                    ? 'bg-indigo-700 text-white'
-                    : 'text-indigo-200 hover:bg-[#1a1b4b] hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-soft-xs'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 <AppIcon name="orders" size={15} />
@@ -144,7 +144,7 @@ export default function Navbar() {
             {/* Identidad del operador activo y Cerrar Turno / Salir */}
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-right hidden sm:block">
-                <div className="text-xs font-bold text-white flex items-center gap-1.5 justify-end">
+                <div className="text-xs font-black text-white flex items-center gap-1.5 justify-end">
                   <span
                     className={`w-2 h-2 rounded-full ${
                       activeOperator.role === 'owner'
@@ -156,7 +156,7 @@ export default function Navbar() {
                   ></span>
                   <span>{activeOperator.name}</span>
                 </div>
-                <div className="text-[10px] text-emerald-300 font-medium">
+                <div className="text-[10px] text-slate-400 font-medium">
                   {activeOperator.role === 'owner'
                     ? 'Dueño / Administrador'
                     : activeOperator.role === 'manager'
@@ -168,7 +168,7 @@ export default function Navbar() {
               {workerUser ? (
                 <button
                   onClick={logoutWorker}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-950/50 hover:bg-rose-700 text-rose-200 hover:text-white border border-rose-800/50 transition flex items-center gap-1.5 active:scale-95"
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-black bg-rose-950/60 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-800/60 transition flex items-center gap-1.5 active:scale-95 shadow-soft-xs"
                   title="Cerrar turno e invalidar la sesión del trabajador"
                 >
                   <AppIcon name="logout" size={14} />
@@ -177,7 +177,7 @@ export default function Navbar() {
               ) : (
                 <button
                   onClick={logoutAdmin}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-900/60 hover:bg-rose-900/70 text-indigo-200 hover:text-white border border-indigo-700/50 transition flex items-center gap-1.5 active:scale-95"
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-black bg-slate-800 hover:bg-rose-900 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1.5 active:scale-95"
                   title="Cerrar sesión administrativa"
                 >
                   <AppIcon name="logout" size={14} />

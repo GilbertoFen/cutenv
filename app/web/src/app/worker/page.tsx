@@ -89,36 +89,36 @@ export default function WorkerPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 animate-fadeIn px-2 sm:px-4 py-2">
       {/* Header Operativo para Tablet */}
-      <header className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <header className="bg-white rounded-3xl p-6 sm:p-8 shadow-soft-xs border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-              {isOperatorAdmin ? 'Modo Operativo (Administrador)' : 'Estación Operativa Tablet'}
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              {isOperatorAdmin ? 'Modo Operativo (Administrador)' : 'Estación Operativa • Modo Táctil'}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Hola, {currentUser.name}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Selecciona tu módulo de atención o preparación para comenzar
+            Selecciona tu módulo de atención o preparación para comenzar tu jornada
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           {isOperatorAdmin && (
             <Link
               href="/manager"
-              className="px-4 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs sm:text-sm font-bold transition flex items-center gap-1.5 shadow-sm"
+              className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs sm:text-sm font-black transition flex items-center gap-2 shadow-soft-xs"
             >
               <AppIcon name="manager" size={16} />
-              <span>Ir a Panel Gerente</span>
+              <span>Panel Gerente</span>
             </Link>
           )}
 
           <button
             onClick={workerUser ? logoutWorker : logoutAdmin}
-            className="px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+            className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 active:scale-95 shadow-soft-xs"
           >
             <AppIcon name="logout" size={16} className="text-rose-600" />
             <span>Cerrar Turno / Salir</span>
@@ -127,32 +127,32 @@ export default function WorkerPage() {
       </header>
 
       {/* Grid de 4 Grandes Tarjetas Táctiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
         {modules.map((m) => (
           <Link
             key={m.id}
             href={m.href}
-            className="group relative bg-white rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-xl border-2 border-slate-200 hover:border-indigo-500 transition-all duration-200 flex flex-col justify-between min-h-[190px] sm:min-h-[220px] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-indigo-100"
+            className="group relative bg-white rounded-3xl p-6 sm:p-8 shadow-soft-xs hover:shadow-soft-lg border border-slate-200/90 hover:border-indigo-400 transition-all duration-200 flex flex-col justify-between min-h-[210px] sm:min-h-[230px] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-indigo-500/20"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-4">
-                <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.badgeColor}`}>
+                <span className={`text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${m.badgeColor}`}>
                   {m.badge}
                 </span>
-                <span className="text-xs text-indigo-600 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                  <span>Abrir</span>
+                <span className="text-xs text-indigo-600 font-black group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                  <span>Abrir módulo</span>
                   <span>→</span>
                 </span>
               </div>
 
               <div className="flex items-start gap-4">
                 <div
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${m.color} text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform`}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${m.color} text-white flex items-center justify-center shrink-0 shadow-soft-sm group-hover:scale-105 transition-transform`}
                 >
                   <AppIcon name={m.icon} size={30} />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight">
                     {m.title}
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">
@@ -162,9 +162,11 @@ export default function WorkerPage() {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400">
-              <span>Módulo táctil</span>
-              <span className="text-slate-600 font-bold group-hover:text-indigo-600">Acceder ahora</span>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400">
+              <span className="flex items-center gap-1">
+                <span>📱 Optimizado para pantalla táctil</span>
+              </span>
+              <span className="text-indigo-600 font-black">Tocar para ingresar</span>
             </div>
           </Link>
         ))}

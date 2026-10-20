@@ -208,252 +208,332 @@ export default function TableDetailPanel({ tableId, onClose }: Props) {
   const canRequestTicket = !hasPendingOrders && deliveredTotal > 0;
 
   return (
-    <div className="bg-white text-slate-900 rounded-xl w-full">
-      <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
-        <div className="text-slate-900 font-bold text-lg flex items-center gap-2">
-          <span>Mesa {tableInfo?.number}</span>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase ${
-            tableInfo?.status === 'ocupada'
-              ? 'bg-amber-100 text-amber-800'
-              : 'bg-emerald-100 text-emerald-800'
-          }`}>
-            {tableInfo?.status}
-          </span>
+    <div className="bg-white text-slate-900 rounded-3xl w-full">
+      {/* Panel Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xl shrink-0">
+            {tableInfo?.number ?? "—"}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                Mesa {tableInfo?.number}
+              </h2>
+              <span
+                className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                  tableInfo?.status === "ocupada"
+                    ? "bg-amber-50 text-amber-800 border border-amber-200"
+                    : tableInfo?.status === "reservada"
+                    ? "bg-purple-50 text-purple-800 border border-purple-200"
+                    : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    tableInfo?.status === "ocupada"
+                      ? "bg-amber-500"
+                      : tableInfo?.status === "reservada"
+                      ? "bg-purple-500"
+                      : "bg-emerald-500"
+                  }`}
+                ></span>
+                <span>{tableInfo?.status}</span>
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Capacidad: {tableInfo?.capacity} comensales • Control de órdenes y entrega
+            </p>
+          </div>
         </div>
+
         <button
           onClick={onClose}
-          className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-slate-200"
+          className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition active:scale-95 self-start sm:self-auto"
         >
-          Cerrar
+          ✕ Cerrar panel
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-        <div className="border border-slate-200 bg-slate-50 p-4 rounded-xl shadow-sm">
-          <h2 className="font-bold text-sm text-slate-800 mb-2">Info de la mesa</h2>
-          <p className="text-xs text-slate-600 mb-1">Estado: <strong className="text-slate-800">{tableInfo?.status}</strong></p>
-          <p className="text-xs text-slate-600 mb-3">Capacidad: <strong className="text-slate-800">{tableInfo?.capacity} personas</strong></p>
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        
+        {/* Left Column: Table Actions & Info (3-4 cols) */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="border border-slate-200/90 bg-slate-50/70 p-5 rounded-2xl shadow-soft-xs space-y-3.5">
+            <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400">
+              Acciones de Mesa
+            </h3>
 
-          {tableInfo?.status === "disponible" && (
-            <button
-              onClick={occupyTable}
-              disabled={occupying}
-              className="mt-2 bg-[#14144f] hover:bg-[#1f1f6d] text-white px-3 py-2 rounded-lg text-xs font-semibold w-full disabled:opacity-60 transition-colors"
-            >
-              {occupying ? "Ocupando…" : "Ocupar mesa"}
-            </button>
-          )}
-
-          {tableInfo?.status === "ocupada" && (
-            <>
+            {tableInfo?.status === "disponible" && (
               <button
-                onClick={() => setShowAddModal(true)}
-                className="mt-2 bg-[#14144f] hover:bg-indigo-700 px-3 py-2 rounded-lg block w-full text-white font-semibold text-xs transition-colors"
+                onClick={occupyTable}
+                disabled={occupying}
+                className="w-full min-h-[46px] bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-soft-xs transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
               >
-                + Agregar orden
+                {occupying ? (
+                  <span>Ocupando mesa…</span>
+                ) : (
+                  <>
+                    <AppIcon name="users" size={16} />
+                    <span>Ocupar mesa</span>
+                  </>
+                )}
               </button>
+            )}
 
-              <button
-                onClick={async () => {
-                  try {
-                    const s = await getUnpaidSaleByTable(tableId);
-                    if (!s?.id) return alert("No hay venta abierta para esta mesa.");
-                    await requestTicket(s.id);
-                    alert("Ticket solicitado al cajero.");
-                  } catch (e) {
-                    console.error(e);
-                    alert("No se pudo solicitar el ticket.");
+            {tableInfo?.status === "ocupada" && (
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-2xl font-extrabold text-sm shadow-soft-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  <span className="text-lg font-black">+</span>
+                  <span>Agregar Nueva Comanda</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      const s = await getUnpaidSaleByTable(tableId);
+                      if (!s?.id) return alert("No hay venta abierta para esta mesa.");
+                      await requestTicket(s.id);
+                      alert("Ticket solicitado al cajero exitosamente.");
+                    } catch (e) {
+                      console.error(e);
+                      alert("No se pudo solicitar el ticket.");
+                    }
+                  }}
+                  disabled={!canRequestTicket}
+                  title={
+                    canRequestTicket
+                      ? "Solicitar impresión del ticket al cajero"
+                      : hasPendingOrders
+                      ? "Hay órdenes pendientes de entrega en cocina"
+                      : "No hay consumo entregado para imprimir"
                   }
-                }}
-                disabled={!canRequestTicket}
-                title={
-                  canRequestTicket
-                    ? "Solicitar impresión del ticket"
-                    : hasPendingOrders
-                    ? "No puedes solicitar impresión: hay órdenes pendientes"
-                    : "No hay consumo entregado para imprimir"
-                }
-                className={`mt-2 px-3 py-2 rounded-lg block w-full font-semibold text-xs transition ${
-                  canRequestTicket
-                    ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow"
-                    : "bg-slate-300 text-slate-500 cursor-not-allowed"
-                }`}
-              >
-                Solicitar ticket
-              </button>
+                  className={`w-full min-h-[46px] px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
+                    canRequestTicket
+                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-soft-xs active:scale-95"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  }`}
+                >
+                  <AppIcon name="print" size={16} />
+                  <span>Solicitar Ticket al Cajero</span>
+                </button>
 
-              {!canRequestTicket && (
-                <p className="mt-2 text-[11px] text-amber-700">
-                  {hasPendingOrders
-                    ? "Hay órdenes sin entregar. Entrega todo antes de solicitar el ticket."
-                    : "Aún no hay consumo entregado para imprimir."}
-                </p>
-              )}
-            </>
-          )}
+                {!canRequestTicket && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+                    {hasPendingOrders
+                      ? "⚠️ Entrega todos los platillos pendientes antes de solicitar la cuenta."
+                      : "Aún no se ha entregado consumo a esta mesa."}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-200 text-xs space-y-1.5 text-slate-600">
+              <div className="flex justify-between">
+                <span>Consumo Entregado:</span>
+                <span className="font-bold text-slate-900">${deliveredTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Comandas en cola:</span>
+                <span className="font-bold text-slate-900">{activeOrders.length}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="col-span-2 border border-slate-200 bg-white p-4 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
-          <h2 className="font-bold text-sm text-slate-800 mb-3 flex items-center justify-between">
-            <span>Órdenes pendientes</span>
-            <span className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600">{activeOrders.length}</span>
-          </h2>
+        {/* Center Column: Pending Orders (5 cols) */}
+        <div className="lg:col-span-5 border border-slate-200/90 bg-white p-5 rounded-2xl shadow-soft-xs overflow-y-auto max-h-[65vh]">
+          <div className="flex items-center justify-between mb-3.5 pb-2 border-b border-slate-100">
+            <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+              <span>Órdenes en Cocina</span>
+              <span className="text-xs bg-indigo-50 text-indigo-700 font-black px-2 py-0.5 rounded-full border border-indigo-100">
+                {activeOrders.length}
+              </span>
+            </h3>
+            <span className="text-[11px] text-slate-400 font-medium">Tiempo real</span>
+          </div>
 
-          {activeOrders.length === 0 && (
-            <p className="text-xs text-slate-400 py-6 text-center">No hay órdenes pendientes en preparación</p>
-          )}
-
-          {activeOrders.map((order) => {
-            const isReady = order.status === "ready";
-            return (
-              <div
-                key={order.id}
-                className={`relative rounded-xl p-3 mb-3 border ${
-                  isReady
-                    ? "bg-emerald-50 border-emerald-300"
-                    : "bg-white border-slate-200"
-                } shadow-sm`}
-              >
-                {isReady && (
-                  <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-1 rounded-bl-lg rounded-tr-xl">
-                    ¡ORDEN LISTA!
+          {activeOrders.length === 0 ? (
+            <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+              <AppIcon name="chef" size={32} className="mx-auto text-slate-300 mb-1.5" />
+              <p className="text-xs font-bold text-slate-600">No hay órdenes pendientes</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Todas las comandas han sido entregadas o la mesa está libre.</p>
+            </div>
+          ) : (
+            activeOrders.map((order) => {
+              const isReady = order.status === "ready";
+              return (
+                <div
+                  key={order.id}
+                  className={`relative rounded-2xl p-4 mb-3.5 border transition-all ${
+                    isReady
+                      ? "bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-400/40"
+                      : "bg-white border-slate-200/90 shadow-soft-xs"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-xs font-black text-slate-900">
+                      Total: ${Number(order.total || 0).toFixed(2)}
+                    </span>
+                    <span
+                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        isReady
+                          ? "bg-emerald-600 text-white animate-pulse"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {isReady ? "¡Lista en cocina!" : "En preparación"}
+                    </span>
                   </div>
-                )}
 
-                <p className="font-bold text-xs text-slate-800 mb-2">Total: ${order.total}</p>
+                  {order.recipes && order.recipes.length > 0 ? (
+                    <div className="space-y-2 mb-3">
+                      {order.recipes.map((item, index) => {
+                        const isItemReady = item.status === "ready";
+                        const isItemDelivered = item.status === "delivered";
+                        const targetItemId = item.itemId || item.id || (item as any)._id;
+                        const isDelivering = deliveringItemId === targetItemId;
 
-                {order.recipes && order.recipes.length > 0 ? (
-                  <div className="space-y-2 mb-3">
-                    {order.recipes.map((item, index) => {
-                      const isItemReady = item.status === "ready";
-                      const isItemDelivered = item.status === "delivered";
-                      const targetItemId = item.itemId || item.id || (item as any)._id;
-                      const isDelivering = deliveringItemId === targetItemId;
-
-                      return (
-                        <div
-                          key={index}
-                          className={`flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-all ${
-                            isItemDelivered
-                              ? "bg-slate-50 border-slate-200 opacity-60"
-                              : isItemReady
-                              ? "bg-emerald-50/90 border-emerald-300 ring-1 ring-emerald-400"
-                              : "bg-white border-slate-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <RecipeIcon
-                              imageUrl={item.imageUrl}
-                              name={item.name}
-                              size={22}
-                              containerClassName="w-9 h-9 rounded-lg shrink-0 border border-slate-100"
-                            />
-                            <div className="min-w-0">
-                              <p className="font-semibold text-xs text-slate-900 truncate">{item.name}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[11px] text-slate-500 font-medium">Cant: {item.quantity}</span>
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    isItemDelivered
-                                      ? "bg-slate-200 text-slate-700"
-                                      : isItemReady
-                                      ? "bg-emerald-600 text-white animate-pulse"
-                                      : "bg-amber-100 text-amber-800"
-                                  }`}
-                                >
-                                  {isItemDelivered ? "✓ Entregado" : isItemReady ? "¡Listo para servir!" : "En cocina"}
-                                </span>
+                        return (
+                          <div
+                            key={index}
+                            className={`flex items-center justify-between gap-2.5 p-2.5 rounded-xl border transition-all ${
+                              isItemDelivered
+                                ? "bg-slate-50 border-slate-200 opacity-60"
+                                : isItemReady
+                                ? "bg-emerald-50 border-emerald-300 shadow-soft-xs"
+                                : "bg-white border-slate-200/80"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <RecipeIcon
+                                imageUrl={item.imageUrl}
+                                name={item.name}
+                                size={22}
+                                containerClassName="w-10 h-10 rounded-xl shrink-0 border border-slate-100"
+                              />
+                              <div className="min-w-0">
+                                <p className="font-bold text-xs text-slate-900 truncate">{item.name}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[11px] text-slate-500 font-medium">Cant: {item.quantity}</span>
+                                  <span
+                                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                      isItemDelivered
+                                        ? "bg-slate-200 text-slate-700"
+                                        : isItemReady
+                                        ? "bg-emerald-600 text-white"
+                                        : "bg-amber-100 text-amber-800"
+                                    }`}
+                                  >
+                                    {isItemDelivered ? "✓ Entregado" : isItemReady ? "Listo para servir" : "Preparando"}
+                                  </span>
+                                </div>
+                                {item.notes && (
+                                  <p className="text-[10px] text-slate-500 italic mt-0.5 truncate">Nota: {item.notes}</p>
+                                )}
                               </div>
-                              {item.notes && (
-                                <p className="text-[10px] text-slate-500 italic mt-0.5 truncate">Nota: {item.notes}</p>
+                            </div>
+
+                            <div className="shrink-0 flex items-center">
+                              {isItemDelivered ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded-lg">
+                                  <AppIcon name="check" size={12} />
+                                  <span>Entregado</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => targetItemId && handleDeliverItem(order.id, targetItemId)}
+                                  disabled={isDelivering || !targetItemId}
+                                  className={`text-xs font-bold px-3 py-2 rounded-xl shadow-soft-xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50 ${
+                                    isItemReady
+                                      ? "bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300"
+                                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  }`}
+                                  title="Marcar este platillo como entregado a la mesa"
+                                >
+                                  <AppIcon name="check" size={13} />
+                                  <span>
+                                    {isDelivering
+                                      ? "Entregando…"
+                                      : isItemReady
+                                      ? "Entregar platillo"
+                                      : "Entregar"}
+                                  </span>
+                                </button>
                               )}
                             </div>
                           </div>
-
-                          <div className="shrink-0 flex items-center">
-                            {isItemDelivered ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded-lg">
-                                <AppIcon name="check" size={12} />
-                                <span>Entregado</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => targetItemId && handleDeliverItem(order.id, targetItemId)}
-                                disabled={isDelivering || !targetItemId}
-                                className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50 ${
-                                  isItemReady
-                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300"
-                                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                                }`}
-                                title="Marcar este platillo como entregado a la mesa"
-                              >
-                                <AppIcon name="check" size={12} />
-                                <span>
-                                  {isDelivering
-                                    ? "Entregando…"
-                                    : isItemReady
-                                    ? "Entregar platillo"
-                                    : "Entregar"}
-                                </span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400">Sin recetas</p>
-                )}
-
-                <div className="flex gap-2 pt-1 border-t border-slate-100">
-                  {order.recipes.length > 0 && (
-                    <button
-                      onClick={() => handleDeliver(order.id)}
-                      className="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 font-bold text-white rounded-lg text-xs transition-colors flex items-center gap-1"
-                    >
-                      <AppIcon name="check" size={13} />
-                      <span>Entregar toda la orden</span>
-                    </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">Sin recetas</p>
                   )}
-                  <button
-                    onClick={() => setSelectedOrder(order)}
-                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-1.5 text-xs rounded-lg transition-colors"
-                  >
-                    Modificar
-                  </button>
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                    {order.recipes.length > 0 && (
+                      <button
+                        onClick={() => handleDeliver(order.id)}
+                        className="bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 font-bold text-white rounded-xl text-xs transition-all shadow-soft-xs flex items-center gap-1.5 active:scale-95"
+                      >
+                        <AppIcon name="check" size={13} />
+                        <span>Entregar toda la orden</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSelectedOrder(order)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-2 text-xs rounded-xl transition-all"
+                    >
+                      Modificar
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
-        <div className="border border-slate-200 bg-white p-4 rounded-xl shadow-sm">
-          <h2 className="font-bold text-sm text-slate-800 mb-3">Órdenes entregadas</h2>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-            {deliveredOrders.length === 0 && (
+        {/* Right Column: Delivered Orders (3 cols) */}
+        <div className="lg:col-span-3 border border-slate-200/90 bg-slate-50/60 p-4 rounded-2xl shadow-soft-xs">
+          <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+            <span>Órdenes Entregadas</span>
+            <span className="text-[11px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+              {deliveredOrders.length}
+            </span>
+          </h3>
+
+          <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+            {deliveredOrders.length === 0 ? (
               <p className="text-xs text-slate-400 py-6 text-center">No hay órdenes entregadas aún</p>
-            )}
-            {deliveredOrders.map((order) => (
-              <div key={order.id} className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs">
-                {order.recipes.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-1">
-                    <RecipeIcon
-                      imageUrl={item.imageUrl}
-                      name={item.name}
-                      size={16}
-                      containerClassName="w-8 h-8 rounded shrink-0"
-                    />
-                    <div>
-                      <p className="font-semibold text-slate-800">{item.name}</p>
-                      <p className="text-[10px] text-slate-500">Cant: {item.quantity}</p>
+            ) : (
+              deliveredOrders.map((order) => (
+                <div key={order.id} className="bg-white border border-slate-200/90 p-3 rounded-xl text-xs shadow-soft-xs space-y-2">
+                  {order.recipes.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <RecipeIcon
+                        imageUrl={item.imageUrl}
+                        name={item.name}
+                        size={16}
+                        containerClassName="w-7 h-7 rounded-lg shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 truncate">{item.name}</p>
+                        <p className="text-[10px] text-slate-500">Cant: {item.quantity}</p>
+                      </div>
                     </div>
+                  ))}
+                  <div className="pt-2 border-t border-slate-100 flex justify-between font-bold text-slate-900 text-xs">
+                    <span>Total comanda:</span>
+                    <span>${Number(order.total || 0).toFixed(2)}</span>
                   </div>
-                ))}
-                <p className="mt-1 font-bold text-slate-900 border-t pt-1">Total: ${order.total}</p>
-              </div>
-            ))}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

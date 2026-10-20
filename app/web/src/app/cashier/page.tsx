@@ -263,97 +263,152 @@ export default function CashierPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* Header Panel */}
+      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-soft-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Módulo de Caja y Cobros</h1>
-          <p className="text-sm text-slate-500">Gestión de tickets, impresión y registro de pagos</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              Caja y Facturación • Cobro en Punto de Venta
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Módulo de Caja y Cobros
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Emisión de tickets de venta, aplicación de descuentos vigentes y registro de cobros
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/worker"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 border border-slate-200 text-slate-700 rounded-lg transition"
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-2xl transition active:scale-95 shadow-soft-xs"
             title="Volver a los 4 módulos operativos"
           >
-            <AppIcon name="arrow-left" size={13} />
-            <span>Volver al inicio de trabajador</span>
+            <AppIcon name="arrow-left" size={14} />
+            <span>Inicio de trabajador</span>
           </Link>
-          <div className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg font-semibold">
-            Cola activa: {queue.length}
+          <div className="min-h-[44px] bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 border border-indigo-100 shadow-soft-xs">
+            <span>Cola activa:</span>
+            <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[11px]">
+              {queue.length}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Cola de tickets */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-          <h2 className="font-bold text-sm text-slate-800 mb-3 flex items-center justify-between">
-            <span>Tickets pendientes</span>
-            <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-              {queue.length}
-            </span>
-          </h2>
-          <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Tickets Queue (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-3xl shadow-soft-xs border border-slate-200/90 p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h2 className="font-black text-sm text-slate-900 flex items-center gap-2">
+              <span>Tickets por Cobrar</span>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-extrabold">
+                {queue.length}
+              </span>
+            </h2>
+            <button
+              onClick={fetchQueue}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-bold"
+            >
+              ↻ Refrescar
+            </button>
+          </div>
+
+          <div className="space-y-2.5 max-h-[70vh] overflow-y-auto pr-1">
             {queue.map((ticket) => {
               const isSelected = selected?.saleId === ticket.saleId;
               return (
                 <button
                   key={ticket.saleId}
                   onClick={() => setSelected(ticket)}
-                  className={`w-full text-left p-3.5 rounded-xl border transition-all ${
+                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${
                     isSelected
-                      ? 'border-indigo-600 bg-indigo-50/50 shadow-sm'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                      ? 'border-indigo-600 bg-indigo-50/70 shadow-soft-sm ring-2 ring-indigo-500/20'
+                      : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/60 shadow-soft-xs'
                   }`}
                 >
-                  <div className="flex justify-between items-center text-sm font-bold text-slate-800">
-                    <span>Venta #{String(ticket.saleId).slice(-6)}</span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-black text-slate-900 font-mono">
+                      Venta #{String(ticket.saleId).slice(-6)}
+                    </span>
+                    <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
                       Mesa {ticket.tableNumber ?? '-'}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    Solicitado:{' '}
-                    {ticket.requestedAt ? new Date(ticket.requestedAt).toLocaleTimeString() : '—'}
+                  <div className="text-[11px] text-slate-400 font-medium">
+                    Solicitado: {ticket.requestedAt ? new Date(ticket.requestedAt).toLocaleTimeString() : '—'}
                   </div>
                 </button>
               );
             })}
             {!queue.length && (
-              <div className="text-xs text-slate-400 py-10 text-center">
-                Sin tickets pendientes de cobro.
+              <div className="text-center py-14 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                <AppIcon name="receipt" size={30} className="mx-auto text-slate-300 mb-1.5" />
+                <p className="text-xs font-bold text-slate-600">Sin tickets en cola</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Los meseros solicitarán el ticket cuando los comensales pidan la cuenta.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Detalle */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="font-bold text-sm text-slate-800 mb-4">Detalle de la Cuenta</h2>
+        {/* Right Column: Ticket Detail & Checkout (8 cols) */}
+        <div className="lg:col-span-8 bg-white rounded-3xl shadow-soft-xs border border-slate-200/90 p-5 sm:p-7">
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+            <h2 className="font-black text-base text-slate-900">Detalle de la Cuenta y Cobro</h2>
+            {sale && (
+              <span className={`text-xs px-3 py-1 rounded-full font-black uppercase tracking-wider ${
+                sale.ticketStatus === 'printed'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+              }`}>
+                {sale.ticketStatus === 'printed' ? '✓ Ticket Impreso' : '⏳ Por imprimir'}
+              </span>
+            )}
+          </div>
+
           {!sale && (
-            <div className="text-center py-16 text-slate-400 text-sm">
-              Seleccione un ticket de la columna izquierda para visualizar el detalle y procesar el cobro.
+            <div className="text-center py-20 px-6 bg-slate-50/60 rounded-3xl border border-dashed border-slate-200">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-2">
+                💳
+              </div>
+              <h3 className="text-sm font-bold text-slate-700">Ningún ticket seleccionado</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                Selecciona un ticket de la columna izquierda para revisar el consumo, aplicar promociones y registrar el pago.
+              </p>
             </div>
           )}
+
           {sale && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div className="space-y-5">
+              {/* Folio info */}
+              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="font-bold text-lg text-slate-900">Folio: {sale.folio}</div>
-                  <div className="text-xs text-slate-500">
-                    Mesa {sale.table?.number ?? selected?.tableNumber ?? '-'}
-                  </div>
+                  <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Comprobante de Venta
+                  </span>
+                  <span className="text-lg font-black text-slate-900 font-mono">
+                    Folio: {sale.folio || `VTA-${String(sale.id).slice(-6)}`}
+                  </span>
                 </div>
-                <div className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase ${
-                  sale.ticketStatus === 'printed'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}>
-                  Ticket: {sale.ticketStatus === 'printed' ? 'Impreso' : 'Por imprimir'}
+                <div className="text-right">
+                  <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Ubicación en Sala
+                  </span>
+                  <span className="text-sm font-black text-indigo-700">
+                    Mesa {sale.table?.number ?? selected?.tableNumber ?? '-'}
+                  </span>
                 </div>
               </div>
 
+              {/* Consumed Items */}
               <div>
-                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Artículos consumidos</h3>
+                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2.5">
+                  Artículos Consumidos
+                </h3>
                 {(() => {
                   const grouped = (sale.orders ?? [])
                     .flatMap((o: any) => o.items ?? [])
@@ -365,46 +420,46 @@ export default function CashierPage() {
                     }, {});
                   const keys = Object.keys(grouped);
                   return keys.length ? (
-                    <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                    <div className="divide-y divide-slate-100 border border-slate-200/90 rounded-2xl overflow-hidden bg-slate-50/50">
                       {keys.map((name) => {
                         const { qty, price } = grouped[name];
                         return (
-                          <li key={name} className="flex justify-between px-3 py-2 text-xs text-slate-800">
-                            <span>
-                              <strong className="text-slate-900">{qty}×</strong> {name}
+                          <div key={name} className="flex justify-between items-center px-4 py-3 text-xs text-slate-800">
+                            <span className="font-medium">
+                              <strong className="text-slate-900 font-black text-sm">{qty}×</strong> {name}
                             </span>
-                            <span className="font-bold">${(qty * price).toFixed(2)}</span>
-                          </li>
+                            <span className="font-black text-sm text-slate-900">${(qty * price).toFixed(2)}</span>
+                          </div>
                         );
                       })}
-                    </ul>
+                    </div>
                   ) : (
                     <div className="text-xs text-slate-400 py-3">Sin platillos registrados.</div>
                   );
                 })()}
               </div>
 
-              {/* Sección de Promociones Aplicables */}
-              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2.5">
+              {/* Promotions Box */}
+              <div className="rounded-2xl border border-amber-200/90 bg-amber-50/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                    <AppIcon name="zap" size={14} className="text-amber-600" />
-                    <span>Promociones y Cupones Vigentes Hoy</span>
+                  <div className="flex items-center gap-2 text-xs font-black text-amber-900">
+                    <AppIcon name="zap" size={16} className="text-amber-600" />
+                    <span>Promociones y Descuentos Vigentes Hoy</span>
                   </div>
-                  {calculatingPromo && <span className="text-[10px] text-amber-700 animate-pulse">Calculando…</span>}
+                  {calculatingPromo && <span className="text-[11px] text-amber-700 animate-pulse font-bold">Calculando…</span>}
                 </div>
 
                 {promotions.length === 0 ? (
-                  <p className="text-xs text-slate-500">No hay promociones programadas vigentes para el día de hoy.</p>
+                  <p className="text-xs text-slate-500">No hay promociones programadas para hoy.</p>
                 ) : (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => handleApplyPromotion(null)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                      className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
                         !selectedPromo
-                          ? 'bg-slate-700 text-white border-slate-700'
-                          : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-soft-xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       Sin promoción
@@ -416,14 +471,14 @@ export default function CashierPage() {
                           key={p.id || (p as any)._id}
                           type="button"
                           onClick={() => handleApplyPromotion(p)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 ${
+                          className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-black border transition flex items-center gap-1.5 active:scale-95 ${
                             isSel
-                              ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                              : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-100/50'
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-soft-xs'
+                              : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-100/60'
                           }`}
                         >
                           <span>{p.name}</span>
-                          <span className="text-[10px] opacity-80">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/20">
                             {p.type === 'two_for_one' ? '2x1' : p.type === 'percentage_discount' ? `${p.discountValue}%` : `$${p.discountValue}`}
                           </span>
                         </button>
@@ -433,14 +488,14 @@ export default function CashierPage() {
                 )}
 
                 {promoCalculation && promoCalculation.discountAmount > 0 && (
-                  <div className="bg-white rounded-lg p-2.5 border border-amber-200 text-xs space-y-1">
-                    <div className="flex justify-between font-bold text-emerald-700">
+                  <div className="bg-white rounded-xl p-3 border border-amber-200 text-xs space-y-1 shadow-soft-xs">
+                    <div className="flex justify-between font-black text-emerald-700 text-sm">
                       <span>Descuento aplicado ({selectedPromo?.name}):</span>
                       <span>-${promoCalculation.discountAmount.toFixed(2)}</span>
                     </div>
                     {promoCalculation.benefitedItems.length > 0 && (
                       <div className="text-[11px] text-slate-600">
-                        <span className="font-semibold text-slate-500">Beneficios: </span>
+                        <span className="font-bold text-slate-500">Aplica a: </span>
                         {promoCalculation.benefitedItems.join(', ')}
                       </div>
                     )}
@@ -448,31 +503,32 @@ export default function CashierPage() {
                 )}
               </div>
 
-              {/* Totales */}
-              <div className="pt-2 border-t space-y-1 text-xs">
-                <div className="flex justify-between text-slate-500">
-                  <span>Subtotal:</span>
-                  <span>${Number(sale.totalAmount || 0).toFixed(2)}</span>
+              {/* Totals Breakdown */}
+              <div className="pt-3 border-t border-slate-200 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600 text-sm">
+                  <span>Subtotal consumo:</span>
+                  <span className="font-semibold text-slate-900">${Number(sale.totalAmount || 0).toFixed(2)}</span>
                 </div>
                 {promoCalculation && promoCalculation.discountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-700 font-bold">
-                    <span>Descuento Promoción:</span>
+                  <div className="flex justify-between text-emerald-700 font-bold text-sm">
+                    <span>Descuento aplicado:</span>
                     <span>-${promoCalculation.discountAmount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center pt-2 border-t text-base font-bold text-slate-900">
-                  <span>Total a Cobrar:</span>
-                  <span className="text-2xl text-indigo-700">
+                <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                  <span className="text-base font-black text-slate-900">Total a Cobrar:</span>
+                  <span className="text-3xl font-black text-emerald-600 tracking-tight">
                     ${(promoCalculation ? promoCalculation.finalTotal : Number(sale.totalAmount || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              {/* Order Type & Payment Method Selectors */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <label className="block">
-                  <span className="block text-xs font-semibold text-slate-600 mb-1">Tipo de orden</span>
+                  <span className="block text-xs font-bold text-slate-700 mb-1.5">Tipo de orden</span>
                   <select
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white"
+                    className="w-full min-h-[46px] border border-slate-200 rounded-xl px-3.5 py-2 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-soft-xs"
                     value={orderType}
                     onChange={(e) => setOrderType(e.target.value as OrderType)}
                   >
@@ -484,35 +540,36 @@ export default function CashierPage() {
                 </label>
 
                 <label className="block">
-                  <span className="block text-xs font-semibold text-slate-600 mb-1">Método de pago</span>
+                  <span className="block text-xs font-bold text-slate-700 mb-1.5">Método de pago</span>
                   <select
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white"
+                    className="w-full min-h-[46px] border border-slate-200 rounded-xl px-3.5 py-2 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-soft-xs"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                   >
-                    <option value="efectivo">Efectivo</option>
-                    <option value="tarjeta">Tarjeta</option>
-                    <option value="transferencia">Transferencia</option>
+                    <option value="efectivo">💵 Efectivo</option>
+                    <option value="tarjeta">💳 Tarjeta de Crédito/Débito</option>
+                    <option value="transferencia">🏦 Transferencia Bancaria</option>
                   </select>
                 </label>
               </div>
 
-              <div className="mt-6 flex gap-3 justify-end pt-3 border-t">
+              {/* Bottom Action Buttons (Print Ticket & Confirm Payment) */}
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-slate-200">
                 <button
                   onClick={printTicket}
                   disabled={printing || sale.ticketStatus === 'printed'}
-                  className="px-4 py-2 rounded-lg bg-[#14144f] hover:bg-[#1f1f6d] text-white text-xs font-bold disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                  className="min-h-[48px] px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-black disabled:opacity-50 transition-all shadow-soft-xs inline-flex items-center justify-center gap-2 active:scale-95"
                 >
                   {printing ? (
                     'Imprimiendo…'
                   ) : sale.ticketStatus === 'printed' ? (
                     <>
-                      <AppIcon name="check" size={14} />
-                      <span>Ticket Impreso</span>
+                      <AppIcon name="check" size={16} />
+                      <span>Ticket ya Impreso</span>
                     </>
                   ) : (
                     <>
-                      <AppIcon name="print" size={14} />
+                      <AppIcon name="print" size={16} />
                       <span>Imprimir Ticket</span>
                     </>
                   )}
@@ -521,14 +578,14 @@ export default function CashierPage() {
                 <button
                   onClick={confirmPayment}
                   disabled={paying}
-                  className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-colors shadow-sm inline-flex items-center gap-1.5"
+                  className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-black disabled:opacity-50 transition-all shadow-soft-sm hover:shadow-soft-md inline-flex items-center justify-center gap-2 active:scale-95"
                 >
                   {paying ? (
-                    'Procesando pago…'
+                    'Procesando cobro…'
                   ) : (
                     <>
-                      <AppIcon name="card" size={14} />
-                      <span>Registrar Pago</span>
+                      <AppIcon name="card" size={16} />
+                      <span>Registrar Pago y Cerrar Cuenta</span>
                     </>
                   )}
                 </button>

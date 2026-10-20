@@ -2,19 +2,19 @@ import React from "react";
 
 export function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[180px] rounded-2xl border p-4 shadow-sm bg-white">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-xl font-semibold whitespace-nowrap">{value}</div>
+    <div className="min-w-[170px] rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-soft-xs bg-white hover:shadow-soft-sm transition-all duration-150">
+      <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">{label}</div>
+      <div className="text-xl sm:text-2xl font-black text-slate-900 whitespace-nowrap tracking-tight">{value}</div>
     </div>
   );
 }
 
 export function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-3 py-2 text-xs font-semibold text-gray-600 ${className}`}>{children}</th>;
+  return <th className={`px-4 py-3.5 text-xs font-black uppercase tracking-wider text-slate-600 ${className}`}>{children}</th>;
 }
 
 export function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 ${className}`}>{children}</td>;
+  return <td className={`px-4 py-3 text-xs text-slate-800 ${className}`}>{children}</td>;
 }
 
 export function fmtNum(n: number): string {

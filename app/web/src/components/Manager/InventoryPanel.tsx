@@ -102,16 +102,16 @@ export default function InventoryPanel() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowReportModal(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5"
+            className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs font-black bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-soft-xs flex items-center gap-2"
           >
-            <AppIcon name="reports" size={14} />
+            <AppIcon name="reports" size={15} />
             <span>Generar Reporte</span>
           </button>
           <button
             onClick={() => setShowAddProductModal(true)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#14144f] hover:bg-[#1f1f6d] text-white transition shadow-sm flex items-center gap-2"
+            className="min-h-[44px] px-5 py-2.5 rounded-2xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-soft-xs flex items-center gap-2 active:scale-95"
           >
-            <AppIcon name="add" size={14} />
+            <AppIcon name="add" size={15} />
             <span>+ Agregar Insumo / Escanear</span>
           </button>
         </div>
@@ -122,20 +122,20 @@ export default function InventoryPanel() {
         <Kpi label="Stock Total en Unidades" value={String(kpis.totalStock)} />
       </div>
 
-      <div className="flex flex-wrap items-end gap-2.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
-        <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
-          <label className="text-xs font-semibold text-slate-600">Buscar:</label>
+      <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-3xl border border-slate-200/90 shadow-soft-xs">
+        <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+          <label className="text-xs font-bold text-slate-700 shrink-0">Buscar:</label>
           <input
-            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs bg-white"
+            className="w-full rounded-2xl border border-slate-200 px-3.5 py-2 text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-hidden"
             placeholder="Nombre, marca, SKU…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs font-semibold text-slate-600">Categoría:</label>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-700 shrink-0">Categoría:</label>
           <select
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs bg-white"
+            className="rounded-2xl border border-slate-200 px-3.5 py-2 text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-hidden font-medium"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
@@ -148,7 +148,7 @@ export default function InventoryPanel() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-3xl border border-slate-200/90 bg-white shadow-soft-xs">
         <table className="min-w-full text-xs text-left">
           <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-bold">
             <tr>

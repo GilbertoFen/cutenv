@@ -30,6 +30,12 @@
       "sourceType": "github",
       "skillPath": "templates/.agent/skills/web-security-expert/SKILL.md",
       "computedHash": "3d13407850409ff95d1c6132d0b575e5ed523667cf789caace1550b449b20ae5"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "ad5b1fc52807e9afa4635e59218a026b164dc58b6c3f41b0f7c644dcd6ccf572"
     }
   }
 }
