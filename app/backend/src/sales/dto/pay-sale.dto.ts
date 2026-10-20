@@ -14,12 +14,17 @@ export class PaySaleDto {
   discountAmount?: number;
 
   @IsOptional()
+  @IsString()
+  promotionId?: string;
+
+  @IsOptional()
   @IsObject()
   promotionApplied?: {
     promotionId: string;
-    name: string;
-    type: string;
-    discountAmount: number;
+    name?: string;
+    code?: string;
+    type?: string;
+    discountAmount?: number;
     benefitedItems?: string[];
   };
 }

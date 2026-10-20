@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCashierSocket } from '@/gateways/cashierSocket';
 import { getSaleById, paySale, markPrinted, getTicketQueue } from '@/services/SaleService';
-import { getValidPromotionsToday, calculatePromotionDiscount } from '@/services/PromotionService';
+import { getValidPromotionsToday, calculateSalePromotion } from '@/services/PromotionService';
 import type { OrderType, PaymentMethod } from '@/types/Waiter/waiter.types';
 import type { Promotion } from '@/types';
 import { AppIcon } from '@/components/icons';
@@ -57,6 +57,9 @@ export default function CashierPage() {
     discountAmount: number;
     benefitedItems: string[];
     finalTotal: number;
+    eligibleUnitsCount?: number;
+    eligibleSubtotal?: number;
+    rule?: string;
   } | null>(null);
   const [calculatingPromo, setCalculatingPromo] = useState(false);
 
@@ -185,33 +188,32 @@ export default function CashierPage() {
 
   const handleApplyPromotion = async (promo: Promotion | null) => {
     setSelectedPromo(promo);
-    if (!promo || !sale) {
+    if (!promo || !sale?.id) {
       setPromoCalculation(null);
       return;
     }
 
     try {
       setCalculatingPromo(true);
-      const flatItems = (sale.orders ?? []).flatMap((o: any) =>
-        (o.items ?? []).map((it: any) => ({
-          recipeId: it.recipeId || (it as any).id,
-          recipeName: it.recipe,
-          category: it.category,
-          price: it.price || 0,
-          quantity: it.quantity || 1,
-        }))
+      const res = await calculateSalePromotion(
+        sale.id,
+        promo.id || (promo as any)._id
       );
 
-      const res = await calculatePromotionDiscount(
-        promo.id || (promo as any)._id,
-        flatItems,
-        sale.totalAmount || 0
-      );
+      if (!res.isEligible && res.discountAmount === 0) {
+        alert(res.ineligibilityReason || 'Esta promoción no aplica a los productos de esta cuenta.');
+        setSelectedPromo(null);
+        setPromoCalculation(null);
+        return;
+      }
 
       setPromoCalculation({
         discountAmount: res.discountAmount,
         benefitedItems: res.benefitedItems,
         finalTotal: res.finalTotal,
+        eligibleUnitsCount: res.eligibleUnitsCount,
+        eligibleSubtotal: res.eligibleSubtotal,
+        rule: res.rule,
       });
     } catch (err: any) {
       alert(err.message || 'Error al calcular promoción');
@@ -242,8 +244,9 @@ export default function CashierPage() {
       await paySale(sale.id, {
         orderType,
         paymentMethod,
+        promotionId: selectedPromo ? (selectedPromo.id || (selectedPromo as any)._id) : undefined,
         discountAmount: promoCalculation?.discountAmount || 0,
-        promotionApplied: selectedPromo
+        promotionApplied: selectedPromo && promoCalculation
           ? {
               promotionId: selectedPromo.id || (selectedPromo as any)._id,
               name: selectedPromo.name,
@@ -488,15 +491,34 @@ export default function CashierPage() {
                 )}
 
                 {promoCalculation && promoCalculation.discountAmount > 0 && (
-                  <div className="bg-white rounded-xl p-3 border border-amber-200 text-xs space-y-1 shadow-soft-xs">
-                    <div className="flex justify-between font-black text-emerald-700 text-sm">
-                      <span>Descuento aplicado ({selectedPromo?.name}):</span>
+                  <div className="bg-emerald-50/70 rounded-2xl p-3.5 border border-emerald-200/90 text-xs space-y-1.5 shadow-soft-xs">
+                    <div className="flex justify-between font-black text-emerald-800 text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <AppIcon name="sparkles" size={15} className="text-emerald-600" />
+                        <span>Descuento Verificado ({selectedPromo?.name}):</span>
+                      </span>
                       <span>-${promoCalculation.discountAmount.toFixed(2)}</span>
                     </div>
-                    {promoCalculation.benefitedItems.length > 0 && (
+                    {promoCalculation.rule && (
+                      <div className="text-[11px] text-emerald-900/80 font-medium">
+                        <span className="font-bold">Regla: </span>
+                        {promoCalculation.rule}
+                      </div>
+                    )}
+                    {promoCalculation.eligibleUnitsCount !== undefined && (
                       <div className="text-[11px] text-slate-600">
-                        <span className="font-bold text-slate-500">Aplica a: </span>
-                        {promoCalculation.benefitedItems.join(', ')}
+                        <span className="font-bold text-slate-500">Artículos participantes: </span>
+                        {promoCalculation.eligibleUnitsCount} unidades (Subtotal: ${promoCalculation.eligibleSubtotal?.toFixed(2)})
+                      </div>
+                    )}
+                    {promoCalculation.benefitedItems.length > 0 && (
+                      <div className="text-[11px] text-slate-700 bg-white/80 p-2 rounded-xl border border-emerald-100">
+                        <span className="font-bold text-slate-500 block mb-0.5">Detalle de bonificación:</span>
+                        <ul className="list-disc list-inside space-y-0.5 text-slate-600">
+                          {promoCalculation.benefitedItems.map((itemStr, idx) => (
+                            <li key={idx}>{itemStr}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                   </div>

@@ -52,6 +52,7 @@ export async function paySale(
   body: {
     orderType: OrderType;
     paymentMethod: PaymentMethod;
+    promotionId?: string;
     discountAmount?: number;
     promotionApplied?: any;
   }

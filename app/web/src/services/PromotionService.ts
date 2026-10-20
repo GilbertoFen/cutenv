@@ -22,9 +22,13 @@ export async function createPromotion(data: {
   endDate?: string;
   scope?: string;
   targetCategories?: string[];
+  applicableCategories?: string[];
   targetRecipes?: string[];
   discountValue: number;
   minOrderAmount?: number;
+  maxDiscountAmount?: number;
+  maxApplicationsPerOrder?: number;
+  applyMode?: string;
   description?: string;
   authUsername: string;
   authPassword: string;
@@ -70,27 +74,31 @@ export async function deletePromotion(
   return res.json();
 }
 
-export async function calculatePromotionDiscount(
-  promotionId: string,
-  items: Array<{ recipeId?: string; recipeName: string; category?: string; price: number; quantity: number }>,
-  accountTotal: number
+export async function calculateSalePromotion(
+  saleId: string,
+  promotionId: string
 ): Promise<{
   promotionId: string;
   name: string;
+  code?: string;
   type: string;
-  discountAmount: number;
+  rule: string;
+  isEligible: boolean;
+  ineligibilityReason?: string;
   eligibleUnitsCount: number;
+  eligibleSubtotal: number;
+  discountAmount: number;
   benefitedItems: string[];
+  originalTotal: number;
   finalTotal: number;
-  message?: string;
 }> {
-  const res = await apiFetch('/promotions/calculate', {
+  const res = await apiFetch(`/sales/${saleId}/calculate-promotion`, {
     method: 'POST',
-    body: JSON.stringify({ promotionId, items, accountTotal }),
+    body: JSON.stringify({ promotionId }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || 'Error al calcular la promoción');
+    throw new Error(err.message || 'Error al calcular la promoción sobre la cuenta');
   }
   return res.json();
 }

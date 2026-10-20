@@ -8,9 +8,10 @@ import { OrdersModule } from 'src/orders/orders.module';
 import { forwardRef } from '@nestjs/common';
 import { Order, OrderSchema } from '../schemasMongo/order.schema';
 import { Table, TableSchema } from '../schemasMongo/table.schema';
-import { TablesService } from 'src/tables/tables.service';
 import { CashierGateway } from 'src/gateways/cashier.gateway';
 import { AuthModule } from 'src/auth/auth.module';
+import { PromotionsModule } from 'src/promotions/promotions.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature(
@@ -20,6 +21,7 @@ import { AuthModule } from 'src/auth/auth.module';
       forwardRef(() => OrdersModule),
       forwardRef(() => TablesModule),
       AuthModule,
+      PromotionsModule,
   ], 
   controllers: [SalesController],
   providers: [SalesService, CashierGateway],

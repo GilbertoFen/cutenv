@@ -12,6 +12,7 @@ import { CashierGateway } from 'src/gateways/cashier.gateway';
 import { normalizeId, isPopulatedTable, normalizeIdStrict } from 'src/common/utils/normalizeId';
 import { AuthService } from 'src/auth/auth.service';
 import { CancelSaleDto } from './dto/cancel-sale.dto';
+import { PromotionsService } from 'src/promotions/promotions.service';
 
 @Injectable()
 export class SalesService {
@@ -22,6 +23,7 @@ export class SalesService {
     private readonly tablesService: TablesService,
     private readonly cashierGateway: CashierGateway,
     private readonly authService: AuthService,
+    private readonly promotionsService: PromotionsService,
   ) { }
 
   async getAllSales(): Promise<SaleResponseDto[]> {
@@ -43,6 +45,8 @@ export class SalesService {
         orders: (sale?.orders ?? []).map((order: any) => {
           const items = (order?.items ?? []).map((item: any) => ({
             recipe: item?.recipe?.name ?? '—',
+            recipeId: item?.recipe?._id?.toString?.() ?? (item?.recipe?.id ? String(item.recipe.id) : undefined),
+            category: item?.recipe?.category ?? '',
             quantity: item?.quantity ?? 0,
             price: item?.recipe?.price ?? 0,
             notes: item?.notes ?? undefined,
@@ -70,6 +74,8 @@ export class SalesService {
         cancelledAt: sale?.cancelledAt,
         isFacturada: Boolean(sale?.isFacturada),
         invoiceId: sale?.invoiceId?.toString?.() ?? undefined,
+        discountAmount: sale?.discountAmount ?? 0,
+        promotionApplied: sale?.promotionApplied ?? undefined,
       }));
 
     } catch (e) {
@@ -129,6 +135,8 @@ export class SalesService {
             const rawItems = Array.isArray(order.items) ? order.items : [];
             const items = rawItems.map((item: any) => ({
               recipe: item?.recipe?.name ?? '—',
+              recipeId: item?.recipe?._id?.toString?.() ?? (item?.recipe?.id ? String(item.recipe.id) : undefined),
+              category: item?.recipe?.category ?? '',
               quantity: item?.quantity ?? 0,
               price: item?.recipe?.price ?? 0,
               notes: item?.notes ?? undefined,
@@ -160,6 +168,8 @@ export class SalesService {
           cancelledAt: sale.cancelledAt,
           isFacturada: Boolean(sale.isFacturada),
           invoiceId: sale.invoiceId?.toString?.() ?? undefined,
+          discountAmount: sale.discountAmount ?? 0,
+          promotionApplied: sale.promotionApplied ?? undefined,
         };
       });
     } catch (e) {
@@ -187,6 +197,8 @@ export class SalesService {
       const orders = (sale?.orders ?? []).map((order: any) => {
         const items = (order?.items ?? []).map((item: any) => ({
           recipe: item?.recipe?.name ?? '—',
+          recipeId: item?.recipe?._id?.toString?.() ?? (item?.recipe?.id ? String(item.recipe.id) : undefined),
+          category: item?.recipe?.category ?? '',
           quantity: item?.quantity ?? 0,
           price: item?.recipe?.price ?? 0,
           notes: item?.notes ?? undefined,
@@ -220,6 +232,8 @@ export class SalesService {
         cancelledAt: sale?.cancelledAt,
         isFacturada: Boolean(sale?.isFacturada),
         invoiceId: sale?.invoiceId?.toString?.() ?? undefined,
+        discountAmount: sale?.discountAmount ?? 0,
+        promotionApplied: sale?.promotionApplied ?? undefined,
       };
     } catch (e) {
       throw e;
@@ -323,12 +337,62 @@ export class SalesService {
       sale.orderType = orderType;
       sale.paymentMethod = paymentMethod;
 
-      if (body.discountAmount && body.discountAmount > 0) {
-        sale.discountAmount = body.discountAmount;
-        sale.totalAmount = Math.max(0, Number((sale.totalAmount - body.discountAmount).toFixed(2)));
-      }
-      if (body.promotionApplied) {
-        sale.promotionApplied = body.promotionApplied;
+      // Base contable autorizada calculada desde el servidor
+      const totals = await this.orderModel.aggregate([
+        { $match: { _id: { $in: sale.orders.map((o: any) => o._id ?? o) } } },
+        { $group: { _id: null, total: { $sum: '$total' } } },
+      ]);
+      const baseSubtotal = Number((totals[0]?.total ?? sale.totalAmount ?? 0).toFixed(2));
+
+      // Si se especificó una promoción, validar y calcular estrictamente en el backend
+      const targetPromoId = body.promotionId || body.promotionApplied?.promotionId;
+
+      if (targetPromoId) {
+        const populatedSale = await this.saleModel
+          .findById(saleId)
+          .populate({
+            path: 'orders',
+            model: 'Order',
+            populate: { path: 'items.recipe', model: 'Recipe' },
+          });
+
+        const promoCalc = await this.promotionsService.calculateDiscountForSale(
+          populatedSale,
+          targetPromoId
+        );
+
+        if (promoCalc.isEligible && promoCalc.discountAmount > 0) {
+          sale.discountAmount = promoCalc.discountAmount;
+          sale.promotionApplied = {
+            promotionId: promoCalc.promotionId,
+            name: promoCalc.name,
+            code: promoCalc.code,
+            type: promoCalc.type,
+            discountAmount: promoCalc.discountAmount,
+            baseAmount: promoCalc.eligibleSubtotal,
+            rule: promoCalc.rule,
+            benefitedItems: promoCalc.benefitedItems,
+            appliedAt: promoCalc.appliedAt,
+          };
+          sale.totalAmount = Math.max(0, Number((baseSubtotal - promoCalc.discountAmount).toFixed(2)));
+        } else {
+          if (body.discountAmount && body.discountAmount > 0) {
+            throw new BadRequestException(
+              promoCalc.ineligibilityReason || 'La promoción seleccionada no aplica a los productos de esta cuenta'
+            );
+          }
+          sale.discountAmount = 0;
+          sale.promotionApplied = undefined;
+          sale.totalAmount = baseSubtotal;
+        }
+      } else if (body.discountAmount && body.discountAmount > 0) {
+        sale.discountAmount = Math.min(body.discountAmount, baseSubtotal);
+        sale.promotionApplied = undefined;
+        sale.totalAmount = Math.max(0, Number((baseSubtotal - sale.discountAmount).toFixed(2)));
+      } else {
+        sale.discountAmount = 0;
+        sale.promotionApplied = undefined;
+        sale.totalAmount = baseSubtotal;
       }
 
       await sale.save();
@@ -346,6 +410,28 @@ console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
     } catch (e) {
       throw e;
     }
+  }
+
+  async calculatePromotionForSale(saleId: string, promotionId: string) {
+    if (!Types.ObjectId.isValid(saleId)) {
+      throw new BadRequestException('ID de venta inválido');
+    }
+
+    const sale = await this.saleModel
+      .findById(saleId)
+      .populate({
+        path: 'orders',
+        model: 'Order',
+        populate: [
+          { path: 'items.recipe', model: 'Recipe' },
+          { path: 'table', model: 'Table', select: 'number' },
+        ],
+      })
+      .populate('table');
+
+    if (!sale) throw new NotFoundException('Venta no encontrada');
+
+    return this.promotionsService.calculateDiscountForSale(sale, promotionId);
   }
 
   async recomputeSaleTotal(saleId: Types.ObjectId | string): Promise<number> {

@@ -46,6 +46,9 @@ export default function PromotionsManager() {
     targetRecipes: [] as string[],
     discountValue: 0,
     minOrderAmount: 0,
+    maxDiscountAmount: 0,
+    maxApplicationsPerOrder: 0,
+    applyMode: 'mix_and_match' as 'mix_and_match' | 'same_product',
     description: '',
     authUsername: '',
     authPassword: '',
@@ -91,6 +94,9 @@ export default function PromotionsManager() {
       targetRecipes: [],
       discountValue: 0,
       minOrderAmount: 0,
+      maxDiscountAmount: 0,
+      maxApplicationsPerOrder: 0,
+      applyMode: 'mix_and_match',
       description: '',
       authUsername: '',
       authPassword: '',
@@ -101,6 +107,14 @@ export default function PromotionsManager() {
 
   const openEditModal = (p: Promotion) => {
     setEditingPromo(p);
+    const resolvedCategories = (p.targetCategories && p.targetCategories.length > 0)
+      ? p.targetCategories
+      : (p.applicableCategories || []);
+
+    const resolvedScope = (resolvedCategories.length > 0 && p.scope === 'all')
+      ? 'categories'
+      : p.scope;
+
     setFormData({
       name: p.name,
       code: p.code || '',
@@ -108,11 +122,14 @@ export default function PromotionsManager() {
       daysOfWeek: p.daysOfWeek || [],
       startDate: p.startDate ? p.startDate.substring(0, 10) : '',
       endDate: p.endDate ? p.endDate.substring(0, 10) : '',
-      scope: p.scope,
-      targetCategories: p.targetCategories || [],
+      scope: resolvedScope,
+      targetCategories: resolvedCategories,
       targetRecipes: (p.targetRecipes || []).map((r: any) => (typeof r === 'object' ? r._id || r.id : r)),
       discountValue: p.discountValue || 0,
       minOrderAmount: p.minOrderAmount || 0,
+      maxDiscountAmount: p.maxDiscountAmount || 0,
+      maxApplicationsPerOrder: p.maxApplicationsPerOrder || 0,
+      applyMode: p.applyMode || 'mix_and_match',
       description: p.description || '',
       authUsername: '',
       authPassword: '',
@@ -156,9 +173,13 @@ export default function PromotionsManager() {
           endDate: formData.endDate || undefined,
           scope: formData.scope,
           targetCategories: formData.targetCategories,
+          applicableCategories: formData.targetCategories,
           targetRecipes: formData.targetRecipes,
           discountValue: Number(formData.discountValue) || 0,
           minOrderAmount: Number(formData.minOrderAmount) || 0,
+          maxDiscountAmount: Number(formData.maxDiscountAmount) || 0,
+          maxApplicationsPerOrder: Number(formData.maxApplicationsPerOrder) || 0,
+          applyMode: formData.applyMode,
           description: formData.description.trim() || undefined,
           authUsername: formData.authUsername.trim(),
           authPassword: formData.authPassword,
@@ -176,6 +197,9 @@ export default function PromotionsManager() {
           targetRecipes: formData.targetRecipes,
           discountValue: Number(formData.discountValue) || 0,
           minOrderAmount: Number(formData.minOrderAmount) || 0,
+          maxDiscountAmount: Number(formData.maxDiscountAmount) || 0,
+          maxApplicationsPerOrder: Number(formData.maxApplicationsPerOrder) || 0,
+          applyMode: formData.applyMode,
           description: formData.description.trim() || undefined,
           authUsername: formData.authUsername.trim(),
           authPassword: formData.authPassword,
@@ -426,6 +450,42 @@ export default function PromotionsManager() {
                   </select>
                 </div>
               </div>
+
+              {formData.type === 'two_for_one' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/50 p-3 rounded-2xl border border-amber-200/80">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Regla de Parejas (2x1) *
+                    </label>
+                    <select
+                      value={formData.applyMode}
+                      onChange={(e) => setFormData({ ...formData, applyMode: e.target.value as any })}
+                      className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    >
+                      <option value="mix_and_match">Mix & Match (Cualquier bebida/platillo elegible)</option>
+                      <option value="same_product">Mismo Producto (Unidades idénticas)</option>
+                    </select>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      En Mix & Match, por cada pareja se bonifica la de menor precio.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Límite de parejas gratis (0 = sin límite)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.maxApplicationsPerOrder}
+                      onChange={(e) => setFormData({ ...formData, maxApplicationsPerOrder: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Ej. 1 = máximo una cortesía 2x1 por ticket.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {formData.type !== 'two_for_one' && (
                 <div>

@@ -31,6 +31,14 @@ export class SalesController {
     return this.salesService.paySale(id, dto);
   }
 
+  @Post(':id/calculate-promotion')
+  calculatePromotion(
+    @Param('id') id: string,
+    @Body('promotionId') promotionId: string,
+  ) {
+    return this.salesService.calculatePromotionForSale(id, promotionId);
+  }
+
   @Patch(':id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'manager')

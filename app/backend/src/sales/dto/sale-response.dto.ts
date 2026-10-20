@@ -58,4 +58,21 @@ export class SaleResponseDto {
   @IsOptional()
   @IsString()
   invoiceId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  discountAmount?: number;
+
+  @IsOptional()
+  promotionApplied?: {
+    promotionId: string;
+    name: string;
+    code?: string;
+    type: string;
+    discountAmount: number;
+    baseAmount?: number;
+    rule?: string;
+    benefitedItems?: string[];
+    appliedAt?: Date;
+  };
 }

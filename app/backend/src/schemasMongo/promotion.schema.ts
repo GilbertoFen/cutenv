@@ -33,6 +33,10 @@ export class Promotion {
   @Prop({ type: [String], default: [] })
   targetCategories: string[];
 
+  // Legacy fallback support for seed and existing DB entries
+  @Prop({ type: [String], default: [] })
+  applicableCategories?: string[];
+
   @Prop([{ type: Types.ObjectId, ref: 'Recipe' }])
   targetRecipes: Types.ObjectId[];
 
@@ -42,6 +46,18 @@ export class Promotion {
 
   @Prop({ default: 0 })
   minOrderAmount?: number;
+
+  // Límite de descuento máximo permitido en pesos
+  @Prop({ default: 0 })
+  maxDiscountAmount?: number;
+
+  // Límite de aplicaciones por orden (ej. máximo 2 parejas 2x1)
+  @Prop({ default: 0 })
+  maxApplicationsPerOrder?: number;
+
+  // Modo de aplicación para 2x1: 'mix_and_match' (default) o 'same_product'
+  @Prop({ default: 'mix_and_match', enum: ['mix_and_match', 'same_product'] })
+  applyMode: 'mix_and_match' | 'same_product';
 
   @Prop({ required: false })
   description?: string;
@@ -57,5 +73,4 @@ export class Promotion {
 }
 
 export const PromotionSchema = SchemaFactory.createForClass(Promotion);
-PromotionSchema.index({ code: 1 }, { sparse: true });
 PromotionSchema.index({ isActive: 1, type: 1 });

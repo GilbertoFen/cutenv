@@ -11,6 +11,13 @@ import { Promotion, PromotionDocument } from '../schemasMongo/promotion.schema';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { AuthService } from '../auth/auth.service';
+import {
+  evaluatePromotion,
+  isPromotionActiveToday,
+  EvaluatedItem,
+  PromotionEvaluationResult,
+  PromotionEngineOptions,
+} from './engine/promotions-engine';
 
 @Injectable()
 export class PromotionsService {
@@ -32,29 +39,18 @@ export class PromotionsService {
    */
   async getValidPromotionsForToday(): Promise<Promotion[]> {
     const now = new Date();
-    const currentDayOfWeek = now.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
-
     const promotions = await this.promotionModel.find({ isActive: true });
 
     return promotions.filter((promo) => {
-      // Validar rango de fechas si existen
-      if (promo.startDate && new Date(promo.startDate) > now) return false;
-      if (promo.endDate) {
-        const end = new Date(promo.endDate);
-        end.setHours(23, 59, 59, 999);
-        if (now > end) return false;
-      }
-
-      // Validar día de la semana (si daysOfWeek está vacío o contiene el día actual, aplica)
-      if (promo.daysOfWeek && promo.daysOfWeek.length > 0) {
-        if (!promo.daysOfWeek.includes(currentDayOfWeek)) return false;
-      }
-
-      return true;
+      const check = isPromotionActiveToday(promo as any, now);
+      return check.valid;
     });
   }
 
-  async getPromotionById(id: string): Promise<Promotion> {
+  async getPromotionById(id: string): Promise<PromotionDocument> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('ID de promoción inválido');
+    }
     const promo = await this.promotionModel.findById(id);
     if (!promo) throw new NotFoundException('Promoción no encontrada');
     return promo;
@@ -79,6 +75,17 @@ export class PromotionsService {
       }
     }
 
+    // Normalizar categorías: unir targetCategories y applicableCategories
+    const mergedCategories = Array.from(
+      new Set([...(dto.targetCategories || []), ...(dto.applicableCategories || [])])
+    );
+
+    // Salvaguarda: si se especifican categorías pero el scope quedó como 'all', ajustarlo a 'categories'
+    let effectiveScope = dto.scope || 'all';
+    if (effectiveScope === 'all' && mergedCategories.length > 0) {
+      effectiveScope = 'categories';
+    }
+
     const created = new this.promotionModel({
       name: dto.name.trim(),
       code: dto.code ? dto.code.trim().toUpperCase() : undefined,
@@ -86,11 +93,15 @@ export class PromotionsService {
       daysOfWeek: dto.daysOfWeek || [],
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-      scope: dto.scope || 'all',
-      targetCategories: dto.targetCategories || [],
+      scope: effectiveScope,
+      targetCategories: mergedCategories,
+      applicableCategories: mergedCategories,
       targetRecipes: (dto.targetRecipes || []).map((id) => new Types.ObjectId(id)),
       discountValue: dto.discountValue || 0,
       minOrderAmount: dto.minOrderAmount || 0,
+      maxDiscountAmount: dto.maxDiscountAmount || 0,
+      maxApplicationsPerOrder: dto.maxApplicationsPerOrder || 0,
+      applyMode: dto.applyMode || 'mix_and_match',
       description: dto.description?.trim(),
       isActive: true,
       createdBy: auth.manager.username,
@@ -108,8 +119,7 @@ export class PromotionsService {
       throw new UnauthorizedException('Credenciales de gerente no válidas');
     }
 
-    const promo = await this.promotionModel.findById(id);
-    if (!promo) throw new NotFoundException('Promoción no encontrada');
+    const promo = await this.getPromotionById(id);
 
     if (dto.name !== undefined) promo.name = dto.name.trim();
     if (dto.code !== undefined) promo.code = dto.code ? dto.code.trim().toUpperCase() : undefined;
@@ -117,13 +127,31 @@ export class PromotionsService {
     if (dto.daysOfWeek !== undefined) promo.daysOfWeek = dto.daysOfWeek;
     if (dto.startDate !== undefined) promo.startDate = dto.startDate ? new Date(dto.startDate) : undefined;
     if (dto.endDate !== undefined) promo.endDate = dto.endDate ? new Date(dto.endDate) : undefined;
-    if (dto.scope !== undefined) promo.scope = dto.scope;
-    if (dto.targetCategories !== undefined) promo.targetCategories = dto.targetCategories;
+
+    const mergedCategories = Array.from(
+      new Set([
+        ...(dto.targetCategories !== undefined ? dto.targetCategories : promo.targetCategories || []),
+        ...(dto.applicableCategories !== undefined ? dto.applicableCategories : promo.applicableCategories || []),
+      ])
+    );
+
+    let effectiveScope = dto.scope !== undefined ? dto.scope : promo.scope;
+    if (effectiveScope === 'all' && mergedCategories.length > 0 && (dto.targetCategories || dto.applicableCategories)) {
+      effectiveScope = 'categories';
+    }
+
+    promo.scope = effectiveScope;
+    promo.targetCategories = mergedCategories;
+    promo.applicableCategories = mergedCategories;
+
     if (dto.targetRecipes !== undefined) {
       promo.targetRecipes = dto.targetRecipes.map((rId) => new Types.ObjectId(rId));
     }
     if (dto.discountValue !== undefined) promo.discountValue = dto.discountValue;
     if (dto.minOrderAmount !== undefined) promo.minOrderAmount = dto.minOrderAmount;
+    if (dto.maxDiscountAmount !== undefined) promo.maxDiscountAmount = dto.maxDiscountAmount;
+    if (dto.maxApplicationsPerOrder !== undefined) promo.maxApplicationsPerOrder = dto.maxApplicationsPerOrder;
+    if (dto.applyMode !== undefined) promo.applyMode = dto.applyMode;
     if (dto.description !== undefined) promo.description = dto.description.trim();
     if (dto.isActive !== undefined) promo.isActive = dto.isActive;
 
@@ -144,8 +172,7 @@ export class PromotionsService {
       throw new UnauthorizedException('Credenciales de gerente no válidas');
     }
 
-    const promo = await this.promotionModel.findById(id);
-    if (!promo) throw new NotFoundException('Promoción no encontrada');
+    const promo = await this.getPromotionById(id);
 
     promo.isActive = false;
     promo.updatedBy = auth.manager.username;
@@ -156,98 +183,59 @@ export class PromotionsService {
 
   /**
    * Calcula el beneficio real de una promoción sobre los artículos de una cuenta.
-   * Evita importes negativos y respeta elegibilidad.
+   * Utiliza el motor centralizado de promociones como fuente de verdad.
    */
   async calculateDiscount(
     promotionId: string,
-    items: Array<{ recipeId?: string; recipeName: string; category?: string; price: number; quantity: number }>,
-    accountTotal: number
-  ) {
+    items: EvaluatedItem[],
+    accountTotal: number,
+    options: PromotionEngineOptions = {}
+  ): Promise<PromotionEvaluationResult> {
     const promo = await this.getPromotionById(promotionId);
     if (!promo || !promo.isActive) {
       throw new BadRequestException('La promoción seleccionada no se encuentra activa');
     }
 
-    // Filtrar artículos elegibles
-    const eligibleUnits: Array<{ name: string; price: number; category?: string }> = [];
+    return evaluatePromotion(promo as any, items, accountTotal, options);
+  }
 
-    for (const it of items) {
-      const q = Math.max(0, it.quantity || 0);
-      let isEligible = false;
+  /**
+   * Extrae los artículos y recetas reales de una cuenta/venta poblada de MongoDB
+   * y calcula la promoción usando precios y categorías autorizadas del servidor.
+   */
+  async calculateDiscountForSale(
+    saleDoc: any,
+    promotionId: string,
+    options: PromotionEngineOptions = {}
+  ): Promise<PromotionEvaluationResult> {
+    const promo = await this.getPromotionById(promotionId);
+    if (!promo || !promo.isActive) {
+      throw new BadRequestException('La promoción seleccionada no se encuentra activa');
+    }
 
-      if (promo.scope === 'all') {
-        isEligible = true;
-      } else if (promo.scope === 'categories' && it.category) {
-        isEligible = (promo.targetCategories || []).some(
-          (c) => c.toLowerCase() === it.category!.toLowerCase()
-        );
-      } else if (promo.scope === 'recipes' && it.recipeId) {
-        isEligible = (promo.targetRecipes || []).some(
-          (rId) => rId.toString() === it.recipeId
-        );
+    const items: EvaluatedItem[] = [];
+    let serverTotal = 0;
+
+    for (const order of saleDoc.orders || []) {
+      for (const it of order.items || []) {
+        const recipe = it.recipe;
+        if (!recipe) continue;
+
+        const price = Number(recipe.price ?? it.price ?? 0);
+        const qty = Number(it.quantity ?? 1);
+        serverTotal += price * qty;
+
+        items.push({
+          recipeId: recipe._id ? recipe._id.toString() : recipe.id ? String(recipe.id) : undefined,
+          recipeName: recipe.name ?? 'Producto',
+          category: recipe.category ?? '',
+          price,
+          quantity: qty,
+        });
       }
-
-      if (isEligible) {
-        for (let i = 0; i < q; i++) {
-          eligibleUnits.push({ name: it.recipeName, price: it.price, category: it.category });
-        }
-      }
     }
 
-    const eligibleSubtotal = eligibleUnits.reduce((acc, u) => acc + u.price, 0);
-
-    if (promo.minOrderAmount && accountTotal < promo.minOrderAmount) {
-      throw new BadRequestException(
-        `El pedido no cumple el monto mínimo de $${promo.minOrderAmount.toFixed(2)} para esta promoción`
-      );
-    }
-
-    if (eligibleUnits.length === 0) {
-      return {
-        promotionId: promo['_id'],
-        name: promo.name,
-        type: promo.type,
-        discountAmount: 0,
-        eligibleUnitsCount: 0,
-        benefitedItems: [],
-        finalTotal: accountTotal,
-        message: 'No hay productos elegibles en esta comanda para la promoción',
-      };
-    }
-
-    let discountAmount = 0;
-    const benefitedItems: string[] = [];
-
-    if (promo.type === 'two_for_one') {
-      // 2x1: Por cada 2 unidades elegibles, 1 es gratis (se bonifica la unidad de menor o igual precio)
-      eligibleUnits.sort((a, b) => a.price - b.price); // Ordenar ascendente
-      const freeUnitsCount = Math.floor(eligibleUnits.length / 2);
-
-      for (let i = 0; i < freeUnitsCount; i++) {
-        discountAmount += eligibleUnits[i].price;
-        benefitedItems.push(`${eligibleUnits[i].name} (100% bonificado por 2x1)`);
-      }
-    } else if (promo.type === 'percentage_discount') {
-      const pct = Math.min(100, Math.max(0, promo.discountValue));
-      discountAmount = Math.round((eligibleSubtotal * (pct / 100) + Number.EPSILON) * 100) / 100;
-      benefitedItems.push(`${pct}% de descuento sobre artículos elegibles ($${eligibleSubtotal.toFixed(2)})`);
-    } else if (promo.type === 'fixed_discount') {
-      discountAmount = Math.min(promo.discountValue, eligibleSubtotal);
-      benefitedItems.push(`Descuento directo de $${discountAmount.toFixed(2)}`);
-    }
-
-    // El descuento nunca puede superar el subtotal elegible ni el total de la cuenta
-    discountAmount = Math.min(discountAmount, accountTotal);
-    const finalTotal = Math.max(0, Math.round((accountTotal - discountAmount + Number.EPSILON) * 100) / 100);
-
-    return {
-      promotionId: promo['_id'],
-      name: promo.name,
-      type: promo.type,
-      discountAmount,
-      eligibleUnitsCount: eligibleUnits.length,
-      benefitedItems,
-      finalTotal,
-    };
+    serverTotal = Math.round((serverTotal + Number.EPSILON) * 100) / 100;
+    return evaluatePromotion(promo as any, items, serverTotal, options);
   }
 }

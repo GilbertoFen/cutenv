@@ -50,9 +50,13 @@ export class Sale {
   promotionApplied?: {
     promotionId: string;
     name: string;
+    code?: string;
     type: string;
     discountAmount: number;
+    baseAmount?: number;
+    rule?: string;
     benefitedItems?: string[];
+    appliedAt?: Date;
   };
 }
 

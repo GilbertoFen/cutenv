@@ -37,7 +37,25 @@ export class CreatePromotionDto {
 
   @IsArray()
   @IsOptional()
+  applicableCategories?: string[];
+
+  @IsArray()
+  @IsOptional()
   targetRecipes?: string[];
+
+  @IsEnum(['mix_and_match', 'same_product'])
+  @IsOptional()
+  applyMode?: 'mix_and_match' | 'same_product';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  maxDiscountAmount?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  maxApplicationsPerOrder?: number;
 
   @IsNumber()
   @Min(0)

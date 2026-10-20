@@ -53,8 +53,11 @@ export interface SelectedItem {
 
 export interface SaleItem {
   recipe: string;
+  recipeId?: string;
+  category?: string;
   quantity: number;
   price: number;
+  notes?: string;
 }
 
 export interface SaleOrder {
@@ -79,6 +82,18 @@ export interface SaleData {
   cancelledAt?: string;
   isFacturada?: boolean;
   invoiceId?: string;
+  discountAmount?: number;
+  promotionApplied?: {
+    promotionId: string;
+    name: string;
+    code?: string;
+    type: string;
+    discountAmount: number;
+    baseAmount?: number;
+    rule?: string;
+    benefitedItems?: string[];
+    appliedAt?: string;
+  };
 }
 
 export type UserRole = 'owner' | 'manager' | 'worker';
@@ -105,9 +120,13 @@ export interface Promotion {
   endDate?: string;
   scope: 'all' | 'categories' | 'recipes';
   targetCategories: string[];
+  applicableCategories?: string[];
   targetRecipes: string[];
   discountValue: number;
   minOrderAmount?: number;
+  maxDiscountAmount?: number;
+  maxApplicationsPerOrder?: number;
+  applyMode?: 'mix_and_match' | 'same_product';
   description?: string;
   isActive: boolean;
 }
@@ -117,9 +136,11 @@ export type BackendSale = {
   _id?: string;
   folio?: string;
   totalAmount?: number | string;
+  discountAmount?: number;
+  promotionApplied?: any;
   orders?: {
     total?: number | string;
-    items?: { recipe?: string; quantity?: number | string; price?: number | string }[];
+    items?: { recipe?: string; recipeId?: string; category?: string; quantity?: number | string; price?: number | string; notes?: string }[];
   }[];
   status?: string;
   date?: string;
