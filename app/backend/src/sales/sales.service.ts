@@ -446,7 +446,7 @@ export class SalesService {
 
       await sale.save();
       console.log('[paySale] about to free table. raw sale.table =', sale.table);
-console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
+      console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
 
       const tableId = normalizeIdStrict(sale.table);
       this.cashierGateway.emitSalePaid({ saleId: sale._id.toString() });
@@ -491,11 +491,11 @@ console.log('[paySale] normalizeId(sale.table) =', normalizeId(sale.table));
       if (!sale) throw new NotFoundException('Venta no encontrada');
 
       const totals = await this.orderModel.aggregate([
-        { 
-          $match: { 
+        {
+          $match: {
             _id: { $in: sale.orders.map((o: any) => o._id ?? o) },
-            status: { $ne: 'cancelled' } 
-          } 
+            status: { $ne: 'cancelled' }
+          }
         },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]);

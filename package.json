@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
+    "build:backend": "npm --workspace=backend run build",
     "dev": "turbo dev",
+    "start": "node app/backend/dist/main.js",
+    "start:backend": "node app/backend/dist/main.js",
     "printer": "node printer-agent/server.js",
     "lint": "turbo lint",
     "test": "turbo test"
