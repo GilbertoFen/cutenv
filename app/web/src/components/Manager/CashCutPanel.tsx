@@ -124,86 +124,110 @@ export default function CashCutPanel() {
         </div>
       </header>
 
-      {/* 4 KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Collected Revenue */}
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/40 rounded-3xl p-5 border border-emerald-200/90 shadow-soft-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+      {/* Fila 1: Tres tarjetas principales de métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+        {/* Total Ingresos Cobrados */}
+        <div className="bg-gradient-to-br from-emerald-50 via-emerald-50/70 to-emerald-100/40 rounded-3xl p-5 sm:p-6 border border-emerald-200/90 shadow-soft-xs flex flex-col justify-between min-w-0 transition-all hover:shadow-soft-md">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 truncate" title="Total Ingresos Cobrados">
               Total Ingresos Cobrados
             </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs">
-              <AppIcon name="cash" size={18} />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs flex-shrink-0">
+              <AppIcon name="cash" size={19} />
             </div>
           </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-950 tracking-tight">
+          <div className="min-w-0">
+            <div
+              className="text-2xl sm:text-3xl xl:text-4xl font-black text-emerald-950 tracking-tight tabular-nums truncate"
+              title={currency(data.summary.totalRevenue)}
+            >
               {currency(data.summary.totalRevenue)}
             </div>
-            <p className="text-[11px] font-bold text-emerald-700 mt-1">
+            <p className="text-xs font-semibold text-emerald-700 mt-1.5 truncate">
               Ingresos efectivamente liquidados
             </p>
           </div>
         </div>
 
-        {/* Total Transactions */}
-        <div className="bg-gradient-to-br from-sky-50 to-sky-100/40 rounded-3xl p-5 border border-sky-200/90 shadow-soft-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-black uppercase tracking-wider text-sky-800">
+        {/* Transacciones Cobradas */}
+        <div className="bg-gradient-to-br from-sky-50 via-sky-50/70 to-sky-100/40 rounded-3xl p-5 sm:p-6 border border-sky-200/90 shadow-soft-xs flex flex-col justify-between min-w-0 transition-all hover:shadow-soft-md">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <span className="text-[11px] font-black uppercase tracking-wider text-sky-800 truncate" title="Transacciones Cobradas">
               Transacciones Cobradas
             </span>
-            <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs">
-              <AppIcon name="receipt" size={18} />
+            <div className="w-10 h-10 rounded-2xl bg-sky-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs flex-shrink-0">
+              <AppIcon name="receipt" size={19} />
             </div>
           </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-sky-950 tracking-tight">
+          <div className="min-w-0">
+            <div
+              className="text-2xl sm:text-3xl xl:text-4xl font-black text-sky-950 tracking-tight tabular-nums truncate"
+              title={String(data.summary.totalTransactions)}
+            >
               {data.summary.totalTransactions}
             </div>
-            <p className="text-[11px] font-bold text-sky-700 mt-1">
+            <p className="text-xs font-semibold text-sky-700 mt-1.5 truncate">
               Cobros procesados en caja
             </p>
           </div>
         </div>
 
-        {/* Total Orders */}
-        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/40 rounded-3xl p-5 border border-indigo-200/90 shadow-soft-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-black uppercase tracking-wider text-indigo-800">
+        {/* Pedidos Atendidos */}
+        <div className="bg-gradient-to-br from-indigo-50 via-indigo-50/70 to-indigo-100/40 rounded-3xl p-5 sm:p-6 border border-indigo-200/90 shadow-soft-xs flex flex-col justify-between min-w-0 transition-all hover:shadow-soft-md">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <span className="text-[11px] font-black uppercase tracking-wider text-indigo-800 truncate" title="Pedidos Atendidos">
               Pedidos Atendidos
             </span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs">
-              <AppIcon name="orders" size={18} />
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs flex-shrink-0">
+              <AppIcon name="orders" size={19} />
             </div>
           </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-indigo-950 tracking-tight">
+          <div className="min-w-0">
+            <div
+              className="text-2xl sm:text-3xl xl:text-4xl font-black text-indigo-950 tracking-tight tabular-nums truncate"
+              title={String(data.summary.totalOrders)}
+            >
               {data.summary.totalOrders}
             </div>
-            <p className="text-[11px] font-bold text-indigo-700 mt-1">
+            <p className="text-xs font-semibold text-indigo-700 mt-1.5 truncate">
               Cuentas cerradas hoy
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Average Ticket */}
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100/40 rounded-3xl p-5 border border-purple-200/90 shadow-soft-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-black uppercase tracking-wider text-purple-800">
-              Ticket Promedio
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-soft-xs">
-              <AppIcon name="kpis" size={18} />
-            </div>
+      {/* Fila 2: Tarjeta secundaria de Ticket Promedio */}
+      <div className="bg-gradient-to-r from-purple-50/90 via-purple-50/60 to-indigo-50/70 rounded-3xl p-5 sm:p-6 border border-purple-200/90 shadow-soft-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:shadow-soft-md">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-soft-xs flex-shrink-0">
+            <AppIcon name="kpis" size={20} />
           </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-purple-950 tracking-tight">
-              {currency(data.summary.averageTicket)}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black uppercase tracking-wider text-purple-800">
+                Ticket Promedio
+              </span>
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                Métrica Derivada
+              </span>
             </div>
-            <p className="text-[11px] font-bold text-purple-700 mt-1">
-              Promedio por transacción
+            <p className="text-xs font-medium text-purple-700/90 mt-0.5 truncate">
+              Gasto promedio por transacción cobrada durante la jornada actual
             </p>
           </div>
+        </div>
+        <div className="text-left sm:text-right flex-shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-purple-100/80 flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center gap-2">
+          <div
+            className="text-2xl sm:text-3xl font-black text-purple-950 tracking-tight tabular-nums"
+            title={currency(data.summary.averageTicket)}
+          >
+            {currency(data.summary.averageTicket)}
+          </div>
+          <span className="text-[11px] font-bold text-purple-600">
+            {data.summary.totalTransactions > 0
+              ? `${data.summary.totalTransactions} transacciones registradas`
+              : 'Sin transacciones registradas'}
+          </span>
         </div>
       </div>
 

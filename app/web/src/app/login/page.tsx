@@ -70,10 +70,14 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
         {/* Header decoration */}
         <div className="bg-[#14144f] p-8 text-center text-white relative">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/30 border border-indigo-400/30 mb-3 shadow-inner">
-            <AppIcon name="utensils" size={28} className="text-indigo-200" />
+          <div className="flex items-center justify-center mb-3">
+            <img
+              src="/logo.png"
+              alt="Logo Restaurante"
+              className="h-14 sm:h-16 w-auto max-w-[220px] object-contain drop-shadow-md mx-auto"
+            />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">POS Restaurante</h1>
+          <h1 className="text-xl font-black tracking-tight">Acceso Administrativo</h1>
           <p className="text-indigo-200 text-xs mt-1">
             Sistema Comercial y Operativo Local-First
           </p>

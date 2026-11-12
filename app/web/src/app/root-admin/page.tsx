@@ -354,8 +354,12 @@ export default function RootAdminPage() {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
         <div className="bg-slate-800 text-white p-8 rounded-3xl shadow-soft-xl max-w-md w-full border border-slate-700">
-          <div className="w-14 h-14 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 mx-auto mb-4">
-            <AppIcon name="security" size={28} />
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src="/logo.png"
+              alt="Logo Restaurante"
+              className="h-12 w-auto max-w-[180px] object-contain drop-shadow-md mx-auto"
+            />
           </div>
           <h1 className="text-xl font-black text-center mb-1">Root Admin Platform</h1>
           <p className="text-xs text-slate-400 text-center mb-6">

@@ -66,7 +66,7 @@ export default function CookPage() {
     try {
       setUpdating(id);
       await markReadyOrders(id);
-      setOrders((prev) => prev.filter((o) => o.id !== id));
+      setOrders((prev) => prev.filter((o) => (o.id || (o as any)._id) !== id));
       notify.success('Orden completa marcada como lista para servir.');
     } catch (err: any) {
       notify.error(err?.message || 'Error al marcar orden como lista');
@@ -81,7 +81,7 @@ export default function CookPage() {
       await updateOrderItemStatus(orderId, itemId, 'ready');
       setOrders((prev) =>
         prev.map((o) => {
-          if (o.id !== orderId) return o;
+          if ((o.id || (o as any)._id) !== orderId) return o;
           const updatedRecipes = o.recipes.map((r: any) =>
             (r.itemId === itemId || r.id === itemId) ? { ...r, status: 'ready' } : r
           );
@@ -114,7 +114,7 @@ export default function CookPage() {
       // Actualizar estado local
       setOrders((prev) =>
         prev.map((o) => {
-          if (o.id !== callingWaiterItem.orderId) return o;
+          if ((o.id || (o as any)._id) !== callingWaiterItem.orderId) return o;
           return {
             ...o,
             recipes: o.recipes.map((r: any) => {

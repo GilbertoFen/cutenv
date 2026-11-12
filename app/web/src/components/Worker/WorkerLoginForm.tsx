@@ -73,10 +73,14 @@ export default function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       <div className="bg-white rounded-3xl shadow-xl border-2 border-indigo-100 overflow-hidden">
         {/* Banner Operativo */}
         <div className="bg-gradient-to-r from-[#14144f] to-indigo-800 p-6 sm:p-8 text-center text-white">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 mb-3 shadow-inner">
-            <AppIcon name="users" size={32} className="text-indigo-200" />
+          <div className="flex items-center justify-center mb-3">
+            <img
+              src="/logo.png"
+              alt="Logo Restaurante"
+              className="h-14 sm:h-16 w-auto max-w-[220px] object-contain drop-shadow-md mx-auto"
+            />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Acceso de Trabajador</h1>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">Acceso de Trabajador</h1>
         </div>
 
         {/* Formulario */}

@@ -61,13 +61,14 @@ function NavbarContent() {
             <div className="flex items-center gap-2.5 sm:gap-3">
               <Link
                 href="/worker"
-                className="font-black text-lg sm:text-xl tracking-tight text-white flex items-center gap-2"
+                className="flex items-center gap-2 py-1 transition-opacity hover:opacity-90"
                 title="Ir a Estación de Trabajo"
               >
-                <span className="bg-emerald-600 px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black shadow-soft-xs">
-                  POS
-                </span>
-                <span className="hidden sm:inline">Restaurante</span>
+                <img
+                  src="/logo.png"
+                  alt="Restaurante"
+                  className="h-8 sm:h-9 w-auto max-w-[140px] sm:max-w-[180px] object-contain drop-shadow-sm"
+                />
               </Link>
 
               {/* Botón para regresar a la selección de estaciones (solo visible dentro de una estación específica) */}
@@ -210,12 +211,14 @@ function NavbarContent() {
           <div className="flex items-center gap-4">
             <Link
               href="/manager"
-              className="font-extrabold text-xl tracking-tight text-white flex items-center gap-2"
+              className="flex items-center gap-2 py-1 transition-opacity hover:opacity-90"
+              title="Panel Administrativo"
             >
-              <span className="bg-indigo-600 px-2.5 py-1 rounded-lg text-sm font-black shadow-sm">
-                POS
-              </span>
-              <span className="hidden sm:inline">Restaurante</span>
+              <img
+                src="/logo.png"
+                alt="Restaurante"
+                className="h-8 sm:h-9 w-auto max-w-[140px] sm:max-w-[180px] object-contain drop-shadow-sm"
+              />
             </Link>
 
             {/* Nueva Navegación Administrativa: Monitoreo y Operativa / Día de Trabajo */}
