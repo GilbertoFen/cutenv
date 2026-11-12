@@ -17,6 +17,7 @@ interface EditableDishItem {
   category?: string;
   status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   notes?: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
 }
 
 const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
@@ -33,7 +34,7 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
   const [items, setItems] = useState<EditableDishItem[]>(() =>
     (order.recipes || []).map((r: any) => ({
       id: r.id || r.itemId || (r as any)._id || '',
-      itemId: r.itemId || r.id,
+      itemId: r.itemId || (r as any)._id || r.id,
       name: r.name || 'Platillo',
       price: Number(r.price ?? 0),
       quantity: Number(r.quantity ?? 1),
@@ -41,6 +42,7 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
       category: r.category,
       status: r.status || 'preparing',
       notes: r.notes || '',
+      station: r.station || 'ninguna',
     }))
   );
 
@@ -48,12 +50,23 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
     getAllRecipes()
       .then((recs) => {
         setMenu(recs);
-        // Fill prices from menu if missing in order
+        // Fill prices and station from menu if missing in order
         setItems((prev) =>
           prev.map((it) => {
-            if (it.price > 0) return it;
             const found = recs.find((m) => m.id === it.id);
-            return found ? { ...it, price: found.price, imageUrl: it.imageUrl || found.imageUrl } : it;
+            const resolvedStation =
+              (it.station && it.station !== 'ninguna')
+                ? it.station
+                : (found?.station && found.station !== 'ninguna' && found.category?.toLowerCase() !== 'bebidas'
+                  ? found.station
+                  : it.station || 'ninguna');
+            return {
+              ...it,
+              price: it.price > 0 ? it.price : (found?.price || 0),
+              imageUrl: it.imageUrl || found?.imageUrl,
+              category: it.category || found?.category,
+              station: resolvedStation,
+            };
           })
         );
       })
@@ -123,6 +136,11 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
             : item
         );
       } else {
+        const isDrink = recipe.category?.toLowerCase() === 'bebidas';
+        const itemStation: 'fria' | 'caliente' | 'ninguna' =
+          (recipe.station && recipe.station !== 'ninguna')
+            ? recipe.station
+            : (isDrink ? 'ninguna' : (recipe.station || 'ninguna'));
         return [
           ...prev,
           {
@@ -134,6 +152,7 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
             category: recipe.category,
             status: 'preparing',
             notes: '',
+            station: itemStation,
           },
         ];
       }
@@ -162,10 +181,12 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
     setSaving(true);
     try {
       const updatedPayload = items.map((item) => ({
+        itemId: item.itemId,
         recipe: item.id,
         quantity: item.quantity,
         status: item.status,
         notes: item.notes,
+        station: item.station,
       }));
 
       await updateOrder(order.id, updatedPayload, notes);

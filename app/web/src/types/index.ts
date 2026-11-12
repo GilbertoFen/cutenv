@@ -9,9 +9,12 @@ export interface Recipe {
 }
 
 export interface UpdateOrderItem {
+  itemId?: string;
   recipe: string;
   quantity: number;
+  status?: string;
   notes?: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
 }
 
 export interface Order {

@@ -20,11 +20,11 @@ export default function CookPage() {
   const [stationFilter, setStationFilter] = useState<'all' | 'fria' | 'caliente'>('all');
 
   const coldOrdersCount = useMemo(() => {
-    return orders.filter((o) => (o.recipes || []).some((r: any) => r.station === 'fria')).length;
+    return orders.filter((o) => (o.recipes || []).some((r: any) => (r.station || '').toLowerCase() === 'fria')).length;
   }, [orders]);
 
   const hotOrdersCount = useMemo(() => {
-    return orders.filter((o) => (o.recipes || []).some((r: any) => r.station === 'caliente')).length;
+    return orders.filter((o) => (o.recipes || []).some((r: any) => (r.station || '').toLowerCase() === 'caliente')).length;
   }, [orders]);
 
   const displayedOrders = useMemo(() => {
@@ -32,9 +32,10 @@ export default function CookPage() {
       .map((order) => {
         const visibleRecipes = (order.recipes || []).filter((r: any) => {
           if (stationFilter === 'all') return true;
-          if (stationFilter === 'fria') return r.station === 'fria';
-          if (stationFilter === 'caliente') return r.station === 'caliente';
-          return true;
+          const s = (r.station || '').toLowerCase();
+          if (stationFilter === 'fria') return s === 'fria';
+          if (stationFilter === 'caliente') return s === 'caliente';
+          return false;
         });
         return {
           order,

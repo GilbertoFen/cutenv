@@ -30,6 +30,26 @@ export class OrdersService {
     private readonly waiterGateway: WaiterGateway,
     @Inject(forwardRef(() => TablesService)) private readonly tablesService: TablesService,
   ) { }
+
+  private resolveItemStation(item: any): 'fria' | 'caliente' | 'ninguna' {
+    const rawStation = (item as any)?.station;
+    if (rawStation === 'fria' || rawStation === 'caliente') {
+      return rawStation;
+    }
+    const recipe = item?.recipe;
+    const isDrink =
+      recipe?.category?.toLowerCase?.() === 'bebidas' ||
+      (typeof recipe === 'object' && recipe?.category?.toLowerCase?.() === 'bebidas');
+    if (isDrink) {
+      return 'ninguna';
+    }
+    const recipeStation = typeof recipe === 'object' ? recipe?.station : undefined;
+    if (recipeStation === 'fria' || recipeStation === 'caliente') {
+      return recipeStation;
+    }
+    return 'ninguna';
+  }
+
   private toKitchenOrderLoad(order: any): any {
     return {
       id: order._id.toString(),
@@ -51,7 +71,7 @@ export class OrdersService {
           notes: item.notes ?? '',
           price: item.recipe?.price ?? 0,
           callWaiter: item.callWaiter ?? null,
-          station: (item as any).station || item.recipe?.station || 'ninguna',
+          station: this.resolveItemStation(item),
           category: item.recipe?.category ?? '',
         })),
     };
@@ -86,7 +106,7 @@ export class OrdersService {
             notes: item.notes ?? '',
             price: typeof item.recipe === 'object' ? item.recipe['price'] || 0 : 0,
             callWaiter: item.callWaiter ?? null,
-            station: (item as any).station || (typeof item.recipe === 'object' ? item.recipe['station'] || 'ninguna' : 'ninguna'),
+            station: this.resolveItemStation(item),
           })),
         notes: order.notes,
         total: order.total,
@@ -141,7 +161,7 @@ export class OrdersService {
           notes: item.notes ?? '',
           price: typeof item.recipe === 'object' ? item.recipe['price'] || 0 : 0,
           callWaiter: item.callWaiter ?? null,
-          station: (item as any).station || (typeof item.recipe === 'object' ? item.recipe['station'] || 'ninguna' : 'ninguna'),
+          station: this.resolveItemStation(item),
         })),
     }));
   }
@@ -171,7 +191,7 @@ export class OrdersService {
             status: item.status ?? order.status ?? 'preparing',
             notes: item.notes ?? '',
             price: typeof item.recipe === 'object' ? item.recipe['price'] || 0 : 0,
-            station: (item as any).station || (typeof item.recipe === 'object' ? item.recipe['station'] || 'ninguna' : 'ninguna'),
+            station: this.resolveItemStation(item),
           })),
         total: order.total,
         notes: order.notes,
@@ -218,7 +238,7 @@ export class OrdersService {
       const savedOrder = await createdOrder.save();
       const populated = await this.orderModel
         .findById(savedOrder._id)
-        .populate('items.recipe', 'name description steps imageUrl price station')
+        .populate('items.recipe', 'name description steps imageUrl price station category')
         .populate('table', '_id number');
 
       // Deducción automática de insumos del inventario para las recetas pedidas
@@ -484,7 +504,7 @@ export class OrdersService {
 
       const populated = await this.orderModel
         .findById(updated._id)
-        .populate('items.recipe', 'name description steps imageUrl price station')
+        .populate('items.recipe', 'name description steps imageUrl price station category')
         .populate('table', '_id number');
 
       const load = this.toKitchenOrderLoad(populated);
@@ -554,7 +574,7 @@ export class OrdersService {
 
       const populated = await this.orderModel
         .findById(updated._id)
-        .populate('items.recipe', 'name description steps imageUrl price station')
+        .populate('items.recipe', 'name description steps imageUrl price station category')
         .populate('table', '_id number');
 
       const load = this.toKitchenOrderLoad(populated);
@@ -593,21 +613,74 @@ export class OrdersService {
         });
 
         const total = dto.items.reduce((sum, item) => {
-          const recipe = recipes.find((recipe) => recipe._id!.toString() === item.recipe);
+          const recipe = recipes.find((r) => r._id!.toString() === item.recipe);
           return sum + (recipe?.price ?? 0) * item.quantity;
         }, 0);
 
-        const prevItemsMap = new Map(
-          (order.items ?? []).map((it) => [it.recipe?.toString(), it.status])
-        );
+        const existingItems = Array.isArray(order.items) ? [...order.items] : [];
+        const matchedExistingIds = new Set<string>();
 
-        order.items = dto.items.map((item) => ({
-          recipe: new Types.ObjectId(item.recipe),
-          quantity: item.quantity,
-          status: (prevItemsMap.get(item.recipe) || item.status || 'preparing') as any,
-          notes: item.notes || '',
-        }));
+        const newItems = dto.items.map((dtoItem) => {
+          const recipe = recipes.find((r) => r._id!.toString() === dtoItem.recipe);
+          const isDrink =
+            recipe?.category?.toLowerCase?.() === 'bebidas' ||
+            (typeof recipe === 'object' && recipe?.category?.toLowerCase?.() === 'bebidas');
+          const defaultRecipeStation: 'fria' | 'caliente' | 'ninguna' =
+            (recipe?.station && recipe.station !== 'ninguna')
+              ? recipe.station
+              : (isDrink ? 'ninguna' : (recipe?.station || 'ninguna'));
 
+          // Buscar coincidencia en items existentes para preservar su estado y clasificación original
+          let existing = dtoItem.itemId
+            ? existingItems.find(
+                (ex) => ex._id && ex._id.toString() === dtoItem.itemId && !matchedExistingIds.has(ex._id.toString())
+              )
+            : null;
+
+          if (!existing) {
+            existing = existingItems.find(
+              (ex) =>
+                (ex.recipe?._id?.toString() || ex.recipe?.toString()) === dtoItem.recipe &&
+                !matchedExistingIds.has(ex._id?.toString() || '')
+            );
+          }
+
+          if (existing) {
+            if (existing._id) matchedExistingIds.add(existing._id.toString());
+            // Regla A: Artículos existentes conservan su clasificación de cocina histórica
+            const preservedStation =
+              existing.station === 'fria' || existing.station === 'caliente'
+                ? existing.station
+                : (dtoItem.station && dtoItem.station !== 'ninguna' ? dtoItem.station : defaultRecipeStation);
+
+            return {
+              _id: existing._id,
+              recipe: new Types.ObjectId(dtoItem.recipe),
+              quantity: dtoItem.quantity,
+              status: (dtoItem.status || existing.status || 'preparing') as any,
+              station: preservedStation,
+              notes: dtoItem.notes !== undefined ? dtoItem.notes : (existing.notes || ''),
+              callWaiter: existing.callWaiter,
+            };
+          } else {
+            // Regla B: Artículos nuevos reciben la clasificación de la receta
+            const itemStation =
+              dtoItem.station && dtoItem.station !== 'ninguna'
+                ? dtoItem.station
+                : defaultRecipeStation;
+
+            return {
+              _id: new Types.ObjectId(),
+              recipe: new Types.ObjectId(dtoItem.recipe),
+              quantity: dtoItem.quantity,
+              status: (dtoItem.status || 'preparing') as any,
+              station: itemStation,
+              notes: dtoItem.notes || '',
+            };
+          }
+        });
+
+        order.items = newItems as any;
         order.total = total;
       }
 
@@ -660,7 +733,7 @@ export class OrdersService {
 
       const populated = await this.orderModel
         .findById(updatedOrder._id)
-        .populate('items.recipe', 'name description steps imageUrl price station')
+        .populate('items.recipe', 'name description steps imageUrl price station category')
         .populate('table', '_id number');
 
       const load = this.toKitchenOrderLoad(populated);

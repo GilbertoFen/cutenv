@@ -2,6 +2,10 @@ import { Type } from 'class-transformer';
 import { IsArray, IsMongoId, IsNumber, IsOptional, IsString, Validate } from 'class-validator';
 
 class UpdateOrderItemDto {
+  @IsOptional()
+  @IsString()
+  itemId?: string;
+
   @IsString()
   recipe: string;
 
@@ -15,6 +19,10 @@ class UpdateOrderItemDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  station?: 'fria' | 'caliente' | 'ninguna';
 }
 
 export class UpdateOrderDto{
