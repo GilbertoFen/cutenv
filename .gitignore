@@ -1,51 +1,54 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Dependencies
+node_modules/
+**/node_modules/
 .pnp-store/
 
-**/node_modules/
-node_modules/
+# Build outputs
 dist/
 **/dist/
+build/
+**/build/
 dist-ssr
-*.local
+.next/
+**/.next/
+out/
+**/out/
 
-# Turbo
+# Caches and tooling
 .turbo/
 **/.turbo/
 .cache/
 **/.cache/
 .parcel/cache/
 **/.parcel/cache/
-.vite/
-**/.vite/
+*.tsbuildinfo
+**/*.tsbuildinfo
 
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-
-# Editor directories and files
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
 *.sw?
 
-# Environment & Credentials
+# Environment & Credentials (NEVER commit secrets)
 .env
 .env.*
-!.env.example
-atlas-credentials.env
 *.env
-
-# Next.js build
-.next/
-**/.next/
-tsconfig.tsbuildinfo
-**/*.tsbuildinfo
+!.env.example
+!app/backend/.env.example
+!app/web/.env.example
+atlas-credentials.env
+*.pem
+*.key
+.vercel/
