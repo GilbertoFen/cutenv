@@ -19,10 +19,22 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    const backendUrl =
+    let rawUrl = (
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      'http://127.0.0.1:3001';
+      'http://127.0.0.1:3001'
+    ).trim();
+
+    // Eliminar comillas accidentales si se pegaron
+    rawUrl = rawUrl.replace(/^["']|["']$/g, '');
+
+    // Si falta el protocolo http:// o https://, asegurar https://
+    if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('/')) {
+      rawUrl = `https://${rawUrl}`;
+    }
+
+    const backendUrl = rawUrl.replace(/\/+$/, '');
+
     return [
       {
         source: '/api/:path*',

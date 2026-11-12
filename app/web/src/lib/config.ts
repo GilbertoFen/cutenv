@@ -4,10 +4,21 @@
  * clientes de la red local (tablets, celulares, otras PC) se conectan.
  */
 
+function normalizeUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  let clean = url.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
+  if (!clean) return null;
+  if (!clean.startsWith('http://') && !clean.startsWith('https://') && !clean.startsWith('/')) {
+    clean = `https://${clean}`;
+  }
+  return clean;
+}
+
 export function getBackendBaseUrl(): string {
   // 1. Si está explícitamente configurada en variables de entorno públicas
-  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  const publicApi = normalizeUrl(typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : undefined);
+  if (publicApi) {
+    return publicApi;
   }
 
   // 2. Si estamos en el navegador, deducir la IP/hostname de la computadora host
@@ -19,16 +30,18 @@ export function getBackendBaseUrl(): string {
   }
 
   // 3. Si estamos en el servidor (SSR / Server Component)
-  if (typeof process !== 'undefined' && process.env?.BACKEND_INTERNAL_URL) {
-    return process.env.BACKEND_INTERNAL_URL.replace(/\/+$/, '');
+  const internalUrl = normalizeUrl(typeof process !== 'undefined' ? process.env?.BACKEND_INTERNAL_URL : undefined);
+  if (internalUrl) {
+    return internalUrl;
   }
 
   return 'http://127.0.0.1:3001';
 }
 
 export function getSocketBaseUrl(): string {
-  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_WS_URL) {
-    return process.env.NEXT_PUBLIC_WS_URL.replace(/\/+$/, '');
+  const wsUrl = normalizeUrl(typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_WS_URL : undefined);
+  if (wsUrl) {
+    return wsUrl;
   }
   return getBackendBaseUrl();
 }
