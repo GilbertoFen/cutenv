@@ -12,24 +12,45 @@ export class Order {
   @Prop([{
     recipe: { type: Types.ObjectId, ref: 'Recipe', required: true },
     quantity: { type: Number, required: true },
-    status: { type: String, enum: ['preparing', 'ready', 'delivered', 'cancelled'], default: 'preparing' },
-    notes: { type: String, required: false }
+    status: { type: String, enum: ['pending', 'preparing', 'ready', 'delivered', 'cancelled'], default: 'preparing' },
+    station: { type: String, enum: ['fria', 'caliente', 'ninguna'], default: 'ninguna' },
+    notes: { type: String, required: false },
+    callWaiter: {
+      requested: { type: Boolean, default: false },
+      reason: { type: String, enum: ['ready', 'unavailable', 'issue', 'other'], default: 'ready' },
+      message: { type: String, required: false },
+      requestedAt: { type: Date, required: false },
+      resolved: { type: Boolean, default: false },
+      isExplicitCall: { type: Boolean, default: false },
+    },
   }])
   items: {
     _id?: Types.ObjectId;
     recipe: Types.ObjectId;
     quantity: number;
-    status: 'preparing' | 'ready' | 'delivered' | 'cancelled';
+    status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+    station?: 'fria' | 'caliente' | 'ninguna';
     notes?: string;
+    callWaiter?: {
+      requested: boolean;
+      reason: 'ready' | 'unavailable' | 'issue' | 'other';
+      message?: string;
+      requestedAt?: Date;
+      resolved?: boolean;
+      isExplicitCall?: boolean;
+    };
   }[];
 
-  @Prop({ default: 'preparing', enum: ['preparing', 'ready', 'delivered', 'cancelled'] })
+  @Prop({ default: 'preparing', enum: ['pending', 'preparing', 'ready', 'delivered', 'cancelled'] })
   status: string;
 
   @Prop()
   total: number;
   @Prop({type: String, required: false})
   notes: string;
+
+  @Prop({ type: Boolean, default: false })
+  inventoryRestored?: boolean;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

@@ -1,23 +1,21 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
-import ManagerUnlockModal from '@/components/Manager/ManagerUnlockModal';
 import { AppIcon } from '@/components/icons';
 
-export default function Navbar() {
+function NavbarContent() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     adminUser,
     workerUser,
     logoutAdmin,
     logoutWorker,
-    isManagerUnlocked,
     loading,
   } = useAuth();
-  const [showManagerModal, setShowManagerModal] = useState(false);
 
   // Determinar si la ruta actual pertenece al flujo operativo del trabajador
   const isWorkerRoute = Boolean(
@@ -45,6 +43,16 @@ export default function Navbar() {
 
     const isElevatedUser = activeOperator.role === 'owner' || activeOperator.role === 'manager';
 
+    // El botón "Volver a Estación" solo debe mostrarse dentro de una estación específica:
+    // Mesero, Cocina, Cajero, Recepción. NO en la pantalla principal de selección (/worker).
+    const isInsideSpecificStation = Boolean(
+      pathname &&
+        (pathname.startsWith('/waiter') ||
+          pathname.startsWith('/cook') ||
+          pathname.startsWith('/cashier') ||
+          pathname.startsWith('/receptionist'))
+    );
+
     return (
       <header className="bg-slate-900 text-white shadow-soft-sm sticky top-0 z-40 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -60,25 +68,20 @@ export default function Navbar() {
                   POS
                 </span>
                 <span className="hidden sm:inline">Restaurante</span>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Tablet
-                </span>
               </Link>
 
-              {/* Botón para regresar a la pantalla principal del trabajador */}
-              <Link
-                href="/worker"
-                className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shadow-soft-xs ${
-                  pathname === '/worker'
-                    ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/50'
-                    : 'bg-slate-800 hover:bg-slate-700 text-white active:scale-95'
-                }`}
-                title="Volver a la pantalla principal de los 4 accesos operativos"
-              >
-                <AppIcon name="arrow-left" size={14} />
-                <span className="hidden md:inline">Volver a Estación</span>
-                <span className="md:hidden">Inicio</span>
-              </Link>
+              {/* Botón para regresar a la selección de estaciones (solo visible dentro de una estación específica) */}
+              {isInsideSpecificStation && (
+                <Link
+                  href="/worker"
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shadow-soft-xs bg-slate-800 hover:bg-slate-700 text-white active:scale-95"
+                  title="Volver a la selección de estaciones"
+                >
+                  <AppIcon name="arrow-left" size={14} />
+                  <span className="hidden md:inline">Volver a Estación</span>
+                  <span className="md:hidden">Inicio</span>
+                </Link>
+              )}
 
               {/* Si es un Administrador o Gerente operando en la vista de trabajador, permitir regresar al panel de gestión */}
               {isElevatedUser && (
@@ -196,12 +199,8 @@ export default function Navbar() {
     return null;
   }
 
-  const handleManagerClick = (e: React.MouseEvent) => {
-    if (!isManagerUnlocked && adminUser?.role !== 'manager') {
-      e.preventDefault();
-      setShowManagerModal(true);
-    }
-  };
+  const isWorkdayView = pathname.startsWith('/manager') && searchParams?.get('view') === 'workday';
+  const isMonitoringView = pathname.startsWith('/manager') && !isWorkdayView;
 
   return (
     <header className="bg-[#14144f] text-white shadow-md sticky top-0 z-40">
@@ -210,7 +209,7 @@ export default function Navbar() {
           {/* Brand */}
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/manager"
               className="font-extrabold text-xl tracking-tight text-white flex items-center gap-2"
             >
               <span className="bg-indigo-600 px-2.5 py-1 rounded-lg text-sm font-black shadow-sm">
@@ -219,37 +218,30 @@ export default function Navbar() {
               <span className="hidden sm:inline">Restaurante</span>
             </Link>
 
-            {/* Navegación Administrativa */}
+            {/* Nueva Navegación Administrativa: Monitoreo y Operativa / Día de Trabajo */}
             <nav className="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4 overflow-x-auto">
               <Link
-                href="/"
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
-                  pathname === '/'
-                    ? 'bg-indigo-700 text-white font-bold'
+                href="/manager"
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 ${
+                  isMonitoringView
+                    ? 'bg-indigo-700 text-white font-bold shadow-sm'
                     : 'text-indigo-200 hover:bg-[#1f1f6d] hover:text-white'
                 }`}
               >
-                Principal
+                <AppIcon name="manager" size={15} />
+                <span>Monitoreo y Operativa</span>
               </Link>
 
               <Link
-                href="/manager"
-                onClick={handleManagerClick}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1 ${
-                  pathname.startsWith('/manager')
-                    ? 'bg-indigo-700 text-white font-bold'
+                href="/manager?view=workday"
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 ${
+                  isWorkdayView
+                    ? 'bg-indigo-700 text-white font-bold shadow-sm'
                     : 'text-indigo-200 hover:bg-[#1f1f6d] hover:text-white'
                 }`}
               >
-                <span>Monitoreo y Operativa</span>
-                {!isManagerUnlocked && adminUser?.role !== 'manager' && (
-                  <AppIcon
-                    name="lock"
-                    size={12}
-                    className="text-amber-300 ml-0.5"
-                    ariaLabel="Requiere desbloqueo"
-                  />
-                )}
+                <AppIcon name="clock" size={15} />
+                <span>Día de Trabajo</span>
               </Link>
             </nav>
           </div>
@@ -275,7 +267,7 @@ export default function Navbar() {
 
               <button
                 onClick={logoutAdmin}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-900/60 hover:bg-rose-900/70 text-indigo-200 hover:text-white border border-indigo-700/50 transition flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-900/60 hover:bg-rose-900/70 text-indigo-200 hover:text-white border border-indigo-700/50 transition flex items-center gap-1 active:scale-95"
                 title="Cerrar Sesión Administrativa"
               >
                 <AppIcon name="logout" size={13} />
@@ -285,15 +277,14 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-
-      <ManagerUnlockModal
-        isOpen={showManagerModal}
-        onClose={() => setShowManagerModal(false)}
-        onSuccess={() => {
-          setShowManagerModal(false);
-          window.location.href = '/manager';
-        }}
-      />
     </header>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <Suspense fallback={<header className="bg-[#14144f] h-16" />}>
+      <NavbarContent />
+    </Suspense>
   );
 }

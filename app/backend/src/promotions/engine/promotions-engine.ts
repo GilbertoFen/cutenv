@@ -16,19 +16,35 @@ export interface PromotionRuleDefinition {
   _id?: any;
   name: string;
   code?: string;
-  type: 'two_for_one' | 'percentage_discount' | 'fixed_discount';
+  type:
+    | 'two_for_one'
+    | 'percentage_discount'
+    | 'fixed_discount'
+    | 'birthday'
+    | 'package_gift';
   daysOfWeek?: number[];
   startDate?: Date | string;
   endDate?: Date | string;
+  startTime?: string;
+  endTime?: string;
   scope?: 'all' | 'categories' | 'recipes';
   targetCategories?: string[];
   applicableCategories?: string[];
   targetRecipes?: any[];
+  excludedRecipes?: any[];
+  buyQuantity?: number;
+  getQuantity?: number;
+  triggerRecipeId?: any;
+  triggerQuantity?: number;
+  rewardRecipeId?: any;
+  rewardQuantity?: number;
   discountValue?: number;
   minOrderAmount?: number;
   maxDiscountAmount?: number;
   maxApplicationsPerOrder?: number;
   applyMode?: 'mix_and_match' | 'same_product';
+  requiresAuth?: boolean;
+  isCumulative?: boolean;
   isActive?: boolean;
 }
 
@@ -91,6 +107,39 @@ export function isPromotionActiveToday(
     }
   }
 
+  // Time window check: HH:mm en horario local del restaurante
+  if (promo.startTime || promo.endTime) {
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTotalMin = currentHours * 60 + currentMinutes;
+
+    if (promo.startTime) {
+      const [sh, sm] = promo.startTime.split(':').map((v) => parseInt(v, 10));
+      if (!isNaN(sh) && !isNaN(sm)) {
+        const startTotalMin = sh * 60 + sm;
+        if (currentTotalMin < startTotalMin) {
+          return {
+            valid: false,
+            reason: `Esta promoción solo aplica a partir de las ${promo.startTime} hrs`,
+          };
+        }
+      }
+    }
+
+    if (promo.endTime) {
+      const [eh, em] = promo.endTime.split(':').map((v) => parseInt(v, 10));
+      if (!isNaN(eh) && !isNaN(em)) {
+        const endTotalMin = eh * 60 + em;
+        if (currentTotalMin > endTotalMin) {
+          return {
+            valid: false,
+            reason: `Esta promoción venció por horario a las ${promo.endTime} hrs`,
+          };
+        }
+      }
+    }
+  }
+
   return { valid: true };
 }
 
@@ -102,6 +151,27 @@ export function isItemEligible(
   item: EvaluatedItem,
   promo: PromotionRuleDefinition
 ): boolean {
+  const itemRecId = item.recipeId ? String(item.recipeId) : '';
+
+  // Exclusiones explícitas de recetas tienen prioridad máxima
+  const excludedRecipeIds = (promo.excludedRecipes || []).map((r) =>
+    (typeof r === 'object' && r ? (r._id || r.id || r).toString() : String(r))
+  );
+  if (itemRecId && excludedRecipeIds.includes(itemRecId)) {
+    return false;
+  }
+
+  // Si es regalo por paquete, verificar detonante o recompensa
+  if (promo.type === 'package_gift') {
+    const triggerId = promo.triggerRecipeId
+      ? (typeof promo.triggerRecipeId === 'object' ? promo.triggerRecipeId._id || promo.triggerRecipeId.id : promo.triggerRecipeId).toString()
+      : '';
+    const rewardId = promo.rewardRecipeId
+      ? (typeof promo.rewardRecipeId === 'object' ? promo.rewardRecipeId._id || promo.rewardRecipeId.id : promo.rewardRecipeId).toString()
+      : '';
+    return itemRecId === triggerId || itemRecId === rewardId;
+  }
+
   // Combine both targetCategories and legacy applicableCategories
   const categories = [
     ...(promo.targetCategories || []),
@@ -121,8 +191,7 @@ export function isItemEligible(
 
   // If explicit recipes are provided
   if (promo.scope === 'recipes' || targetRecipeIds.length > 0) {
-    if (!item.recipeId) return false;
-    const itemRecId = String(item.recipeId);
+    if (!itemRecId) return false;
     return targetRecipeIds.includes(itemRecId);
   }
 
@@ -190,7 +259,130 @@ export function evaluatePromotion(
     };
   }
 
-  // 3. Extract eligible units
+  // 3. Manejo especial de promociones por paquete o producto de regalo (package_gift)
+  if (promo.type === 'package_gift') {
+    const triggerId = promo.triggerRecipeId
+      ? (typeof promo.triggerRecipeId === 'object'
+          ? promo.triggerRecipeId._id || promo.triggerRecipeId.id
+          : promo.triggerRecipeId
+        ).toString()
+      : '';
+    const rewardId = promo.rewardRecipeId
+      ? (typeof promo.rewardRecipeId === 'object'
+          ? promo.rewardRecipeId._id || promo.rewardRecipeId.id
+          : promo.rewardRecipeId
+        ).toString()
+      : '';
+    const triggerRequired = Math.max(1, promo.triggerQuantity || 1);
+    const rewardPerSet = Math.max(1, promo.rewardQuantity || 1);
+
+    let totalTriggerCount = 0;
+    let totalRewardCount = 0;
+    let triggerItemName = 'Producto requerido';
+    let rewardItemName = 'Producto de regalo';
+    let rewardPrice = 0;
+
+    for (const it of items) {
+      const rId = it.recipeId ? String(it.recipeId) : '';
+      const qty = Math.max(0, Math.floor(it.quantity || 0));
+      if (rId === triggerId) {
+        totalTriggerCount += qty;
+        triggerItemName = it.recipeName || triggerItemName;
+      }
+      if (rId === rewardId) {
+        totalRewardCount += qty;
+        rewardItemName = it.recipeName || rewardItemName;
+        rewardPrice = Math.max(0, Number(it.price) || 0);
+      }
+    }
+
+    if (totalTriggerCount < triggerRequired) {
+      return {
+        promotionId: promoId,
+        name: promo.name,
+        code: promo.code,
+        type: promo.type,
+        rule: `Paquete de regalo (${triggerRequired}x ${triggerItemName} + ${rewardPerSet}x ${rewardItemName})`,
+        isEligible: false,
+        ineligibilityReason: `La cuenta requiere al menos ${triggerRequired} unidad(es) de "${triggerItemName}" para activar este regalo (actualmente tiene ${totalTriggerCount}).`,
+        eligibleUnitsCount: totalTriggerCount,
+        eligibleSubtotal: 0,
+        discountAmount: 0,
+        benefitedItems: [],
+        originalTotal: accountTotal,
+        finalTotal: accountTotal,
+        appliedAt: evalDate,
+      };
+    }
+
+    if (totalRewardCount === 0) {
+      return {
+        promotionId: promoId,
+        name: promo.name,
+        code: promo.code,
+        type: promo.type,
+        rule: `Paquete de regalo (${triggerRequired}x ${triggerItemName} + ${rewardPerSet}x ${rewardItemName})`,
+        isEligible: false,
+        ineligibilityReason: `La orden califica con ${totalTriggerCount}x "${triggerItemName}", pero debes agregar el producto de regalo ("${rewardItemName}") al pedido para aplicar la bonificación.`,
+        eligibleUnitsCount: totalTriggerCount,
+        eligibleSubtotal: 0,
+        discountAmount: 0,
+        benefitedItems: [],
+        originalTotal: accountTotal,
+        finalTotal: accountTotal,
+        appliedAt: evalDate,
+      };
+    }
+
+    const sets = Math.floor(totalTriggerCount / triggerRequired);
+    const maxSets =
+      promo.maxApplicationsPerOrder && promo.maxApplicationsPerOrder > 0
+        ? Math.min(sets, promo.maxApplicationsPerOrder)
+        : sets;
+    const rewardsToBonify = Math.min(totalRewardCount, maxSets * rewardPerSet);
+    const pct =
+      promo.discountValue && promo.discountValue > 0
+        ? Math.min(100, promo.discountValue)
+        : 100;
+    let pkgDiscount =
+      Math.round(
+        (rewardsToBonify * rewardPrice * (pct / 100) + Number.EPSILON) * 100,
+      ) / 100;
+
+    if (
+      promo.maxDiscountAmount &&
+      promo.maxDiscountAmount > 0 &&
+      pkgDiscount > promo.maxDiscountAmount
+    ) {
+      pkgDiscount = promo.maxDiscountAmount;
+    }
+    pkgDiscount = Math.min(pkgDiscount, accountTotal);
+
+    const finalPkgTotal = Math.max(
+      0,
+      Math.round((accountTotal - pkgDiscount + Number.EPSILON) * 100) / 100,
+    );
+
+    return {
+      promotionId: promoId,
+      name: promo.name,
+      code: promo.code,
+      type: promo.type,
+      rule: `Regalo: ${rewardsToBonify}x ${rewardItemName} de cortesía por compra de ${totalTriggerCount}x ${triggerItemName}`,
+      isEligible: pkgDiscount > 0,
+      eligibleUnitsCount: totalTriggerCount + rewardsToBonify,
+      eligibleSubtotal: rewardsToBonify * rewardPrice,
+      discountAmount: pkgDiscount,
+      benefitedItems: [
+        `${rewardsToBonify}x ${rewardItemName} ($${(rewardsToBonify * rewardPrice).toFixed(2)}) bonificado(s) de regalo al ${pct}% de descuento`,
+      ],
+      originalTotal: accountTotal,
+      finalTotal: finalPkgTotal,
+      appliedAt: evalDate,
+    };
+  }
+
+  // 4. Extract eligible units for standard promotions (two_for_one, percentage, fixed, birthday)
   interface Unit {
     recipeId?: string;
     name: string;
@@ -244,16 +436,18 @@ export function evaluatePromotion(
   const benefitedItems: string[] = [];
   let ruleDescription = '';
 
-  // 4. Calculate benefit strictly on eligible units
+  // 5. Calculate benefit strictly on eligible units
   if (promo.type === 'two_for_one') {
+    const buyQty = Math.max(2, promo.buyQuantity || 2);
+    const getQty = Math.max(1, Math.min(buyQty - 1, promo.getQuantity || 1));
+    const payQty = buyQty - getQty;
     const applyMode = promo.applyMode || 'mix_and_match';
     const maxApplications = promo.maxApplicationsPerOrder && promo.maxApplicationsPerOrder > 0
       ? promo.maxApplicationsPerOrder
       : Infinity;
 
     if (applyMode === 'same_product') {
-      // Each product recipe must pair with identical product
-      ruleDescription = '2x1 por mismo producto';
+      ruleDescription = `${buyQty}x${payQty} por mismo producto`;
       const grouped = new Map<string, Unit[]>();
       for (const u of eligibleUnits) {
         const key = u.recipeId || u.name;
@@ -264,42 +458,50 @@ export function evaluatePromotion(
       let applicationsDone = 0;
       for (const [, group] of grouped) {
         if (applicationsDone >= maxApplications) break;
-        const pairsCount = Math.floor(group.length / 2);
-        const pairsToApply = Math.min(pairsCount, maxApplications - applicationsDone);
+        const setsCount = Math.floor(group.length / buyQty);
+        const setsToApply = Math.min(setsCount, maxApplications - applicationsDone);
 
-        for (let i = 0; i < pairsToApply; i++) {
-          const bonifiedUnit = group[i * 2 + 1];
-          discountAmount += bonifiedUnit.price;
-          benefitedItems.push(
-            `1x ${bonifiedUnit.name} ($${bonifiedUnit.price.toFixed(2)}) gratis por 2x1 idéntico`
-          );
+        for (let s = 0; s < setsToApply; s++) {
+          for (let g = 0; g < getQty; g++) {
+            const bonifiedUnit = group[s * buyQty + (buyQty - 1 - g)];
+            discountAmount += bonifiedUnit.price;
+            benefitedItems.push(
+              `1x ${bonifiedUnit.name} ($${bonifiedUnit.price.toFixed(2)}) gratis por promoción ${buyQty}x${payQty} idéntico`
+            );
+          }
           applicationsDone++;
         }
       }
     } else {
       // Mix and match across eligible category/selection
-      // Pairwise matching: sort descending by price, cheaper unit in each pair is discounted
-      ruleDescription = '2x1 en productos participantes (Mix & Match)';
+      ruleDescription = `${buyQty}x${payQty} en productos participantes (Mix & Match)`;
       eligibleUnits.sort((a, b) => b.price - a.price);
 
-      const totalPairsPossible = Math.floor(eligibleUnits.length / 2);
-      const pairsToApply = Math.min(totalPairsPossible, maxApplications);
+      const totalSetsPossible = Math.floor(eligibleUnits.length / buyQty);
+      const setsToApply = Math.min(totalSetsPossible, maxApplications);
 
-      for (let k = 0; k < pairsToApply; k++) {
-        const primary = eligibleUnits[k * 2];
-        const secondary = eligibleUnits[k * 2 + 1];
-
-        // The lower or equal priced item is discounted
-        discountAmount += secondary.price;
-        benefitedItems.push(
-          `1x ${secondary.name} ($${secondary.price.toFixed(2)}) cortesía 2x1 al comprar ${primary.name} ($${primary.price.toFixed(2)})`
-        );
+      for (let s = 0; s < setsToApply; s++) {
+        const setSlice = eligibleUnits.slice(s * buyQty, (s + 1) * buyQty);
+        for (let g = 0; g < getQty; g++) {
+          const secondary = setSlice[buyQty - 1 - g];
+          const primary = setSlice[0];
+          discountAmount += secondary.price;
+          benefitedItems.push(
+            `1x ${secondary.name} ($${secondary.price.toFixed(2)}) cortesía ${buyQty}x${payQty} al comprar ${primary.name} ($${primary.price.toFixed(2)})`
+          );
+        }
       }
 
-      if (eligibleUnits.length % 2 !== 0 && totalPairsPossible === 0) {
-        ruleDescription += ' (Se requiere al menos 2 unidades para obtener 1 gratis)';
+      if (eligibleUnits.length < buyQty && totalSetsPossible === 0) {
+        ruleDescription += ` (Se requieren al menos ${buyQty} unidades para obtener ${getQty} gratis)`;
       }
     }
+  } else if (promo.type === 'birthday') {
+    ruleDescription = 'Descuento de cumpleañero (100% de bonificación autorizada)';
+    discountAmount = eligibleSubtotal;
+    benefitedItems.push(
+      `100% de bonificación por cumpleaños aplicada a ${eligibleUnits.length} producto(s) elegible(s) (Base: $${eligibleSubtotal.toFixed(2)})`
+    );
   } else if (promo.type === 'percentage_discount') {
     const pct = Math.min(100, Math.max(0, promo.discountValue || 0));
     ruleDescription = `${pct}% de descuento sobre artículos participantes`;
@@ -309,7 +511,6 @@ export function evaluatePromotion(
     );
   } else if (promo.type === 'fixed_discount') {
     const fixedVal = Math.max(0, promo.discountValue || 0);
-    // Fixed discount can never exceed the eligible items subtotal
     discountAmount = Math.min(fixedVal, eligibleSubtotal);
     ruleDescription = `Descuento fijo de $${fixedVal.toFixed(2)} sobre artículos participantes`;
     benefitedItems.push(
@@ -332,16 +533,22 @@ export function evaluatePromotion(
     Math.round((accountTotal - discountAmount + Number.EPSILON) * 100) / 100
   );
 
+  const buyUnitsRequired = promo.buyQuantity || 2;
+  const missingUnits = Math.max(0, buyUnitsRequired - eligibleUnits.length);
+
   return {
     promotionId: promoId,
     name: promo.name,
     code: promo.code,
     type: promo.type,
     rule: ruleDescription,
-    isEligible: discountAmount > 0 || eligibleUnits.length >= 2,
-    ineligibilityReason: discountAmount === 0 && promo.type === 'two_for_one'
-      ? 'Falta 1 unidad adicional para completar la pareja 2x1.'
-      : undefined,
+    isEligible: discountAmount > 0,
+    ineligibilityReason:
+      discountAmount === 0 && promo.type === 'two_for_one'
+        ? `Se requieren al menos ${buyUnitsRequired} unidades participantes para aplicar esta promoción. Falta ${missingUnits} unidad adicional para completar el beneficio.`
+        : discountAmount === 0
+        ? 'El monto o los productos no generan descuento con las condiciones configuradas.'
+        : undefined,
     eligibleUnitsCount: eligibleUnits.length,
     eligibleSubtotal,
     discountAmount,

@@ -16,8 +16,10 @@ import {
   loginWorker as apiLoginWorker,
   verifyManagerCredentials,
   verifySession,
+  sendHeartbeat,
 } from '@/services/AuthService';
 import { getAuthToken, clearAuthToken } from '@/lib/api';
+import { getWaiterSocket } from '@/gateways/socketWaiter';
 
 interface AuthContextType {
   user: User | null;
@@ -95,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (storedAdmin && isMounted) {
         setAdminUser(storedAdmin);
-        if (storedAdmin.role === 'manager') {
+        if (storedAdmin.role === 'manager' || storedAdmin.role === 'owner') {
           setIsManagerUnlockedState(true);
           setManagerUnlocked(true);
         } else {
@@ -145,16 +147,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener('pos:auth-unauthorized', handleUnauthorized);
+
+    // 4. Heartbeat periódico cada 60 segundos para presencia y verificación continua de horario
+    const heartbeatInterval = setInterval(async () => {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        await sendHeartbeat();
+      } catch (err: any) {
+        console.warn('[AuthContext] Heartbeat expirado o fuera de horario:', err?.message || err);
+        handleUnauthorized();
+      }
+    }, 60 * 1000);
+
+    // 5. Escuchar revocación de sesión en tiempo real vía WebSocket
+    const waiterWs = getWaiterSocket();
+    const onSessionRevoked = (data: { userIds?: string[]; restaurantId?: string; reason?: string }) => {
+      const current = getStoredWorkerUser() || getStoredAdminUser();
+      if (!current) return;
+
+      const isAffectedUser = Array.isArray(data.userIds) && data.userIds.includes(current.id);
+      const isAffectedRestaurant = data.restaurantId && current.restaurantId === data.restaurantId;
+
+      if (isAffectedUser || isAffectedRestaurant) {
+        handleUnauthorized();
+        if (typeof window !== 'undefined') {
+          alert(data.reason || 'Su turno ha concluido o su sesión fue finalizada por la administración.');
+          window.location.href = current.role === 'worker' ? '/worker/login' : '/login';
+        }
+      }
+    };
+
+    waiterWs.on('auth.session.revoked', onSessionRevoked);
+
     return () => {
       isMounted = false;
+      clearInterval(heartbeatInterval);
       window.removeEventListener('pos:auth-unauthorized', handleUnauthorized);
+      waiterWs.off('auth.session.revoked', onSessionRevoked);
     };
   }, []);
 
   const loginAdmin = async (username: string, password: string): Promise<User> => {
     const logged = await loginUser(username, password);
     setAdminUser(logged);
-    if (logged.role === 'manager') {
+    if (logged.role === 'manager' || logged.role === 'owner') {
       setIsManagerUnlockedState(true);
       setManagerUnlocked(true);
     }

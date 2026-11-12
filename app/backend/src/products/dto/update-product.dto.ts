@@ -66,4 +66,18 @@ export class UpdateProductDto {
     @IsOptional()
     @IsString()
     servingSize?: string;
+
+    @IsOptional()
+    @IsNumber()
+    acquisitionCost?: number;
+
+    @IsOptional()
+    @IsNumber()
+    unitCost?: number;
+
+    @IsOptional()
+    isGeneric?: boolean;
+
+    @IsOptional()
+    returnableOnCancel?: boolean;
 }

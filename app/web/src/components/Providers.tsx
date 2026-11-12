@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { adminUser, workerUser, hasWorkerAccess, hasAdminAccess, loading } = useAuth();
@@ -84,7 +85,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <AuthGuard>{children}</AuthGuard>
+      <NotificationProvider>
+        <AuthGuard>{children}</AuthGuard>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

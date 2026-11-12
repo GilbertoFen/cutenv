@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import type { Props } from "@/types/Receptionist/receptionist.types";
 import { createReservation, localToUTCISO } from "@/services/ReservationService";
 import { AppIcon } from "@/components/icons";
+import { useNotification } from "@/context/NotificationContext";
 
 export default function ReservationModal({ table, tables, onClose, onCreated }: Props) {
+  const { notify } = useNotification();
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState<number>(table?.capacity || 2);
@@ -21,6 +23,9 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string>("");
 
+  const assignedTable = tables.find((t) => t.id === selectedTableId) || table;
+  const isOverCapacity = Boolean(assignedTable && partySize > assignedTable.capacity);
+
   const save = async () => {
     if (!startLocal) {
       setErr("Selecciona fecha y hora para la reservación.");
@@ -28,6 +33,10 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
     }
     if (!partySize || partySize < 1) {
       setErr("El número de personas debe ser al menos 1.");
+      return;
+    }
+    if (isOverCapacity && assignedTable) {
+      setErr(`La mesa seleccionada tiene capacidad para ${assignedTable.capacity} personas. Reduce el número de comensales o selecciona otra mesa.`);
       return;
     }
     setErr("");
@@ -42,10 +51,13 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
         durationMinutes: duration,
         notes: notes.trim(),
       });
+      notify.success(`Reservación para ${customerName.trim() || 'cliente'} programada correctamente.`);
       onCreated();
       onClose();
     } catch (e: any) {
-      setErr(e?.message || e || "Error al registrar la reservación");
+      const msg = e?.message || e || "Error al registrar la reservación";
+      setErr(msg);
+      notify.error(msg);
     } finally {
       setSaving(false);
     }
@@ -60,8 +72,6 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-
-  const assignedTable = tables.find((t) => t.id === selectedTableId) || table;
 
   return (
     <div
@@ -198,7 +208,7 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Duración estimada
+                  Duración estimada (referencia)
                 </label>
                 <select
                   className="w-full min-h-[44px] border border-slate-200 rounded-xl px-3.5 py-2 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition shadow-soft-xs"
@@ -212,6 +222,19 @@ export default function ReservationModal({ table, tables, onClose, onCreated }: 
                 </select>
               </div>
             </div>
+
+            {isOverCapacity && assignedTable && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold flex items-center gap-2">
+                <span>⚠️</span>
+                <span>
+                  La mesa seleccionada tiene capacidad para {assignedTable.capacity} personas. Reduce el número de comensales o selecciona otra mesa.
+                </span>
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-400">
+              * Nota: La duración estimada es solo una referencia de servicio. La mesa nunca se libera automáticamente al vencer este tiempo.
+            </p>
           </div>
 
           {/* Section 3: Notes & Special Requests */}

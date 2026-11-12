@@ -6,6 +6,9 @@ export interface JwtPayload {
   username: string;
   name: string;
   role: 'owner' | 'manager' | 'worker';
+  restaurantId?: string;
+  sessionId?: string;
+  operationalRole?: string;
   iat?: number;
   exp?: number;
 }

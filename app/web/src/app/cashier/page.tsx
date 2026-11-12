@@ -10,6 +10,8 @@ import type { OrderType, PaymentMethod } from '@/types/Waiter/waiter.types';
 import type { Promotion } from '@/types';
 import { AppIcon } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
+import ThermalTicketModal from '@/components/Cashier/ThermalTicketModal';
 
 type Ticket = {
   saleId: string;
@@ -36,6 +38,7 @@ const dedupeBySaleId = (rows: Ticket[]): Ticket[] => {
 export default function CashierPage() {
   const router = useRouter();
   const { hasWorkerAccess, loading: authLoading } = useAuth();
+  const { notify } = useNotification();
   const [orderType, setOrderType] = useState<OrderType>('local');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
 
@@ -49,10 +52,13 @@ export default function CashierPage() {
   const [sale, setSale] = useState<any>(null);
   const [printing, setPrinting] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
 
   // Promociones
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
+  const [promoAuthWorker, setPromoAuthWorker] = useState('');
+  const [promoAuthReason, setPromoAuthReason] = useState('');
   const [promoCalculation, setPromoCalculation] = useState<{
     discountAmount: number;
     benefitedItems: string[];
@@ -203,7 +209,7 @@ export default function CashierPage() {
       );
 
       if (!res.isEligible && res.discountAmount === 0) {
-        alert(res.ineligibilityReason || 'Esta promoción no aplica a los productos de esta cuenta.');
+        notify.warning(res.ineligibilityReason || 'Esta promoción no aplica a los productos de esta cuenta.');
         setSelectedPromo(null);
         setPromoCalculation(null);
         return;
@@ -217,8 +223,9 @@ export default function CashierPage() {
         eligibleSubtotal: res.eligibleSubtotal,
         rule: res.rule,
       });
+      notify.success('Promoción calculada y aplicada al total.');
     } catch (err: any) {
-      alert(err.message || 'Error al calcular promoción');
+      notify.error(err.message || 'Error al calcular promoción');
       setSelectedPromo(null);
       setPromoCalculation(null);
     } finally {
@@ -226,21 +233,19 @@ export default function CashierPage() {
     }
   };
 
-  const printTicket = async () => {
-    if (!sale?.id) return;
-    try {
-      setPrinting(true);
-      await markPrinted(sale.id);
-    } catch (e) {
-      console.error(e);
-      alert('Error al imprimir');
-    } finally {
-      setPrinting(false);
-    }
+  const printTicket = () => {
+    if (!sale) return;
+    setIsTicketModalOpen(true);
   };
 
   const confirmPayment = async () => {
     if (!sale?.id) return;
+    if (selectedPromo && (selectedPromo.requiresAuth || selectedPromo.type === 'birthday')) {
+      if (!promoAuthWorker.trim()) {
+        notify.warning('Se requiere el nombre o usuario del trabajador que autoriza esta promoción.');
+        return;
+      }
+    }
     try {
       setPaying(true);
       await paySale(sale.id, {
@@ -248,6 +253,8 @@ export default function CashierPage() {
         paymentMethod,
         promotionId: selectedPromo ? (selectedPromo.id || (selectedPromo as any)._id) : undefined,
         discountAmount: promoCalculation?.discountAmount || 0,
+        authorizedBy: promoAuthWorker.trim() || undefined,
+        authReason: promoAuthReason.trim() || (selectedPromo?.type === 'birthday' ? 'Verificación de cumpleaños' : undefined),
         promotionApplied: selectedPromo && promoCalculation
           ? {
               promotionId: selectedPromo.id || (selectedPromo as any)._id,
@@ -255,12 +262,15 @@ export default function CashierPage() {
               type: selectedPromo.type,
               discountAmount: promoCalculation?.discountAmount || 0,
               benefitedItems: promoCalculation?.benefitedItems || [],
+              authorizedBy: promoAuthWorker.trim() || undefined,
+              authReason: promoAuthReason.trim() || undefined,
             }
           : undefined,
       });
+      notify.success('Cobro registrado exitosamente.');
     } catch (e: any) {
       console.error(e);
-      alert(e.message || 'Error al pagar');
+      notify.error(e.message || 'Error al pagar');
     } finally {
       setPaying(false);
     }
@@ -289,11 +299,11 @@ export default function CashierPage() {
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Caja y Facturación • Cobro en Punto de Venta
+              Caja y Facturación
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Módulo de Caja y Cobros
+            Cajero
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Emisión de tickets de venta, aplicación de descuentos vigentes y registro de cobros
@@ -380,12 +390,22 @@ export default function CashierPage() {
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <h2 className="font-black text-base text-slate-900">Detalle de la Cuenta y Cobro</h2>
             {sale && (
-              <span className={`text-xs px-3 py-1 rounded-full font-black uppercase tracking-wider ${
+              <span className={`text-xs px-3 py-1 rounded-full font-black uppercase tracking-wider inline-flex items-center gap-1.5 ${
                 sale.ticketStatus === 'printed'
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                   : 'bg-amber-50 text-amber-800 border border-amber-200'
               }`}>
-                {sale.ticketStatus === 'printed' ? '✓ Ticket Impreso' : '⏳ Por imprimir'}
+                {sale.ticketStatus === 'printed' ? (
+                  <>
+                    <AppIcon name="check" size={13} className="text-emerald-700" />
+                    <span>Ticket Impreso</span>
+                  </>
+                ) : (
+                  <>
+                    <AppIcon name="clock" size={13} className="text-amber-700" />
+                    <span>Por imprimir</span>
+                  </>
+                )}
               </span>
             )}
           </div>
@@ -430,8 +450,9 @@ export default function CashierPage() {
                   Artículos Consumidos
                 </h3>
                 {(() => {
-                  const grouped = (sale.orders ?? [])
-                    .flatMap((o: any) => o.items ?? [])
+                  const activeOrders = (sale.orders ?? []).filter((o: any) => o.status !== 'cancelled');
+                  const grouped = activeOrders
+                    .flatMap((o: any) => (o.items ?? []).filter((it: any) => it.status !== 'cancelled'))
                     .reduce((acc: Record<string, { qty: number; price: number }>, it: any) => {
                       const key = it.recipe;
                       if (!acc[key]) acc[key] = { qty: 0, price: it.price };
@@ -538,6 +559,39 @@ export default function CashierPage() {
                         </ul>
                       </div>
                     )}
+
+                    {selectedPromo && (selectedPromo.requiresAuth || selectedPromo.type === 'birthday') && (
+                      <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2 mt-2">
+                        <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                          <AppIcon name="shield" size={14} className="text-purple-700" />
+                          <span>Autorización de Personal Requerida</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-bold text-purple-900 mb-0.5">Trabajador que autoriza *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Nombre / Usuario del trabajador"
+                              value={promoAuthWorker}
+                              onChange={(e) => setPromoAuthWorker(e.target.value)}
+                              className="w-full px-2.5 py-1.5 border border-purple-200 rounded-lg text-xs bg-white focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-purple-900 mb-0.5">Motivo / Validación *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Ej. Identificación oficial / INE verificada"
+                              value={promoAuthReason}
+                              onChange={(e) => setPromoAuthReason(e.target.value)}
+                              className="w-full px-2.5 py-1.5 border border-purple-200 rounded-lg text-xs bg-white focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -546,12 +600,14 @@ export default function CashierPage() {
               <div className="pt-3 border-t border-slate-200 space-y-2 text-xs">
                 <div className="flex justify-between text-slate-600 text-sm">
                   <span>Subtotal consumo:</span>
-                  <span className="font-semibold text-slate-900">${Number(sale.totalAmount || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-slate-900">
+                    ${Number(promoCalculation ? (promoCalculation.finalTotal + promoCalculation.discountAmount) : (Number(sale.totalAmount || 0) + Number(sale.discountAmount || 0))).toFixed(2)}
+                  </span>
                 </div>
-                {promoCalculation && promoCalculation.discountAmount > 0 && (
+                {((promoCalculation && promoCalculation.discountAmount > 0) || (sale.discountAmount && sale.discountAmount > 0)) && (
                   <div className="flex justify-between text-emerald-700 font-bold text-sm">
                     <span>Descuento aplicado:</span>
-                    <span>-${promoCalculation.discountAmount.toFixed(2)}</span>
+                    <span>-${Number(promoCalculation ? promoCalculation.discountAmount : sale.discountAmount).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-3 border-t border-slate-200">
@@ -596,21 +652,15 @@ export default function CashierPage() {
               <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-slate-200">
                 <button
                   onClick={printTicket}
-                  disabled={printing || sale.ticketStatus === 'printed'}
+                  disabled={printing}
                   className="min-h-[48px] px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-black disabled:opacity-50 transition-all shadow-soft-xs inline-flex items-center justify-center gap-2 active:scale-95"
                 >
-                  {printing ? (
-                    'Imprimiendo…'
-                  ) : sale.ticketStatus === 'printed' ? (
-                    <>
-                      <AppIcon name="check" size={16} />
-                      <span>Ticket ya Impreso</span>
-                    </>
-                  ) : (
-                    <>
-                      <AppIcon name="print" size={16} />
-                      <span>Imprimir Ticket</span>
-                    </>
+                  <AppIcon name="print" size={16} />
+                  <span>{sale.ticketStatus === 'printed' ? 'Reimprimir Ticket' : 'Imprimir Ticket'}</span>
+                  {sale.ticketStatus === 'printed' && (
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded-full border border-emerald-500/30">
+                      Impreso ✓
+                    </span>
                   )}
                 </button>
 
@@ -633,6 +683,16 @@ export default function CashierPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de Impresión Térmica USB / Navegador */}
+      <ThermalTicketModal
+        sale={sale}
+        isOpen={isTicketModalOpen}
+        onClose={() => setIsTicketModalOpen(false)}
+        onPrintedSuccess={() => {
+          setSale((prev: any) => prev ? { ...prev, ticketStatus: 'printed' } : prev);
+        }}
+      />
     </div>
   );
 }

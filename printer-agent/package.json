@@ -1,0 +1,14 @@
+{
+  "name": "pos-usb-printer-agent",
+  "version": "1.0.0",
+  "description": "Agente local de impresión térmica USB para POS de Restaurante (ESC/POS)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node test-print.js"
+  },
+  "keywords": ["pos", "escpos", "thermal-printer", "usb", "restaurant"],
+  "author": "POS Engineering Team",
+  "license": "ISC"
+}

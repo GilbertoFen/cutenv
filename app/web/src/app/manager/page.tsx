@@ -1,39 +1,43 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import Sidebar, { ManagerTab } from "@/components/Manager/SideBar";
-import EmployeesPanel from "@/components/Manager/EmployeesPanel";
-import SalesTodayPanel from "@/components/Manager/SalesTodayPanel";
-import SalesSummary from "@/components/Manager/SalesSummary";
-import SaleDetailModal from "@/components/Manager/SaleDetailModal";
-import CancelSaleModal from "@/components/Manager/CancelSaleModal";
-import RecipesManager from "@/components/Manager/RecipesManager";
-import ManagerUnlockModal from "@/components/Manager/ManagerUnlockModal";
-import { getAllSales } from "@/services/SaleService";
-import type { SaleData } from "@/types";
-import ReportsPanel from "@/components/Manager/ReportsPanel";
-import InventoryPanel from "@/components/Manager/InventoryPanel";
-import InvoiceHistoryPanel from "@/components/Invoicing/InvoiceHistoryPanel";
-import PromotionsManager from "@/components/Manager/PromotionsManager";
-import SalesAnalyticsDashboard from "@/components/Manager/Analytics/SalesAnalyticsDashboard";
-import { useAuth } from "@/context/AuthContext";
-import Link from "next/link";
-import { AppIcon } from "@/components/icons";
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import Sidebar, { ManagerTab } from '@/components/Manager/SideBar';
+import EmployeesPanel from '@/components/Manager/EmployeesPanel';
+import SalesTodayPanel from '@/components/Manager/SalesTodayPanel';
+import SalesSummary from '@/components/Manager/SalesSummary';
+import SaleDetailModal from '@/components/Manager/SaleDetailModal';
+import CancelSaleModal from '@/components/Manager/CancelSaleModal';
+import RecipesManager from '@/components/Manager/RecipesManager';
+import ReportsPanel from '@/components/Manager/ReportsPanel';
+import InventoryPanel from '@/components/Manager/InventoryPanel';
+import InvoiceHistoryPanel from '@/components/Invoicing/InvoiceHistoryPanel';
+import PromotionsManager from '@/components/Manager/PromotionsManager';
+import CashCutPanel from '@/components/Manager/CashCutPanel';
+import SalesAnalyticsDashboard from '@/components/Manager/Analytics/SalesAnalyticsDashboard';
+import WorkdayModule from '@/components/Workday/WorkdayModule';
+import { getAllSales } from '@/services/SaleService';
+import type { SaleData } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { AppIcon } from '@/components/icons';
 
-export default function ManagerPage() {
-  const { adminUser, workerUser, isManagerUnlocked, loading: authLoading } = useAuth();
-  const [tab, setTab] = useState<ManagerTab>("sales");
+function ManagerPageContent() {
+  const searchParams = useSearchParams();
+  const isWorkdayView = searchParams?.get('view') === 'workday';
+
+  const { adminUser, workerUser, loading: authLoading } = useAuth();
+  const [tab, setTab] = useState<ManagerTab>('sales');
   const [loading, setLoading] = useState(true);
   const [allSales, setAllSales] = useState<SaleData[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<SaleData | null>(null);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   });
 
@@ -45,20 +49,14 @@ export default function ManagerPage() {
   };
 
   useEffect(() => {
-    // Solo consultar ventas si está autorizado como administrador/gerente
-    if (adminUser && (isManagerUnlocked || adminUser.role === 'manager')) {
+    // Si el usuario es gerente o dueño, cargar ventas directamente
+    if (adminUser) {
       refreshSales();
     }
-  }, [adminUser, isManagerUnlocked]);
-
-  useEffect(() => {
-    if (adminUser && !isManagerUnlocked && adminUser.role !== 'manager') {
-      setShowUnlockModal(true);
-    }
-  }, [adminUser, isManagerUnlocked]);
+  }, [adminUser]);
 
   const dateRange = useMemo(() => {
-    const [y, m, d] = selectedDate.split("-").map(Number);
+    const [y, m, d] = selectedDate.split('-').map(Number);
     const start = new Date(y, m - 1, d, 0, 0, 0, 0);
     const end = new Date(y, m - 1, d, 23, 59, 59, 999);
     return { start, end };
@@ -79,8 +77,8 @@ export default function ManagerPage() {
       0
     );
     const avg = count > 0 ? totalAmount / count : 0;
-    const paidCount = salesOfDay.filter((s) => s.status === "paid").length;
-    const unpaidCount = allSales.filter((s) => s.status === "unpaid" || s.status === "partial").length;
+    const paidCount = salesOfDay.filter((s) => s.status === 'paid').length;
+    const unpaidCount = allSales.filter((s) => s.status === 'unpaid' || s.status === 'partial').length;
     return { count, totalAmount, avg, paidCount, unpaidCount };
   }, [salesOfDay, allSales]);
 
@@ -95,7 +93,7 @@ export default function ManagerPage() {
     );
   }
 
-  // Si el usuario es un trabajador y NO tiene sesión de administrador activa
+  // 1. Si el usuario es un trabajador y NO tiene sesión de administrador activa
   if (!adminUser) {
     if (workerUser) {
       return (
@@ -142,52 +140,25 @@ export default function ManagerPage() {
     );
   }
 
-  // Si es administrador pero requiere confirmación de gerente
-  if (!isManagerUnlocked && adminUser.role !== 'manager') {
+  // 2. Opción 2: Día de Trabajo (Operación diaria y estaciones de trabajadores)
+  if (isWorkdayView) {
     return (
-      <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm text-center max-w-md mx-auto my-12">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-900 mb-3">
-          <AppIcon name="lock" size={26} />
-        </div>
-        <h2 className="text-xl font-bold text-slate-800">Acceso Gerencial Requerido</h2>
-        <p className="text-xs text-slate-500 mt-2 mb-6">
-          Para acceder a la sección de Monitoreo y Operativa es obligatorio validar credenciales de un Gerente autorizado.
-        </p>
-        <button
-          onClick={() => setShowUnlockModal(true)}
-          className="w-full py-2.5 px-4 rounded-xl bg-[#14144f] hover:bg-[#1f1f6d] text-white font-bold text-xs transition"
-        >
-          Ingresar Credenciales de Gerente
-        </button>
-        <div className="mt-4">
-          <Link href="/" className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
-            ← Volver a Principal
-          </Link>
-        </div>
-        <ManagerUnlockModal
-          isOpen={showUnlockModal}
-          onClose={() => setShowUnlockModal(false)}
-          onSuccess={() => setShowUnlockModal(false)}
-        />
+      <div className="space-y-6 animate-fadeIn">
+        <WorkdayModule initialTab="waiter" />
       </div>
     );
   }
 
+  // 3. Opción 1: Monitoreo y Operativa (Módulos administrativos, KPIs, almacén, recetas, reportes)
   return (
-    <div className="bg-white rounded-3xl shadow-soft-xs border border-slate-200/90 overflow-hidden flex flex-col md:flex-row min-h-[85vh]">
+    <div className="bg-white rounded-3xl shadow-soft-xs border border-slate-200/90 overflow-hidden flex flex-col md:flex-row min-h-[85vh] animate-fadeIn">
       <Sidebar active={tab} onSelect={(t) => setTab(t)} />
 
-      <main className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
-        {tab === "sales" && (
+      <main className="flex-1 min-w-0 overflow-y-auto p-5 sm:p-7 space-y-6">
+        {tab === 'sales' && (
           <div className="space-y-6">
             <header className="flex flex-wrap items-end justify-between gap-4 pb-5 border-b border-slate-100">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-indigo-50 text-indigo-700 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-indigo-100 uppercase tracking-wider">
-                    Supervisión Gerencial
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">• Acceso Autorizado</span>
-                </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   Supervisión Gerencial y Almacén
                 </h1>
@@ -225,21 +196,22 @@ export default function ManagerPage() {
             <SalesTodayPanel
               loading={loading}
               sales={salesOfDay}
-              onPrint={(id) => window.open(`/api/sales/${id}/print`, "_blank")}
+              onPrint={(id) => window.open(`/api/sales/${id}/print`, '_blank')}
               onOpen={(id) => setDetailId(id)}
               onCancel={(s) => setCancelTarget(s)}
-              onGoToSummary={() => setTab("summary")}
+              onGoToSummary={() => setTab('summary')}
             />
           </div>
         )}
 
-        {tab === "analytics" && <SalesAnalyticsDashboard />}
-        {tab === "promotions" && <PromotionsManager />}
-        {tab === "invoicing" && <InvoiceHistoryPanel />}
-        {tab === "recipes" && <RecipesManager />}
-        {tab === "inventory" && <InventoryPanel />}
-        {tab === "employees" && <EmployeesPanel />}
-        {tab === "summary" && (
+        {tab === 'cash-cut' && <CashCutPanel />}
+        {tab === 'analytics' && <SalesAnalyticsDashboard />}
+        {tab === 'promotions' && <PromotionsManager />}
+        {tab === 'invoicing' && <InvoiceHistoryPanel />}
+        {tab === 'recipes' && <RecipesManager />}
+        {tab === 'inventory' && <InventoryPanel />}
+        {tab === 'employees' && <EmployeesPanel />}
+        {tab === 'summary' && (
           <ReportsPanel allSales={allSales} defaultDate={selectedDate} />
         )}
       </main>
@@ -258,12 +230,20 @@ export default function ManagerPage() {
           }}
         />
       )}
-
-      <ManagerUnlockModal
-        isOpen={showUnlockModal}
-        onClose={() => setShowUnlockModal(false)}
-        onSuccess={() => setShowUnlockModal(false)}
-      />
     </div>
+  );
+}
+
+export default function ManagerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[50vh] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      }
+    >
+      <ManagerPageContent />
+    </Suspense>
   );
 }

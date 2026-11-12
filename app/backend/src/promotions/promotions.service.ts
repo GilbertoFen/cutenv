@@ -31,7 +31,13 @@ export class PromotionsService {
     if (activeOnly) {
       filter.isActive = true;
     }
-    return this.promotionModel.find(filter).sort({ createdAt: -1 });
+    return this.promotionModel
+      .find(filter)
+      .populate('targetRecipes', 'name price category')
+      .populate('excludedRecipes', 'name price category')
+      .populate('triggerRecipeId', 'name price category')
+      .populate('rewardRecipeId', 'name price category')
+      .sort({ createdAt: -1 });
   }
 
   /**
@@ -39,7 +45,12 @@ export class PromotionsService {
    */
   async getValidPromotionsForToday(): Promise<Promotion[]> {
     const now = new Date();
-    const promotions = await this.promotionModel.find({ isActive: true });
+    const promotions = await this.promotionModel
+      .find({ isActive: true })
+      .populate('targetRecipes', 'name price category')
+      .populate('excludedRecipes', 'name price category')
+      .populate('triggerRecipeId', 'name price category')
+      .populate('rewardRecipeId', 'name price category');
 
     return promotions.filter((promo) => {
       const check = isPromotionActiveToday(promo as any, now);
@@ -51,7 +62,12 @@ export class PromotionsService {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID de promoción inválido');
     }
-    const promo = await this.promotionModel.findById(id);
+    const promo = await this.promotionModel
+      .findById(id)
+      .populate('targetRecipes', 'name price category')
+      .populate('excludedRecipes', 'name price category')
+      .populate('triggerRecipeId', 'name price category')
+      .populate('rewardRecipeId', 'name price category');
     if (!promo) throw new NotFoundException('Promoción no encontrada');
     return promo;
   }
@@ -93,15 +109,26 @@ export class PromotionsService {
       daysOfWeek: dto.daysOfWeek || [],
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+      startTime: dto.startTime ? dto.startTime.trim() : undefined,
+      endTime: dto.endTime ? dto.endTime.trim() : undefined,
       scope: effectiveScope,
       targetCategories: mergedCategories,
       applicableCategories: mergedCategories,
       targetRecipes: (dto.targetRecipes || []).map((id) => new Types.ObjectId(id)),
+      excludedRecipes: (dto.excludedRecipes || []).map((id) => new Types.ObjectId(id)),
+      buyQuantity: dto.buyQuantity ?? 2,
+      getQuantity: dto.getQuantity ?? 1,
+      triggerRecipeId: dto.triggerRecipeId ? new Types.ObjectId(dto.triggerRecipeId) : undefined,
+      triggerQuantity: dto.triggerQuantity ?? 1,
+      rewardRecipeId: dto.rewardRecipeId ? new Types.ObjectId(dto.rewardRecipeId) : undefined,
+      rewardQuantity: dto.rewardQuantity ?? 1,
       discountValue: dto.discountValue || 0,
       minOrderAmount: dto.minOrderAmount || 0,
       maxDiscountAmount: dto.maxDiscountAmount || 0,
       maxApplicationsPerOrder: dto.maxApplicationsPerOrder || 0,
       applyMode: dto.applyMode || 'mix_and_match',
+      requiresAuth: dto.requiresAuth ?? (dto.type === 'birthday'),
+      isCumulative: dto.isCumulative ?? false,
       description: dto.description?.trim(),
       isActive: true,
       createdBy: auth.manager.username,
@@ -127,6 +154,8 @@ export class PromotionsService {
     if (dto.daysOfWeek !== undefined) promo.daysOfWeek = dto.daysOfWeek;
     if (dto.startDate !== undefined) promo.startDate = dto.startDate ? new Date(dto.startDate) : undefined;
     if (dto.endDate !== undefined) promo.endDate = dto.endDate ? new Date(dto.endDate) : undefined;
+    if (dto.startTime !== undefined) promo.startTime = dto.startTime ? dto.startTime.trim() : undefined;
+    if (dto.endTime !== undefined) promo.endTime = dto.endTime ? dto.endTime.trim() : undefined;
 
     const mergedCategories = Array.from(
       new Set([
@@ -147,11 +176,26 @@ export class PromotionsService {
     if (dto.targetRecipes !== undefined) {
       promo.targetRecipes = dto.targetRecipes.map((rId) => new Types.ObjectId(rId));
     }
+    if (dto.excludedRecipes !== undefined) {
+      promo.excludedRecipes = dto.excludedRecipes.map((rId) => new Types.ObjectId(rId));
+    }
+    if (dto.buyQuantity !== undefined) promo.buyQuantity = dto.buyQuantity;
+    if (dto.getQuantity !== undefined) promo.getQuantity = dto.getQuantity;
+    if (dto.triggerRecipeId !== undefined) {
+      promo.triggerRecipeId = dto.triggerRecipeId ? new Types.ObjectId(dto.triggerRecipeId) : undefined;
+    }
+    if (dto.triggerQuantity !== undefined) promo.triggerQuantity = dto.triggerQuantity;
+    if (dto.rewardRecipeId !== undefined) {
+      promo.rewardRecipeId = dto.rewardRecipeId ? new Types.ObjectId(dto.rewardRecipeId) : undefined;
+    }
+    if (dto.rewardQuantity !== undefined) promo.rewardQuantity = dto.rewardQuantity;
     if (dto.discountValue !== undefined) promo.discountValue = dto.discountValue;
     if (dto.minOrderAmount !== undefined) promo.minOrderAmount = dto.minOrderAmount;
     if (dto.maxDiscountAmount !== undefined) promo.maxDiscountAmount = dto.maxDiscountAmount;
     if (dto.maxApplicationsPerOrder !== undefined) promo.maxApplicationsPerOrder = dto.maxApplicationsPerOrder;
     if (dto.applyMode !== undefined) promo.applyMode = dto.applyMode;
+    if (dto.requiresAuth !== undefined) promo.requiresAuth = dto.requiresAuth;
+    if (dto.isCumulative !== undefined) promo.isCumulative = dto.isCumulative;
     if (dto.description !== undefined) promo.description = dto.description.trim();
     if (dto.isActive !== undefined) promo.isActive = dto.isActive;
 
@@ -217,7 +261,13 @@ export class PromotionsService {
     let serverTotal = 0;
 
     for (const order of saleDoc.orders || []) {
+      // Ignorar órdenes canceladas para no inflar la base contable ni los beneficios
+      if (order.status === 'cancelled') continue;
+
       for (const it of order.items || []) {
+        // Ignorar platillos individuales cancelados
+        if (it.status === 'cancelled') continue;
+
         const recipe = it.recipe;
         if (!recipe) continue;
 

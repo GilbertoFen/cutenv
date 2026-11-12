@@ -18,6 +18,14 @@ export class PaySaleDto {
   promotionId?: string;
 
   @IsOptional()
+  @IsString()
+  authorizedBy?: string;
+
+  @IsOptional()
+  @IsString()
+  authReason?: string;
+
+  @IsOptional()
   @IsObject()
   promotionApplied?: {
     promotionId: string;
@@ -26,5 +34,7 @@ export class PaySaleDto {
     type?: string;
     discountAmount?: number;
     benefitedItems?: string[];
+    authorizedBy?: string;
+    authReason?: string;
   };
 }

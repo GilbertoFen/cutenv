@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAllRecipes } from "@/services/RecipeService";
 import { createOrder, checkOrderStock, type StockWarning } from "@/services/OrderService";
+import { printKitchenOrderToLocalAgent } from "@/services/PrinterService";
 import type { Recipe, AddOrderModalProps, SelectedItem } from "@/types";
 import { AppIcon, RecipeIcon } from "@/components/icons";
+import { useNotification } from "@/context/NotificationContext";
 
 export default function AddOrderModal({
   tableId,
   onClose,
   onRefresh,
 }: AddOrderModalProps) {
+  const { notify } = useNotification();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -93,11 +96,35 @@ export default function AddOrderModal({
         recipe: i.recipe.id,
         quantity: i.quantity,
       }));
-      await createOrder({ table: tableId, items, notes });
+      const created = await createOrder({ table: tableId, items, notes });
+
+      // Impresión automática e invisible en cocina (si TICKET_A_COCINA=TRUE)
+      try {
+        const orderPayload = {
+          id: created?.id || created?._id || undefined,
+          table: tableId,
+          tableNumber: created?.tableNumber || created?.table?.number || undefined,
+          notes,
+          recipes: selectedItems.map((it) => ({
+            name: it.recipe.name,
+            quantity: it.quantity,
+            notes: (it as any).notes || '',
+            station: it.recipe.station || (it.recipe.category?.toLowerCase() === 'bebidas' ? 'ninguna' : 'ninguna'),
+          })),
+          createdAt: new Date().toISOString(),
+        };
+        printKitchenOrderToLocalAgent(orderPayload).catch((e) =>
+          console.warn('[AddOrderModal] Auto-print comanda error:', e)
+        );
+      } catch (printErr) {
+        console.warn('[AddOrderModal] Fallo silencioso al preparar comanda:', printErr);
+      }
+
+      notify.success("Comanda enviada a cocina exitosamente.");
       onRefresh();
       onClose();
     } catch (err: any) {
-      alert(err?.message || "Error al enviar la orden a cocina");
+      notify.error(err?.message || "Error al enviar la orden a cocina");
     } finally {
       setSubmitting(false);
     }

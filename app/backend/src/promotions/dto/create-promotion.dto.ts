@@ -10,9 +10,13 @@ export class CreatePromotionDto {
   @IsOptional()
   code?: string;
 
-  @IsEnum(['two_for_one', 'percentage_discount', 'fixed_discount'], {
-    message: 'El tipo debe ser two_for_one, percentage_discount o fixed_discount',
-  })
+  @IsEnum(
+    ['two_for_one', 'percentage_discount', 'fixed_discount', 'birthday', 'package_gift'],
+    {
+      message:
+        'El tipo debe ser two_for_one, percentage_discount, fixed_discount, birthday o package_gift',
+    },
+  )
   type: PromotionType;
 
   @IsArray()
@@ -26,6 +30,14 @@ export class CreatePromotionDto {
   @IsString()
   @IsOptional()
   endDate?: string;
+
+  @IsString()
+  @IsOptional()
+  startTime?: string;
+
+  @IsString()
+  @IsOptional()
+  endTime?: string;
 
   @IsEnum(['all', 'categories', 'recipes'])
   @IsOptional()
@@ -42,6 +54,34 @@ export class CreatePromotionDto {
   @IsArray()
   @IsOptional()
   targetRecipes?: string[];
+
+  @IsArray()
+  @IsOptional()
+  excludedRecipes?: string[];
+
+  @IsNumber()
+  @IsOptional()
+  buyQuantity?: number;
+
+  @IsNumber()
+  @IsOptional()
+  getQuantity?: number;
+
+  @IsString()
+  @IsOptional()
+  triggerRecipeId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  triggerQuantity?: number;
+
+  @IsString()
+  @IsOptional()
+  rewardRecipeId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  rewardQuantity?: number;
 
   @IsEnum(['mix_and_match', 'same_product'])
   @IsOptional()
@@ -68,6 +108,12 @@ export class CreatePromotionDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsOptional()
+  requiresAuth?: boolean;
+
+  @IsOptional()
+  isCumulative?: boolean;
 
   @IsString()
   @IsNotEmpty({ message: 'Se requiere usuario de gerente para autorizar la promoción' })

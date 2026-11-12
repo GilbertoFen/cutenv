@@ -68,11 +68,12 @@ export default function Modal({
           </h2>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 inline-flex items-center justify-center transition-colors active:scale-95"
+            className="px-3.5 py-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 inline-flex items-center gap-1.5 font-bold text-xs sm:text-sm transition-colors active:scale-95 border border-transparent hover:border-slate-200"
             aria-label="Cerrar modal"
             title="Cerrar modal"
           >
-            ✕
+            <span className="text-base leading-none">✕</span>
+            <span>Cerrar</span>
           </button>
         </div>
         <div className="overflow-y-auto p-4 sm:p-6">{children}</div>

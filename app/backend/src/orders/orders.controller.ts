@@ -50,6 +50,11 @@ async getOrdersByTable(@Param('id') id: string) {
     return this.ordersService.updateOrderStatus(id, dto);
   }
 
+  @Patch(':id/cancel')
+  cancelOrder(@Param('id') id: string) {
+    return this.ordersService.cancelOrder(id);
+  }
+
   @Patch(':id')
   updateOrder(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
     return this.ordersService.updateOrder(id, dto);
@@ -69,9 +74,26 @@ async getOrdersByTable(@Param('id') id: string) {
   updateOrderItemStatus(
     @Param('id') id: string,
     @Param('itemId') itemId: string,
-    @Body('status') status: 'preparing' | 'ready' | 'delivered' | 'cancelled',
+    @Body('status') status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled',
   ) {
     return this.ordersService.updateOrderItemStatus(id, itemId, status);
+  }
+
+  @Patch(':id/items/:itemId/call-waiter')
+  callWaiter(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: { reason: 'ready' | 'unavailable' | 'issue' | 'other'; message?: string },
+  ) {
+    return this.ordersService.callWaiter(id, itemId, dto);
+  }
+
+  @Patch(':id/items/:itemId/dismiss-call')
+  dismissWaiterCall(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+  ) {
+    return this.ordersService.dismissWaiterCall(id, itemId);
   }
 
   @Delete(':id')

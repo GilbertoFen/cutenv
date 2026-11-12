@@ -50,6 +50,7 @@ export async function issueIndividualInvoice(
     };
     paymentMethod?: string;
     saveCustomer?: boolean;
+    sendEmail?: boolean;
   }
 ): Promise<InvoiceData> {
   const res = await apiFetch(`/invoicing/issue/sale/${saleId}`, {
@@ -117,6 +118,18 @@ export function getInvoiceXmlUrl(id: string): string {
 
 export function getInvoicePdfUrl(id: string): string {
   return getApiUrl(`/invoicing/invoices/${id}/pdf`);
+}
+
+export async function sendInvoiceEmail(id: string, email?: string): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch(`/invoicing/invoices/${id}/send`, {
+    method: 'POST',
+    body: JSON.stringify({ email: email || undefined }),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson?.message || 'Error al enviar la factura por correo');
+  }
+  return res.json();
 }
 
 export async function cancelInvoice(

@@ -16,7 +16,7 @@ export class ProductService {
     ) { }
 
     async getAllProducts() {
-        return await this.productModel.find({}).sort({ updatedAt: -1 });
+        return await this.productModel.find({ isActive: { $ne: false } }).sort({ updatedAt: -1 });
     }
 
     async getProductById(id: string | number) {
@@ -45,8 +45,12 @@ export class ProductService {
             ...productDto,
             barCode: productDto.barCode ? String(productDto.barCode).trim() : undefined,
             stock: Number(productDto.stock) || 0,
-            price: Number(productDto.price) || 0,
+            price: Number(productDto.price) || Number(productDto.unitCost) || 0,
+            acquisitionCost: Number(productDto.acquisitionCost) || 0,
+            unitCost: Number(productDto.unitCost) || Number(productDto.price) || 0,
             quantity: Number(productDto.quantity) || 1,
+            isGeneric: Boolean(productDto.isGeneric),
+            returnableOnCancel: Boolean(productDto.returnableOnCancel),
         };
 
         const createdProduct = new this.productModel(payload);
@@ -124,10 +128,12 @@ export class ProductService {
             ? { _id: new Types.ObjectId(String(id)) }
             : { $or: [{ id }, { barCode: String(id) }] };
 
-        const deletedProduct = await this.productModel.findOneAndDelete(query);
-        if (!deletedProduct) throw new NotFoundException("Producto no encontrado");
+        const product = await this.productModel.findOne(query);
+        if (!product) throw new NotFoundException("Producto no encontrado");
 
-        return deletedProduct;
+        product.isActive = false;
+        await product.save();
+        return product;
     }
 
     // Lookup por código de barras (local + Open Food Facts fallback)
@@ -143,33 +149,52 @@ export class ProductService {
         });
 
         if (local) {
+            const productData = {
+                id: (local as any)._id.toString(),
+                name: local.name,
+                brand: local.brand,
+                price: local.price,
+                acquisitionCost: local.acquisitionCost,
+                unitCost: local.unitCost,
+                quantity: local.quantity,
+                unitMesure: local.unitMesure,
+                category: local.category,
+                description: local.description,
+                stock: local.stock,
+                barCode: local.barCode,
+                imageUrl: local.imageUrl,
+                nutriments: local.nutriments,
+                servingSize: local.servingSize,
+                returnableOnCancel: local.returnableOnCancel,
+                isGeneric: local.isGeneric,
+                updatedAt: (local as any).updatedAt,
+            };
+
             return {
                 found: true,
                 source: 'local',
                 code,
-                product: {
-                    id: (local as any)._id.toString(),
-                    name: local.name,
-                    brand: local.brand,
-                    price: local.price,
-                    quantity: local.quantity,
-                    unitMesure: local.unitMesure,
-                    category: local.category,
-                    description: local.description,
-                    stock: local.stock,
-                    barCode: local.barCode,
-                    imageUrl: local.imageUrl,
-                    nutriments: local.nutriments,
-                    servingSize: local.servingSize,
-                    updatedAt: (local as any).updatedAt,
-                },
-                message: 'Producto encontrado en el catálogo local del restaurante.',
+                product: productData,
+                data: productData,
+                message: 'Producto encontrado.',
             };
         }
 
         // 2. Si no existe localmente, consultar Open Food Facts
         const offResult = await this.openFoodFactsService.lookupByBarcode(code);
-        return offResult;
+        if (offResult.found && offResult.data) {
+            return {
+                ...offResult,
+                product: offResult.data,
+                data: offResult.data,
+                message: 'Producto encontrado.',
+            };
+        }
+
+        return {
+            ...offResult,
+            message: 'Producto no encontrado. Ingresa los datos manualmente.',
+        };
     }
 
     // Registrar recepción / entrada de mercancía auditada

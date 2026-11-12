@@ -3,19 +3,23 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import TableCard from "@/components/Waiter/TableCard";
+import TableCard, { type TableAlert } from "@/components/Waiter/TableCard";
 import { getAllTables } from "@/services/TableService";
+import { getAllOrders } from "@/services/OrderService";
 import { getTablesSocket } from "@/gateways/tableSocket";
+import { getWaiterSocket } from "@/gateways/socketWaiter";
 import type { Table } from "@/types";
 import Modal from "@/components/UI/Modal";
 import TableDetailPanel from "@/components/Waiter/TableDetailPanel";
 import type { TableStatus, TableStatusLoad } from "@/types/Waiter/waiter.types";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { AppIcon } from "@/components/icons";
 
 export default function WaiterPage() {
   const router = useRouter();
   const { hasWorkerAccess, loading: authLoading } = useAuth();
+  const { notify } = useNotification();
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
 
@@ -56,6 +60,15 @@ export default function WaiterPage() {
     }
 
     const onChange = (load: TableStatusLoad) => {
+      if (load.status === 'disponible') {
+        setAlertsByTable((prev) => {
+          const next = { ...prev };
+          if (load.tableId) delete next[load.tableId];
+          if (load.number) delete next[String(load.number)];
+          return next;
+        });
+      }
+
       setTables((prev) => {
         let index = prev.findIndex((t) => t.id === load.tableId);
         if (index === -1) index = prev.findIndex((t) => Number(t.number) === Number(load.number));
@@ -86,6 +99,183 @@ export default function WaiterPage() {
       s.off("table.status.changed", onChange);
     };
   }, [refresh]);
+
+  // Alertas activas de cocina por mesa
+  const [alertsByTable, setAlertsByTable] = useState<Record<string, TableAlert[]>>({});
+
+  const extractOrderAlerts = useCallback((order: any): TableAlert[] => {
+    if (!order || order.status === 'delivered' || order.status === 'cancelled') return [];
+    const alerts: TableAlert[] = [];
+    const recipes = Array.isArray(order.recipes) ? order.recipes : [];
+
+    recipes.forEach((r: any) => {
+      if (r.status === 'delivered' || r.status === 'cancelled') return;
+
+      if (r.callWaiter?.requested) {
+        alerts.push({
+          orderId: order.id,
+          itemId: r.itemId || r.id,
+          reason: r.callWaiter.reason || 'ready',
+          message: r.callWaiter.message || '',
+          itemName: r.name,
+          requestedAt: r.callWaiter.requestedAt,
+        });
+      } else if (r.status === 'ready') {
+        alerts.push({
+          orderId: order.id,
+          itemId: r.itemId || r.id,
+          reason: 'ready',
+          message: '¡Platillo listo para entregar!',
+          itemName: r.name,
+          requestedAt: new Date(),
+        });
+      }
+    });
+
+    if (alerts.length === 0 && order.status === 'ready') {
+      alerts.push({
+        orderId: order.id,
+        itemId: order.id,
+        reason: 'ready',
+        message: '¡Comanda lista para entregar a la mesa!',
+        itemName: 'Comanda lista',
+        requestedAt: new Date(),
+      });
+    }
+
+    return alerts;
+  }, []);
+
+  // Cargar órdenes activas iniciales para calcular alertas de platillos/órdenes listos
+  useEffect(() => {
+    if (authLoading || !hasWorkerAccess) return;
+
+    getAllOrders()
+      .then((allOrders) => {
+        const initialAlerts: Record<string, TableAlert[]> = {};
+        allOrders.forEach((ord: any) => {
+          const ordAlerts = extractOrderAlerts(ord);
+          if (ordAlerts.length > 0) {
+            if (ord.tableId) {
+              initialAlerts[ord.tableId] = [...(initialAlerts[ord.tableId] || []), ...ordAlerts];
+            }
+            if (ord.tableNumber) {
+              initialAlerts[String(ord.tableNumber)] = [
+                ...(initialAlerts[String(ord.tableNumber)] || []),
+                ...ordAlerts,
+              ];
+            }
+          }
+        });
+        setAlertsByTable(initialAlerts);
+      })
+      .catch((err) => console.warn('Error loading initial orders for alerts:', err));
+  }, [authLoading, hasWorkerAccess, extractOrderAlerts]);
+
+  useEffect(() => {
+    if (authLoading || !hasWorkerAccess) return;
+
+    const waiterWs = getWaiterSocket();
+
+    const onItemReady = (data: { orderId: string; itemId: string; tableNumber?: number; itemName?: string }) => {
+      notify.success(
+        `¡${data.itemName || 'Platillo'} listo para servir!`,
+        data.tableNumber ? `Mesa ${data.tableNumber}` : 'Cocina'
+      );
+    };
+
+    const onWaiterCall = (data: TableAlert & { tableId?: string; tableNumber?: number; isExplicitCall?: boolean }) => {
+      const keys = [data.tableId, data.tableNumber ? String(data.tableNumber) : null].filter(Boolean) as string[];
+      if (keys.length === 0) return;
+
+      setAlertsByTable((prev) => {
+        const next = { ...prev };
+        keys.forEach((k) => {
+          const current = next[k] || [];
+          const filtered = current.filter((a) => a.itemId !== data.itemId);
+          next[k] = [data, ...filtered];
+        });
+        return next;
+      });
+
+      if (data.reason !== 'ready' || data.message) {
+        notify.warning(
+          data.message ? `"${data.message}"` : `Llamado de cocina para ${data.itemName}`,
+          data.tableNumber ? `Mesa ${data.tableNumber}` : 'Cocina'
+        );
+      }
+    };
+
+    const onWaiterCallDismissed = (data: { orderId: string; itemId: string; tableId?: string; tableNumber?: number }) => {
+      setAlertsByTable((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((k) => {
+          next[k] = next[k].filter((a) => a.itemId !== data.itemId);
+          if (next[k].length === 0) delete next[k];
+        });
+        return next;
+      });
+    };
+
+    const onOrderUpdated = (orderLoad: any) => {
+      const tKeyId = orderLoad.tableId ? String(orderLoad.tableId) : null;
+      const tKeyNum = orderLoad.tableNumber ? String(orderLoad.tableNumber) : null;
+      const orderAlerts = extractOrderAlerts(orderLoad);
+
+      setAlertsByTable((prev) => {
+        const next = { ...prev };
+        const keysToUpdate = new Set<string>();
+        if (tKeyId) keysToUpdate.add(tKeyId);
+        if (tKeyNum) keysToUpdate.add(tKeyNum);
+
+        Object.keys(next).forEach((k) => {
+          if (next[k].some((a) => a.orderId === orderLoad.id)) {
+            keysToUpdate.add(k);
+          }
+        });
+
+        keysToUpdate.forEach((k) => {
+          const remaining = (next[k] || []).filter((a) => a.orderId !== orderLoad.id);
+          const isTargetTable = k === tKeyId || k === tKeyNum;
+          const merged = isTargetTable ? [...orderAlerts, ...remaining] : remaining;
+          if (merged.length > 0) {
+            next[k] = merged;
+          } else {
+            delete next[k];
+          }
+        });
+
+        return next;
+      });
+    };
+
+    const onOrderStatusChanged = (data: { id: string; status: string; tableNumber?: number }) => {
+      if (data.status === 'delivered' || data.status === 'cancelled') {
+        setAlertsByTable((prev) => {
+          const next = { ...prev };
+          Object.keys(next).forEach((k) => {
+            next[k] = next[k].filter((a) => a.orderId !== data.id);
+            if (next[k].length === 0) delete next[k];
+          });
+          return next;
+        });
+      }
+    };
+
+    waiterWs.on("waiter.call", onWaiterCall);
+    waiterWs.on("waiter.call.dismissed", onWaiterCallDismissed);
+    waiterWs.on("order.updated", onOrderUpdated);
+    waiterWs.on("order.status.changed", onOrderStatusChanged);
+    waiterWs.on("item.ready", onItemReady);
+
+    return () => {
+      waiterWs.off("waiter.call", onWaiterCall);
+      waiterWs.off("waiter.call.dismissed", onWaiterCallDismissed);
+      waiterWs.off("order.updated", onOrderUpdated);
+      waiterWs.off("order.status.changed", onOrderStatusChanged);
+      waiterWs.off("item.ready", onItemReady);
+    };
+  }, [authLoading, hasWorkerAccess, extractOrderAlerts]);
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'disponible' | 'ocupada' | 'reservada'>('all');
 
@@ -223,13 +413,20 @@ export default function WaiterPage() {
 
       {/* Tables Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {filteredTables.map((table) => (
-          <TableCard
-            key={table.id}
-            table={table}
-            onOpen={() => setSelectedTableId(table.id)}
-          />
-        ))}
+        {filteredTables.map((table) => {
+          const tableAlerts = [
+            ...(alertsByTable[table.id] || []),
+            ...(alertsByTable[String(table.number)] || []),
+          ];
+          return (
+            <TableCard
+              key={table.id}
+              table={table}
+              alerts={tableAlerts}
+              onOpen={() => setSelectedTableId(table.id)}
+            />
+          );
+        })}
       </div>
 
       {/* Modal with Table Detail */}

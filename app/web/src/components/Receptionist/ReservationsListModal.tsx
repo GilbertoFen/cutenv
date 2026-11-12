@@ -14,6 +14,7 @@ import { dateFormat, fmt, getTableNumberStr } from '@/utils/Receptionist/recepti
 import type { Mode, StatusFilter } from '@/types/Receptionist/receptionist.types';
 import { AppIcon } from '@/components/icons';
 import { apiFetch } from '@/lib/api';
+import { useNotification } from '@/context/NotificationContext';
 
 interface Props {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export default function ReservationsListModal({
   tables,
   onOpenNewReservation,
 }: Props) {
+  const { notify, confirm } = useNotification();
   const [mode, setMode] = useState<Mode>('hoy');
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState<Reservation[]>([]);
@@ -102,31 +104,48 @@ export default function ReservationsListModal({
     try {
       await seatReservation(id);
       await fetchReservations();
+      notify.success('Reservación marcada como sentada');
       if (onRefresh) onRefresh();
     } catch (e: any) {
-      alert(e.message || 'Error al sentar reservación');
+      notify.error(e.message || 'Error al sentar reservación');
     }
   };
 
   const onCancel = async (id: string) => {
-    if (!confirm('¿Desea cancelar esta reservación? Se liberará la mesa.')) return;
+    const ok = await confirm({
+      title: 'Cancelar reservación',
+      message: '¿Desea cancelar esta reservación? Se liberará la mesa asignada.',
+      confirmText: 'Sí, cancelar',
+      cancelText: 'Volver',
+      type: 'danger',
+    });
+    if (!ok) return;
     try {
       await cancelReservation(id);
       await fetchReservations();
+      notify.success('Reservación cancelada correctamente');
       if (onRefresh) onRefresh();
     } catch (e: any) {
-      alert(e.message || 'Error al cancelar');
+      notify.error(e.message || 'Error al cancelar');
     }
   };
 
   const onNoShow = async (id: string) => {
-    if (!confirm('¿Marcar como no asistencia (no se presentó)? Se liberará la mesa.')) return;
+    const ok = await confirm({
+      title: 'Registrar inasistencia',
+      message: '¿Marcar como no asistencia (no se presentó)? Se liberará la mesa asignada.',
+      confirmText: 'Marcar no asistencia',
+      cancelText: 'Volver',
+      type: 'warning',
+    });
+    if (!ok) return;
     try {
       await noShowReservation(id);
       await fetchReservations();
+      notify.success('Inasistencia registrada');
       if (onRefresh) onRefresh();
     } catch (e: any) {
-      alert(e.message || 'Error al actualizar');
+      notify.error(e.message || 'Error al actualizar');
     }
   };
 
@@ -135,9 +154,10 @@ export default function ReservationsListModal({
       await assignReservationTable(id, tableId);
       setAssigningId(null);
       await fetchReservations();
+      notify.success('Mesa asignada a la reservación');
       if (onRefresh) onRefresh();
     } catch (e: any) {
-      alert(e.message || 'Error al asignar mesa');
+      notify.error(e.message || 'Error al asignar mesa');
     }
   };
 

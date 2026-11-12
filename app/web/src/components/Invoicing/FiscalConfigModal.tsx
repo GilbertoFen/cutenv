@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { getFiscalConfig, saveFiscalConfig, validatePacCredentials, getSatCatalogs } from '@/services/InvoicingService';
 import type { FiscalConfigData, SatCatalogsData } from '@/types';
 import { AppIcon } from '@/components/icons';
+import CustomSelect from '@/components/UI/CustomSelect';
 
 interface Props {
   isOpen: boolean;
@@ -232,135 +233,67 @@ export default function FiscalConfigModal({ isOpen, onClose, onSaved }: Props) {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Régimen Fiscal (SAT) *
-                    </label>
-                    <select
+                    <CustomSelect
+                      label="Régimen Fiscal (SAT) *"
                       value={formData.taxRegime}
-                      onChange={(e) => setFormData({ ...formData, taxRegime: e.target.value })}
-                      className="w-full text-xs px-3 py-2 border rounded-xl border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {catalogs?.regimenes?.map((r) => (
-                        <option key={r.code} value={r.code}>
-                          {r.code} - {r.description}
-                        </option>
-                      )) || (
-                        <>
-                          <option value="601">601 - General de Ley Personas Morales</option>
-                          <option value="612">612 - Personas Físicas con Actividades Empresariales</option>
-                          <option value="626">626 - Régimen Simplificado de Confianza (RESICO)</option>
-                        </>
-                      )}
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, taxRegime: val })}
+                      searchable
+                      options={
+                        catalogs?.regimenes?.map((r) => ({
+                          value: r.code,
+                          label: `${r.code} - ${r.description}`,
+                        })) || [
+                          { value: '601', label: '601 - General de Ley Personas Morales' },
+                          { value: '612', label: '612 - Personas Físicas con Actividades Empresariales' },
+                          { value: '626', label: '626 - Régimen Simplificado de Confianza (RESICO)' },
+                        ]
+                      }
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Sección PAC */}
+              {/* Sección PAC - Proveedor Oficial Fiscalisto */}
               <div className="pt-2 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                    2. Proveedor Autorizado de Certificación (PAC)
+                    2. Certificación Oficial SAT
                   </h3>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-                      formData.isValidated
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    <AppIcon
-                      name={formData.isValidated ? 'check' : 'clock'}
-                      size={12}
-                    />
-                    <span>{formData.isValidated ? 'PAC Validado' : 'Requiere Validación'}</span>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-black bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                    <span>Fiscalisto Certificado</span>
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Proveedor PAC
-                    </label>
-                    <select
-                      value={formData.pacProvider}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pacProvider: e.target.value as any,
-                        })
-                      }
-                      className="w-full text-xs px-3 py-2 border rounded-xl border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="mock_sandbox">PAC Sandbox Autónomo (Pruebas SAT 100% Locales)</option>
-                      <option value="facturama">Facturama PAC (API v3 SAT #58032)</option>
-                      <option value="finkok">Finkok PAC (Próximamente)</option>
-                    </select>
+                <div className="p-4 bg-gradient-to-r from-indigo-50/90 to-blue-50/80 border border-indigo-200/90 rounded-2xl space-y-2.5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-soft-xs">
+                      CFDI
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-indigo-950 leading-relaxed">
+                        El sistema utiliza Fiscalisto como proveedor de certificación para generar y timbrar facturas electrónicas oficiales ante el SAT.
+                      </p>
+                      <p className="text-[11px] text-indigo-800/80 mt-1">
+                        La API Key se gestiona de manera segura en el backend del servidor. No es necesario ingresar credenciales manuales ni contraseñas expuestas en el navegador.
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Ambiente Operativo
-                    </label>
-                    <select
-                      value={formData.environment}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          environment: e.target.value as any,
-                        })
-                      }
-                      className="w-full text-xs px-3 py-2 border rounded-xl border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                  <div className="flex flex-wrap items-center justify-between pt-2 border-t border-indigo-200/60 text-xs">
+                    <span className="text-[11px] font-semibold text-slate-600">
+                      Modo activo: <strong className="text-indigo-900">{formData.environment === 'production' ? 'Producción Fiscal SAT' : 'Sandbox / Pruebas Fiscalisto'}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={validating}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200 shadow-soft-xs transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      <option value="sandbox">Sandbox / Modo de Pruebas</option>
-                      <option value="production">Producción Fiscal SAT</option>
-                    </select>
+                      <AppIcon name="zap" size={13} className="text-indigo-600" />
+                      <span>{validating ? 'Verificando…' : 'Comprobar Conexión Fiscalisto'}</span>
+                    </button>
                   </div>
-
-                  {formData.pacProvider === 'facturama' && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Usuario / API Key PAC
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Usuario de Facturama"
-                          value={formData.pacUsername}
-                          onChange={(e) => setFormData({ ...formData, pacUsername: e.target.value })}
-                          className="w-full text-xs px-3 py-2 border rounded-xl border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Contraseña / Token Secreto PAC
-                        </label>
-                        <input
-                          type="password"
-                          placeholder={formData.hasPassword ? '•••••••• (Guardado)' : 'Ingresa la contraseña'}
-                          value={formData.pacPassword}
-                          onChange={(e) => setFormData({ ...formData, pacPassword: e.target.value })}
-                          className="w-full text-xs px-3 py-2 border rounded-xl border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <span className="text-[11px] text-slate-500">
-                    Verifica la conexión con el servidor de timbrado antes de emitir facturas
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleTestConnection}
-                    disabled={validating}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    <AppIcon name="zap" size={13} className="text-indigo-600" />
-                    <span>{validating ? 'Verificando…' : 'Probar Conexión PAC'}</span>
-                  </button>
                 </div>
               </div>
 
@@ -400,16 +333,16 @@ export default function FiscalConfigModal({ isOpen, onClose, onSaved }: Props) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tasa IVA</label>
-                    <select
+                    <CustomSelect
+                      label="Tasa IVA"
                       value={formData.defaultIvaRate}
-                      onChange={(e) => setFormData({ ...formData, defaultIvaRate: e.target.value })}
-                      className="w-full text-xs px-3 py-2 border rounded-xl border-slate-300 bg-white text-slate-900"
-                    >
-                      <option value="0.16">16% (General)</option>
-                      <option value="0.08">8% (Frontera)</option>
-                      <option value="0.00">0% (Tasa cero)</option>
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, defaultIvaRate: val })}
+                      options={[
+                        { value: '0.16', label: '16% (General)' },
+                        { value: '0.08', label: '8% (Frontera)' },
+                        { value: '0.00', label: '0% (Tasa cero)' },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

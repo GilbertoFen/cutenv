@@ -146,6 +146,14 @@ export class ReservationsService {
   async create(dto: CreateReservationDto): Promise<ReservationDto> {
     const start = new Date(dto.startTime);
     if (isNaN(start.getTime())) throw new BadRequestException('startTime inválido');
+    if (start.getTime() < Date.now() - 5 * 60000) {
+      throw new BadRequestException('No es posible programar reservaciones en fechas u horarios pasados.');
+    }
+
+    if (dto.partySize !== undefined && dto.partySize <= 0) {
+      throw new BadRequestException('El número de comensales debe ser mayor a 0.');
+    }
+
     const end = computeEnd(start, dto.endTime, dto.durationMinutes);
 
     let tableDoc: TableDocument | null = null;
@@ -156,11 +164,49 @@ export class ReservationsService {
       if (!tableDoc) throw new NotFoundException('Mesa no encontrada');
       tableId = toObjectId(tableDoc._id);
 
-      const activeSale = await this.saleModel.exists({
-        table: tableId,
-        status: { $in: ['unpaid', 'partial'] },
-      });
-      if (activeSale) throw new ConflictException('La mesa tiene una venta activa.');
+      const party = dto.partySize ?? tableDoc.capacity;
+      if (party > tableDoc.capacity) {
+        throw new BadRequestException(
+          `La mesa seleccionada tiene capacidad para ${tableDoc.capacity} personas. Reduce el número de comensales o selecciona otra mesa.`,
+        );
+      }
+
+      // Restricción: Si la mesa está actualmente ocupada, solo permitir reservar si
+      // la hora de inicio es de al menos 3 horas posteriores a la hora en que fue ocupada.
+      if (tableDoc.status === 'ocupada') {
+        const activeSale = await this.saleModel.findOne({
+          table: tableId,
+          status: { $in: ['unpaid', 'partial'] },
+        });
+
+        const occupiedTimestamp =
+          tableDoc.occupiedAt ||
+          (activeSale as any)?.createdAt ||
+          (activeSale as any)?.date;
+
+        if (!occupiedTimestamp) {
+          throw new ConflictException(
+            `La Mesa ${tableDoc.number} está actualmente ocupada pero no se cuenta con un registro confiable de la hora en que fue ocupada. Es necesario resolver primero el estado de la mesa antes de reservarla.`,
+          );
+        }
+
+        const occupiedTime = new Date(occupiedTimestamp).getTime();
+        const minAllowedTime = occupiedTime + 3 * 3600 * 1000;
+
+        if (start.getTime() < minAllowedTime) {
+          const occStr = new Date(occupiedTime).toLocaleTimeString('es-MX', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          const minStr = new Date(minAllowedTime).toLocaleTimeString('es-MX', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          throw new ConflictException(
+            `No es posible reservar la Mesa ${tableDoc.number} porque se encuentra ocupada desde las ${occStr}. Para mesas ocupadas, las reservaciones deben programarse con al menos 3 horas de margen (a partir de las ${minStr}).`,
+          );
+        }
+      }
 
       await this.assertNoOverlap(tableId, start, end);
     }
@@ -191,11 +237,48 @@ export class ReservationsService {
     if (!newTable) throw new NotFoundException('Mesa no encontrada');
 
     const newTableId = toObjectId(newTable._id);
-    const hasActive = await this.saleModel.exists({
-      table: newTableId,
-      status: { $in: ['unpaid', 'partial'] },
-    });
-    if (hasActive) throw new ConflictException('La mesa tiene una venta activa.');
+    const party = r.partySize ?? newTable.capacity;
+
+    if (party > newTable.capacity) {
+      throw new BadRequestException(
+        `La mesa seleccionada tiene capacidad para ${newTable.capacity} personas. Reduce el número de comensales o selecciona otra mesa.`,
+      );
+    }
+
+    if (newTable.status === 'ocupada') {
+      const activeSale = await this.saleModel.findOne({
+        table: newTableId,
+        status: { $in: ['unpaid', 'partial'] },
+      });
+
+      const occupiedTimestamp =
+        newTable.occupiedAt ||
+        (activeSale as any)?.createdAt ||
+        (activeSale as any)?.date;
+
+      if (!occupiedTimestamp) {
+        throw new ConflictException(
+          `La Mesa ${newTable.number} está actualmente ocupada pero no se cuenta con un registro confiable de la hora en que fue ocupada. Es necesario resolver primero el estado de la mesa antes de reservarla.`,
+        );
+      }
+
+      const occupiedTime = new Date(occupiedTimestamp).getTime();
+      const minAllowedTime = occupiedTime + 3 * 3600 * 1000;
+
+      if (r.startTime.getTime() < minAllowedTime) {
+        const occStr = new Date(occupiedTime).toLocaleTimeString('es-MX', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        const minStr = new Date(minAllowedTime).toLocaleTimeString('es-MX', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        throw new ConflictException(
+          `No es posible asignar la Mesa ${newTable.number} porque se encuentra ocupada desde las ${occStr}. Para mesas ocupadas, las reservaciones deben programarse con al menos 3 horas de margen (a partir de las ${minStr}).`,
+        );
+      }
+    }
 
     await this.assertNoOverlap(newTableId, r.startTime, r.endTime, r._id);
 
@@ -226,6 +309,13 @@ export class ReservationsService {
 
     const tableId = toObjectId(table._id);
 
+    // Validar que la mesa asignada no esté ocupada por otra orden o comensales distintos
+    if (table.status === 'ocupada') {
+      throw new ConflictException(
+        `La Mesa ${table.number} se encuentra ocupada actualmente por otros comensales. Libera la mesa antes de sentar la reservación.`,
+      );
+    }
+
     const existingSale = await this.saleModel.exists({
       table: tableId,
       status: { $in: ['unpaid', 'partial'] },
@@ -235,6 +325,7 @@ export class ReservationsService {
     r.status = 'sentada';
     await r.save();
     table.status = 'ocupada';
+    table.occupiedAt = new Date();
     await table.save();
 
     this.tablesGateway.emitTableStatusChanged({

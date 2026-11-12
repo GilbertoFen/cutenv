@@ -10,7 +10,13 @@ export class UpdatePromotionDto {
   @IsOptional()
   code?: string;
 
-  @IsEnum(['two_for_one', 'percentage_discount', 'fixed_discount'])
+  @IsEnum([
+    'two_for_one',
+    'percentage_discount',
+    'fixed_discount',
+    'birthday',
+    'package_gift',
+  ])
   @IsOptional()
   type?: PromotionType;
 
@@ -25,6 +31,14 @@ export class UpdatePromotionDto {
   @IsString()
   @IsOptional()
   endDate?: string;
+
+  @IsString()
+  @IsOptional()
+  startTime?: string;
+
+  @IsString()
+  @IsOptional()
+  endTime?: string;
 
   @IsEnum(['all', 'categories', 'recipes'])
   @IsOptional()
@@ -42,9 +56,43 @@ export class UpdatePromotionDto {
   @IsOptional()
   targetRecipes?: string[];
 
+  @IsArray()
+  @IsOptional()
+  excludedRecipes?: string[];
+
+  @IsNumber()
+  @IsOptional()
+  buyQuantity?: number;
+
+  @IsNumber()
+  @IsOptional()
+  getQuantity?: number;
+
+  @IsString()
+  @IsOptional()
+  triggerRecipeId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  triggerQuantity?: number;
+
+  @IsString()
+  @IsOptional()
+  rewardRecipeId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  rewardQuantity?: number;
+
   @IsEnum(['mix_and_match', 'same_product'])
   @IsOptional()
   applyMode?: 'mix_and_match' | 'same_product';
+
+  @IsOptional()
+  requiresAuth?: boolean;
+
+  @IsOptional()
+  isCumulative?: boolean;
 
   @IsNumber()
   @IsOptional()

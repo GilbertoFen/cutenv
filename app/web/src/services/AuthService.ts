@@ -72,7 +72,15 @@ export async function getRootUsers(rootKey: string): Promise<User[]> {
 
 export async function createRootUser(
   rootKey: string,
-  user: { username: string; name: string; password: string; role: UserRole }
+  user: {
+    username: string;
+    name: string;
+    lastName?: string;
+    email?: string;
+    password: string;
+    role: UserRole;
+    restaurantId?: string;
+  }
 ): Promise<User> {
   const res = await apiFetch('/auth/users', {
     method: 'POST',
@@ -84,6 +92,20 @@ export async function createRootUser(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Error al dar de alta el usuario');
+  }
+  return res.json();
+}
+
+export async function toggleRootUserStatus(rootKey: string, userId: string): Promise<any> {
+  const res = await apiFetch(`/auth/users/${userId}/toggle-status`, {
+    method: 'PATCH',
+    headers: {
+      'x-root-key': rootKey,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al cambiar estado del usuario');
   }
   return res.json();
 }
@@ -314,4 +336,87 @@ export function getManagerUnlocked(): boolean {
 export function setManagerUnlocked(unlocked: boolean): void {
   if (typeof window === 'undefined') return;
   sessionStorage.setItem(MANAGER_UNLOCKED_KEY, unlocked ? 'true' : 'false');
+}
+
+export async function sendHeartbeat(): Promise<{ ok: boolean; timestamp?: number }> {
+  const token = getAuthToken();
+  if (!token) return { ok: false };
+  try {
+    const res = await apiFetch('/auth/heartbeat', { method: 'POST' });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Sesión finalizada');
+      }
+      return { ok: false };
+    }
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+}
+
+export async function validateInvitation(token: string): Promise<{
+  valid: boolean;
+  name: string;
+  lastName?: string;
+  email: string;
+  role: string;
+  operationalRole?: string;
+  restaurantName?: string;
+}> {
+  const res = await fetch(getApiUrl(`/auth/invitation/${encodeURIComponent(token)}`));
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Invitación no válida o expirada');
+  }
+  return res.json();
+}
+
+export async function acceptInvitation(token: string, password: string): Promise<{ success: boolean; message: string; role?: string }> {
+  const res = await fetch(getApiUrl('/auth/invitation/accept'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al aceptar invitación');
+  }
+  return res.json();
+}
+
+export async function requestPasswordResetSubmission(identifier: string, reason?: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(getApiUrl('/auth/password-reset/request'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier, reason }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al enviar solicitud de restablecimiento');
+  }
+  return res.json();
+}
+
+export async function validatePasswordReset(token: string): Promise<{ valid: boolean; name: string; email: string; restaurantName?: string }> {
+  const res = await fetch(getApiUrl(`/auth/password-reset/${encodeURIComponent(token)}`));
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Enlace de restablecimiento inválido o expirado');
+  }
+  return res.json();
+}
+
+export async function confirmPasswordReset(token: string, password: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(getApiUrl('/auth/password-reset/confirm'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al restablecer contraseña');
+  }
+  return res.json();
 }

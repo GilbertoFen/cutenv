@@ -5,6 +5,7 @@ export interface Recipe {
   imageUrl: string;
   price: number;
   category: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
 }
 
 export interface UpdateOrderItem {
@@ -20,15 +21,25 @@ export interface Order {
   table?: string;
   notes?: string;
   tableNumber?: number;
+  tableId?: string;
   recipes: {
     id?: string;
     itemId?: string;
     name: string;
+    description?: string;
     quantity: number;
     imageUrl?: string;
     category?: string;
     notes?: string;
-    status?: 'preparing' | 'ready' | 'delivered' | 'cancelled';
+    station?: 'fria' | 'caliente' | 'ninguna';
+    status?: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+    callWaiter?: {
+      requested: boolean;
+      reason: 'ready' | 'unavailable' | 'issue' | 'other';
+      message?: string;
+      requestedAt?: string | Date;
+      resolved?: boolean;
+    };
   }[];
 }
 
@@ -37,6 +48,7 @@ export interface Table {
   number: number;
   status: 'disponible' | 'ocupada' | 'reservada';
   capacity: number;
+  occupiedAt?: string;
 }
 
 export interface AddOrderModalProps {
@@ -82,6 +94,7 @@ export interface SaleData {
   cancelledAt?: string;
   isFacturada?: boolean;
   invoiceId?: string;
+  invoiceStatus?: 'stamped' | 'cancelled' | 'pending_cancellation';
   discountAmount?: number;
   promotionApplied?: {
     promotionId: string;
@@ -97,17 +110,117 @@ export interface SaleData {
 }
 
 export type UserRole = 'owner' | 'manager' | 'worker';
+export type OperationalRole = 'mesero' | 'cocinero' | 'cajero' | 'recepcionista' | 'general';
+
+export interface DaySchedule {
+  dayOfWeek: number;
+  dayName: string;
+  enabled: boolean;
+  openTime: string;
+  closeTime: string;
+}
+
+export interface IndividualSchedule {
+  enabled: boolean;
+  weeklySchedule: DaySchedule[];
+}
 
 export interface User {
   id: string;
   username: string;
+  email?: string;
   name: string;
+  lastName?: string;
   role: UserRole;
+  operationalRole?: OperationalRole;
   status?: 'active' | 'inactive';
+  restaurantId?: string;
+  restaurant?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  individualSchedule?: IndividualSchedule;
+  lastActivity?: string;
   createdAt?: string;
 }
 
-export type PromotionType = 'two_for_one' | 'percentage_discount' | 'fixed_discount';
+export interface Restaurant {
+  id: string;
+  name: string;
+  code: string;
+  status: 'active' | 'inactive';
+  timezone: string;
+  address?: string;
+  phone?: string;
+  createdBy?: string;
+  createdAt?: string;
+  userCount?: number;
+  workerCount?: number;
+  owner?: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+    lastActivity?: string;
+  } | null;
+  manager?: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+    lastActivity?: string;
+  } | null;
+  schedule?: DaySchedule[];
+}
+
+export interface EmployeeItem {
+  id: string;
+  name: string;
+  lastName?: string;
+  fullName: string;
+  email: string;
+  username: string;
+  role: UserRole;
+  operationalRole?: OperationalRole;
+  status: 'active' | 'inactive';
+  connectionStatus: 'online' | 'offline' | 'outside_schedule' | 'inactive';
+  isOnline: boolean;
+  scheduleRestricted?: boolean;
+  invitationToken?: string;
+  invitationUsed?: boolean;
+  individualSchedule?: IndividualSchedule;
+  lastActivity?: string;
+  createdAt?: string;
+}
+
+export interface EmployeeStats {
+  total: number;
+  active: number;
+  online: number;
+  offline: number;
+  restricted: number;
+}
+
+export interface AuditLogItem {
+  id: string;
+  restaurantId?: string;
+  userId: string;
+  userName: string;
+  action: string;
+  targetType: string;
+  targetId?: string;
+  details?: Record<string, any>;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export type PromotionType =
+  | 'two_for_one'
+  | 'percentage_discount'
+  | 'fixed_discount'
+  | 'birthday'
+  | 'package_gift';
 
 export interface Promotion {
   id: string;
@@ -118,15 +231,26 @@ export interface Promotion {
   daysOfWeek: number[]; // 0=Sunday, 1=Monday, 2=Tuesday...
   startDate?: string;
   endDate?: string;
+  startTime?: string;
+  endTime?: string;
   scope: 'all' | 'categories' | 'recipes';
   targetCategories: string[];
   applicableCategories?: string[];
-  targetRecipes: string[];
+  targetRecipes: (string | Recipe)[];
+  excludedRecipes?: (string | Recipe)[];
+  buyQuantity?: number;
+  getQuantity?: number;
+  triggerRecipeId?: string | Recipe;
+  triggerQuantity?: number;
+  rewardRecipeId?: string | Recipe;
+  rewardQuantity?: number;
   discountValue: number;
   minOrderAmount?: number;
   maxDiscountAmount?: number;
   maxApplicationsPerOrder?: number;
   applyMode?: 'mix_and_match' | 'same_product';
+  requiresAuth?: boolean;
+  isCumulative?: boolean;
   description?: string;
   isActive: boolean;
 }
@@ -147,6 +271,9 @@ export type BackendSale = {
   table?: { number?: number } | string;
   orderType?: 'local' | 'para llevar' | 'evento' | 'domicilio';
   paymentMethod?: 'efectivo' | 'tarjeta' | 'transferencia';
+  isFacturada?: boolean;
+  invoiceId?: string;
+  invoiceStatus?: 'stamped' | 'cancelled' | 'pending_cancellation';
 };
 
 export interface Props {
@@ -184,12 +311,17 @@ export interface InventoryItem {
   name: string;
   brand?: string;
   price?: number;
+  acquisitionCost?: number;
+  unitCost?: number;
+  isGeneric?: boolean;
+  returnableOnCancel?: boolean;
   sku?: string;
   category?: string;
   unit?: string;
   description?: string;
   currentQty: number;
   packageQty?: number;
+  packageContent?: number;
   lastUpdate?: string;
   minQty?: number;
   imageUrl?: string;
@@ -201,6 +333,10 @@ export interface BarcodeLookupProduct {
   name: string;
   brand: string;
   price?: number;
+  unitCost?: number;
+  acquisitionCost?: number;
+  isGeneric?: boolean;
+  returnableOnCancel?: boolean;
   stock?: number;
   quantity: number;
   unitMesure: string;
@@ -317,6 +453,9 @@ export interface InvoiceData {
   cancellationReason?: '01' | '02' | '03' | '04';
   cancellationReplacementUuid?: string;
   cancelledAt?: string;
+  emailSentAt?: string;
+  emailTo?: string;
+  emailStatus?: 'sent' | 'pending' | 'failed';
 }
 
 export interface GlobalInvoicePreview {

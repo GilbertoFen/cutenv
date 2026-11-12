@@ -6,6 +6,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "printer": "node printer-agent/server.js",
     "lint": "turbo lint",
     "test": "turbo test"
   },

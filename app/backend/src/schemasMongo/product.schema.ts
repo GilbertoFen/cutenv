@@ -113,6 +113,52 @@ export class Product {
         trim: true,
     })
     servingSize?: string
+
+    @Prop({
+        type: Number,
+        default: 0,
+        min: 0,
+    })
+    acquisitionCost?: number // Costo total de compra/adquisición del insumo
+
+    @Prop({
+        type: Number,
+        default: 0,
+        min: 0,
+    })
+    unitCost?: number // Costo unitario calculado por unidad base de inventario
+
+    @Prop({
+        type: Boolean,
+        default: false,
+    })
+    isGeneric?: boolean // Insumo genérico sin código de barras
+
+    @Prop({
+        type: Boolean,
+        default: false,
+    })
+    returnableOnCancel?: boolean // Reincorporable a stock al cancelar orden (ej. bebidas envasadas cerradas individuales)
+
+    @Prop({
+        type: String,
+        required: false,
+        default: '90101501',
+    })
+    claveProdServ?: string
+
+    @Prop({
+        type: String,
+        required: false,
+        default: 'H87',
+    })
+    claveUnidad?: string
+
+    @Prop({
+        type: Boolean,
+        default: true,
+    })
+    isActive?: boolean
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product)

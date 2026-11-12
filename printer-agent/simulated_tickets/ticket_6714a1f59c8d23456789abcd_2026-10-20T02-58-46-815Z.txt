@@ -1,0 +1,24 @@
+            *** RESTAURANTE POS ***
+               RFC: XAXX010101000
+             COMPROBANTE DE CONSUMO
+================================================
+FOLIO: VTA-00892                         MESA: 4
+FECHA: 19/10/2026               HORA: 08:58 p.m.
+TIPO: LOCAL                       PAGO: EFECTIVO
+------------------------------------------------
+CANT  DESCRIPCION                  PRECIO    IMPORTE
+------------------------------------------------
+ 2x  Hamburguesa Clásica con    $120.00   $240.00
+     * Sin cebolla
+ 2x  Cerveza Corona 355ml        $40.00    $80.00
+ 1x  Papas a la Francesa         $40.00    $40.00
+------------------------------------------------
+SUBTOTAL:                                $360.00
+DESCUENTO (2x1 Bebidas Nacionales):      -$40.00
+================================================
+TOTAL A PAGAR:                           $320.00
+================================================
+ESTADO:                       PAGADO (LIQUIDADO)
+
+            ¡Gracias por su visita!
+

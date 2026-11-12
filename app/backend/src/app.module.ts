@@ -12,6 +12,10 @@ import { AuthModule } from './auth/auth.module';
 import { InvoicingModule } from './invoicing/invoicing.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AuditModule } from './audit/audit.module';
+import { RestaurantsModule } from './restaurants/restaurants.module';
+import { EmployeesModule } from './employees/employees.module';
+import { PrinterModule } from './printer/printer.module';
 
 @Module({
   imports: [
@@ -88,6 +92,10 @@ import { AnalyticsModule } from './analytics/analytics.module';
     InvoicingModule,
     PromotionsModule,
     AnalyticsModule,
+    AuditModule,
+    RestaurantsModule,
+    EmployeesModule,
+    PrinterModule,
   ],
 })
 export class AppModule {}

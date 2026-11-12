@@ -161,6 +161,18 @@ export class Invoice {
   @Prop({ type: String, required: false })
   errorMessage?: string;
 
+  @Prop({ type: String, required: false, index: true, sparse: true })
+  fiscalistoInvoiceId?: string;
+
+  @Prop({ type: Date, required: false })
+  emailSentAt?: Date;
+
+  @Prop({ type: String, required: false })
+  emailTo?: string;
+
+  @Prop({ type: String, enum: ['sent', 'pending', 'failed'], required: false })
+  emailStatus?: 'sent' | 'pending' | 'failed';
+
   @Prop({ type: String, required: false, index: true, unique: true, sparse: true })
   idempotencyKey?: string;
 }

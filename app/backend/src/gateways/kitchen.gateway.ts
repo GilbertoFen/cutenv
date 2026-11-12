@@ -32,11 +32,11 @@ export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   emitToAll(event: string, data: KitchenOrderLoad | any) {
-    this.server.emit(event, data);
+    this.server?.emit(event, data);
   }
 
   emitToRestaurant(restaurantId: string | undefined, event: string, data: any) {
     if (!restaurantId) return this.emitToAll(event, data);
-    this.server.to(`kitchen:${restaurantId}`).emit(event, data);
+    this.server?.to(`kitchen:${restaurantId}`)?.emit(event, data);
   }
 }

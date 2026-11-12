@@ -131,6 +131,15 @@ export class InvoicingController {
     res.send(pdfBuffer);
   }
 
+  @Post('invoices/:id/send')
+  async sendInvoice(
+    @Headers() headers: Record<string, any>,
+    @Param('id') id: string,
+    @Body() body: { email?: string }
+  ) {
+    return this.invoicingService.sendInvoiceEmail(this.getRestaurantId(headers), id, body?.email);
+  }
+
   @Post('invoices/:id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'manager')

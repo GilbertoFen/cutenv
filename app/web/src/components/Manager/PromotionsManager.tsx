@@ -41,14 +41,25 @@ export default function PromotionsManager() {
     daysOfWeek: [2], // Default martes
     startDate: '',
     endDate: '',
+    startTime: '',
+    endTime: '',
     scope: 'all' as 'all' | 'categories' | 'recipes',
     targetCategories: [] as string[],
     targetRecipes: [] as string[],
+    excludedRecipes: [] as string[],
+    buyQuantity: 2,
+    getQuantity: 1,
+    triggerRecipeId: '',
+    triggerQuantity: 1,
+    rewardRecipeId: '',
+    rewardQuantity: 1,
     discountValue: 0,
     minOrderAmount: 0,
     maxDiscountAmount: 0,
     maxApplicationsPerOrder: 0,
     applyMode: 'mix_and_match' as 'mix_and_match' | 'same_product',
+    requiresAuth: false,
+    isCumulative: false,
     description: '',
     authUsername: '',
     authPassword: '',
@@ -89,14 +100,25 @@ export default function PromotionsManager() {
       daysOfWeek: [2], // Martes
       startDate: '',
       endDate: '',
+      startTime: '',
+      endTime: '',
       scope: 'all',
       targetCategories: [],
       targetRecipes: [],
+      excludedRecipes: [],
+      buyQuantity: 2,
+      getQuantity: 1,
+      triggerRecipeId: '',
+      triggerQuantity: 1,
+      rewardRecipeId: '',
+      rewardQuantity: 1,
       discountValue: 0,
       minOrderAmount: 0,
       maxDiscountAmount: 0,
       maxApplicationsPerOrder: 0,
       applyMode: 'mix_and_match',
+      requiresAuth: false,
+      isCumulative: false,
       description: '',
       authUsername: '',
       authPassword: '',
@@ -122,14 +144,29 @@ export default function PromotionsManager() {
       daysOfWeek: p.daysOfWeek || [],
       startDate: p.startDate ? p.startDate.substring(0, 10) : '',
       endDate: p.endDate ? p.endDate.substring(0, 10) : '',
+      startTime: p.startTime || '',
+      endTime: p.endTime || '',
       scope: resolvedScope,
       targetCategories: resolvedCategories,
       targetRecipes: (p.targetRecipes || []).map((r: any) => (typeof r === 'object' ? r._id || r.id : r)),
+      excludedRecipes: (p.excludedRecipes || []).map((r: any) => (typeof r === 'object' ? r._id || r.id : r)),
+      buyQuantity: p.buyQuantity ?? 2,
+      getQuantity: p.getQuantity ?? 1,
+      triggerRecipeId: p.triggerRecipeId
+        ? (typeof p.triggerRecipeId === 'object' ? (p.triggerRecipeId as any)._id || (p.triggerRecipeId as any).id : p.triggerRecipeId)
+        : '',
+      triggerQuantity: p.triggerQuantity ?? 1,
+      rewardRecipeId: p.rewardRecipeId
+        ? (typeof p.rewardRecipeId === 'object' ? (p.rewardRecipeId as any)._id || (p.rewardRecipeId as any).id : p.rewardRecipeId)
+        : '',
+      rewardQuantity: p.rewardQuantity ?? 1,
       discountValue: p.discountValue || 0,
       minOrderAmount: p.minOrderAmount || 0,
       maxDiscountAmount: p.maxDiscountAmount || 0,
       maxApplicationsPerOrder: p.maxApplicationsPerOrder || 0,
       applyMode: p.applyMode || 'mix_and_match',
+      requiresAuth: p.requiresAuth ?? (p.type === 'birthday'),
+      isCumulative: p.isCumulative ?? false,
       description: p.description || '',
       authUsername: '',
       authPassword: '',
@@ -171,15 +208,26 @@ export default function PromotionsManager() {
           daysOfWeek: formData.daysOfWeek,
           startDate: formData.startDate || undefined,
           endDate: formData.endDate || undefined,
+          startTime: formData.startTime.trim() || undefined,
+          endTime: formData.endTime.trim() || undefined,
           scope: formData.scope,
           targetCategories: formData.targetCategories,
           applicableCategories: formData.targetCategories,
           targetRecipes: formData.targetRecipes,
+          excludedRecipes: formData.excludedRecipes,
+          buyQuantity: Number(formData.buyQuantity) || 2,
+          getQuantity: Number(formData.getQuantity) || 1,
+          triggerRecipeId: formData.triggerRecipeId || undefined,
+          triggerQuantity: Number(formData.triggerQuantity) || 1,
+          rewardRecipeId: formData.rewardRecipeId || undefined,
+          rewardQuantity: Number(formData.rewardQuantity) || 1,
           discountValue: Number(formData.discountValue) || 0,
           minOrderAmount: Number(formData.minOrderAmount) || 0,
           maxDiscountAmount: Number(formData.maxDiscountAmount) || 0,
           maxApplicationsPerOrder: Number(formData.maxApplicationsPerOrder) || 0,
           applyMode: formData.applyMode,
+          requiresAuth: formData.requiresAuth || formData.type === 'birthday',
+          isCumulative: formData.isCumulative,
           description: formData.description.trim() || undefined,
           authUsername: formData.authUsername.trim(),
           authPassword: formData.authPassword,
@@ -192,14 +240,26 @@ export default function PromotionsManager() {
           daysOfWeek: formData.daysOfWeek,
           startDate: formData.startDate || undefined,
           endDate: formData.endDate || undefined,
+          startTime: formData.startTime.trim() || undefined,
+          endTime: formData.endTime.trim() || undefined,
           scope: formData.scope,
           targetCategories: formData.targetCategories,
+          applicableCategories: formData.targetCategories,
           targetRecipes: formData.targetRecipes,
+          excludedRecipes: formData.excludedRecipes,
+          buyQuantity: Number(formData.buyQuantity) || 2,
+          getQuantity: Number(formData.getQuantity) || 1,
+          triggerRecipeId: formData.triggerRecipeId || undefined,
+          triggerQuantity: Number(formData.triggerQuantity) || 1,
+          rewardRecipeId: formData.rewardRecipeId || undefined,
+          rewardQuantity: Number(formData.rewardQuantity) || 1,
           discountValue: Number(formData.discountValue) || 0,
           minOrderAmount: Number(formData.minOrderAmount) || 0,
           maxDiscountAmount: Number(formData.maxDiscountAmount) || 0,
           maxApplicationsPerOrder: Number(formData.maxApplicationsPerOrder) || 0,
           applyMode: formData.applyMode,
+          requiresAuth: formData.requiresAuth || formData.type === 'birthday',
+          isCumulative: formData.isCumulative,
           description: formData.description.trim() || undefined,
           authUsername: formData.authUsername.trim(),
           authPassword: formData.authPassword,
@@ -290,9 +350,8 @@ export default function PromotionsManager() {
             return (
               <div
                 key={pId}
-                className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between transition ${
-                  p.isActive ? 'border-slate-200' : 'border-slate-200 opacity-60 bg-slate-50'
-                }`}
+                className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between transition ${p.isActive ? 'border-slate-200' : 'border-slate-200 opacity-60 bg-slate-50'
+                  }`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -302,19 +361,26 @@ export default function PromotionsManager() {
                           ? 'bg-amber-100 text-amber-800'
                           : p.type === 'percentage_discount'
                           ? 'bg-indigo-100 text-indigo-800'
+                          : p.type === 'birthday'
+                          ? 'bg-purple-100 text-purple-800'
+                          : p.type === 'package_gift'
+                          ? 'bg-blue-100 text-blue-800'
                           : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
                       {p.type === 'two_for_one'
-                        ? '2x1 Promoción'
+                        ? `${p.buyQuantity || 2}x${(p.buyQuantity || 2) - (p.getQuantity || 1)} Promoción`
                         : p.type === 'percentage_discount'
                         ? `${p.discountValue}% Descuento`
+                        : p.type === 'birthday'
+                        ? 'Cumpleañero (100%)'
+                        : p.type === 'package_gift'
+                        ? 'Regalo por Compra'
                         : `$${p.discountValue} Fijo`}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        p.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                      }`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${p.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                        }`}
                     >
                       {p.isActive ? 'Activa' : 'Inactiva'}
                     </span>
@@ -346,8 +412,8 @@ export default function PromotionsManager() {
                         {p.scope === 'all'
                           ? 'Toda la carta'
                           : p.scope === 'categories'
-                          ? `Categorías (${(p.targetCategories || []).join(', ')})`
-                          : 'Platillos seleccionados'}
+                            ? `Categorías (${(p.targetCategories || []).join(', ')})`
+                            : 'Platillos seleccionados'}
                       </span>
                     </div>
                     {p.minOrderAmount ? (
@@ -387,9 +453,9 @@ export default function PromotionsManager() {
 
       {/* Modal crear / editar promoción */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden my-6">
-            <header className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <header className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">
                   {editingPromo ? 'Editar Promoción' : 'Nueva Promoción / Cupón'}
@@ -400,240 +466,544 @@ export default function PromotionsManager() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 transition"
               >
                 ✕
               </button>
             </header>
 
-            <form onSubmit={handleSave} className="p-5 space-y-4">
-              {error && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
-                  {error}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Promoción *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Martes 2x1 en Bebidas"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Código de Cupón (opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ej. MARTES2X1"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 border rounded-xl text-xs uppercase font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Beneficio *</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as PromotionType })}
-                    className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  >
-                    <option value="two_for_one">2x1 (1 unidad gratis por cada 2)</option>
-                    <option value="percentage_discount">Descuento Porcentual (%)</option>
-                    <option value="fixed_discount">Descuento Importe Fijo ($)</option>
-                  </select>
-                </div>
-              </div>
-
-              {formData.type === 'two_for_one' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/50 p-3 rounded-2xl border border-amber-200/80">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Regla de Parejas (2x1) *
-                    </label>
-                    <select
-                      value={formData.applyMode}
-                      onChange={(e) => setFormData({ ...formData, applyMode: e.target.value as any })}
-                      className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    >
-                      <option value="mix_and_match">Mix & Match (Cualquier bebida/platillo elegible)</option>
-                      <option value="same_product">Mismo Producto (Unidades idénticas)</option>
-                    </select>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      En Mix & Match, por cada pareja se bonifica la de menor precio.
-                    </p>
+            <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+                {error && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
+                    {error}
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Límite de parejas gratis (0 = sin límite)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.maxApplicationsPerOrder}
-                      onChange={(e) => setFormData({ ...formData, maxApplicationsPerOrder: Number(e.target.value) })}
-                      className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Ej. 1 = máximo una cortesía 2x1 por ticket.
-                    </p>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {formData.type !== 'two_for_one' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {formData.type === 'percentage_discount' ? 'Porcentaje de Descuento (1-100%)' : 'Monto Fijo en Pesos ($)'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={formData.type === 'percentage_discount' ? 100 : 99999}
-                    step="0.5"
-                    value={formData.discountValue}
-                    onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Días de la semana */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Días de la semana en los que aplica (servidor valida vigencia):
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {FULL_DAYS.map((d) => {
-                    const isSelected = formData.daysOfWeek.includes(d.val);
-                    return (
-                      <button
-                        key={d.val}
-                        type="button"
-                        onClick={() => handleToggleDay(d.val)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                          isSelected
-                            ? 'bg-[#14144f] text-white border-[#14144f]'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        {d.label}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, daysOfWeek: [] })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                      formData.daysOfWeek.length === 0
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    Todos los días
-                  </button>
-                </div>
-              </div>
-
-              {/* Alcance */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Alcance de Productos Elegibles</label>
-                <select
-                  value={formData.scope}
-                  onChange={(e) => setFormData({ ...formData, scope: e.target.value as any })}
-                  className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                >
-                  <option value="all">Aplica a toda la comanda / cuenta</option>
-                  <option value="categories">Aplica a categorías específicas (ej. Bebidas)</option>
-                  <option value="recipes">Aplica a platillos específicos</option>
-                </select>
-              </div>
-
-              {formData.scope === 'categories' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Categorías elegibles:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {uniqueCategories.map((cat) => {
-                      const isChecked = formData.targetCategories.includes(cat!);
-                      return (
-                        <label
-                          key={cat}
-                          className="flex items-center gap-1.5 text-xs text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({ ...formData, targetCategories: [...formData.targetCategories, cat!] });
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  targetCategories: formData.targetCategories.filter((c) => c !== cat),
-                                });
-                              }
-                            }}
-                          />
-                          <span>{cat}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Descripción / Regla operativa</label>
-                <textarea
-                  rows={2}
-                  placeholder="Ej. Válido sólo en consumo en restaurante los martes..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Autorización de Gerencia */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
-                <span className="text-xs font-bold text-amber-950 block">
-                  🔒 Autorización Gerencial Requerida
-                </span>
-                <p className="text-[11px] text-amber-800">
-                  Por seguridad, la creación o modificación de promociones se verifica en el servidor con credenciales autorizadas.
-                </p>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Usuario Gerente/Admin</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Promoción *</label>
                     <input
                       type="text"
                       required
-                      placeholder="root o gerente"
-                      value={formData.authUsername}
-                      onChange={(e) => setFormData({ ...formData, authUsername: e.target.value })}
+                      placeholder="Ej. Martes 2x1 en Bebidas"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Código de Cupón (opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. MARTES2X1"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                      className="w-full px-3 py-2 border rounded-xl text-xs uppercase font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Beneficio *</label>
+                    <select
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value as PromotionType })}
+                      className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-semibold text-slate-800"
+                    >
+                      <option value="two_for_one">2x1 / NxM (Cantidades especiales)</option>
+                      <option value="percentage_discount">Descuento Porcentual (%)</option>
+                      <option value="fixed_discount">Descuento Importe Fijo ($)</option>
+                      <option value="birthday">Descuento de Cumpleañero (100% Bonificado)</option>
+                      <option value="package_gift">Paquete / Obsequio (Compra X, lleva Y de regalo)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Campos dinámicos según el tipo de promoción */}
+                {formData.type === 'two_for_one' && (
+                  <div className="space-y-3 bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Unidades que adquiere (Compra)
+                        </label>
+                        <input
+                          type="number"
+                          min="2"
+                          value={formData.buyQuantity}
+                          onChange={(e) => setFormData({ ...formData, buyQuantity: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-0.5">Ej. 2 para 2x1, 3 para 3x2.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Unidades bonificadas (Gratis)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={(formData.buyQuantity || 2) - 1}
+                          value={formData.getQuantity}
+                          onChange={(e) => setFormData({ ...formData, getQuantity: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-0.5">Ej. 1 unidad sin costo.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-200/60">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Modo de Aplicación *
+                        </label>
+                        <select
+                          value={formData.applyMode}
+                          onChange={(e) => setFormData({ ...formData, applyMode: e.target.value as any })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        >
+                          <option value="mix_and_match">Mix & Match (Combina productos participantes)</option>
+                          <option value="same_product">Mismo Producto (Unidades idénticas únicamente)</option>
+                        </select>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          En Mix & Match se bonifica siempre la unidad de menor o igual precio.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Límite de bonificaciones por cuenta (0 = sin límite)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.maxApplicationsPerOrder}
+                          onChange={(e) => setFormData({ ...formData, maxApplicationsPerOrder: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Ej. 1 = máximo una bonificación de cortesía por comanda.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.type === 'package_gift' && (
+                  <div className="space-y-3 bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200">
+                    <div className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                      <span>🎁 Configuración de Paquete / Producto de Regalo</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Producto Detonante (Requerido) *
+                        </label>
+                        <select
+                          value={formData.triggerRecipeId}
+                          onChange={(e) => setFormData({ ...formData, triggerRecipeId: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        >
+                          <option value="">Selecciona producto detonante…</option>
+                          {recipes.map((r) => (
+                            <option key={r.id || (r as any)._id} value={r.id || (r as any)._id}>
+                              {r.name} (${r.price}) - {r.category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Cantidad Detonante Requerida
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.triggerQuantity}
+                          onChange={(e) => setFormData({ ...formData, triggerQuantity: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-blue-200/60">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Producto de Regalo / Bonificado *
+                        </label>
+                        <select
+                          value={formData.rewardRecipeId}
+                          onChange={(e) => setFormData({ ...formData, rewardRecipeId: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        >
+                          <option value="">Selecciona producto de regalo…</option>
+                          {recipes.map((r) => (
+                            <option key={r.id || (r as any)._id} value={r.id || (r as any)._id}>
+                              {r.name} (${r.price}) - {r.category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Cantidad de Regalo por Paquete
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.rewardQuantity}
+                          onChange={(e) => setFormData({ ...formData, rewardQuantity: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-1">
+                      <p className="text-[11px] text-blue-800 font-medium">
+                        * Al ordenar el producto detonante y agregar el producto de regalo al pedido, el sistema bonificará automáticamente el 100% del costo del producto de regalo en el desglose de la venta.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {formData.type === 'birthday' && (
+                  <div className="p-3.5 bg-purple-50 rounded-2xl border border-purple-200 space-y-2">
+                    <div className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                      <span>🎂 Promoción de Cumpleañero (Bonificación 100%)</span>
+                    </div>
+                    <p className="text-xs text-purple-800 leading-relaxed">
+                      Esta promoción aplica una bonificación del <strong>100%</strong> sobre los artículos elegibles. Requiere obligatoriamente autorización del personal en caja y está restringida a <strong>una sola aplicación por cuenta</strong>. No altera precios base de catálogo ni genera pagos ficticios.
+                    </p>
+                  </div>
+                )}
+
+                {(formData.type === 'percentage_discount' || formData.type === 'fixed_discount') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        {formData.type === 'percentage_discount'
+                          ? 'Porcentaje de Descuento (1-100%) *'
+                          : 'Monto Fijo en Pesos ($) *'}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={formData.type === 'percentage_discount' ? 100 : 99999}
+                        step="0.5"
+                        value={formData.discountValue}
+                        onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Tope máximo de descuento en pesos (0 = sin tope)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.maxDiscountAmount}
+                        onChange={(e) => setFormData({ ...formData, maxDiscountAmount: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Franja horaria y fechas de vigencia */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Fecha Inicio</label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                       className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Contraseña</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Fecha Fin</label>
                     <input
-                      type="password"
-                      required
-                      placeholder="Contraseña"
-                      value={formData.authPassword}
-                      onChange={(e) => setFormData({ ...formData, authPassword: e.target.value })}
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Hora Inicio (HH:mm)</label>
+                    <input
+                      type="time"
+                      placeholder="13:00"
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Hora Fin (HH:mm)</label>
+                    <input
+                      type="time"
+                      placeholder="18:00"
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                       className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
                     />
                   </div>
                 </div>
+
+                {/* Días de la semana */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Días de la semana en los que aplica (servidor valida vigencia):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FULL_DAYS.map((d) => {
+                      const isSelected = formData.daysOfWeek.includes(d.val);
+                      return (
+                        <button
+                          key={d.val}
+                          type="button"
+                          onClick={() => handleToggleDay(d.val)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${isSelected
+                            ? 'bg-[#14144f] text-white border-[#14144f]'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, daysOfWeek: [] })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${formData.daysOfWeek.length === 0
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                    >
+                      Todos los días
+                    </button>
+                  </div>
+                </div>
+
+                {/* Alcance de productos elegibles (oculto si es package_gift) */}
+                {formData.type !== 'package_gift' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Alcance de Productos Elegibles</label>
+                      <select
+                        value={formData.scope}
+                        onChange={(e) => setFormData({ ...formData, scope: e.target.value as any })}
+                        className="w-full px-3 py-2 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-semibold text-slate-800"
+                      >
+                        <option value="all">Toda la comanda / cuenta completa</option>
+                        <option value="categories">Categorías seleccionadas con opción de exclusión</option>
+                        <option value="recipes">Lista explícita de platillos / bebidas</option>
+                      </select>
+                    </div>
+
+                    {formData.scope === 'categories' && (
+                      <div className="space-y-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Categorías elegibles:</label>
+                          <div className="flex flex-wrap gap-2">
+                            {uniqueCategories.map((cat) => {
+                              const isChecked = formData.targetCategories.includes(cat!);
+                              return (
+                                <label
+                                  key={cat}
+                                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border cursor-pointer font-medium transition ${isChecked ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-white border-slate-200 text-slate-700'}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setFormData({ ...formData, targetCategories: [...formData.targetCategories, cat!] });
+                                      } else {
+                                        setFormData({
+                                          ...formData,
+                                          targetCategories: formData.targetCategories.filter((c) => c !== cat),
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <span>{cat}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Exclusiones específicas de la categoría */}
+                        {formData.targetCategories.length > 0 && (
+                          <div className="pt-2 border-t border-slate-200">
+                            <label className="block text-xs font-bold text-rose-800 mb-1">
+                              Excluir platillos específicos de estas categorías:
+                            </label>
+                            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 bg-white rounded-xl border border-slate-200">
+                              {recipes
+                                .filter((r) => formData.targetCategories.includes(r.category || ''))
+                                .map((r) => {
+                                  const rId = r.id || (r as any)._id;
+                                  const isExcluded = formData.excludedRecipes.includes(rId);
+                                  return (
+                                    <label
+                                      key={rId}
+                                      className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded border cursor-pointer transition ${isExcluded ? 'bg-rose-50 border-rose-300 text-rose-800 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isExcluded}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setFormData({ ...formData, excludedRecipes: [...formData.excludedRecipes, rId] });
+                                          } else {
+                                            setFormData({
+                                              ...formData,
+                                              excludedRecipes: formData.excludedRecipes.filter((id) => id !== rId),
+                                            });
+                                          }
+                                        }}
+                                      />
+                                      <span>{r.name}</span>
+                                    </label>
+                                  );
+                                })}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              Los platillos marcados aquí no recibirán el beneficio aunque su categoría participe.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {formData.scope === 'recipes' && (
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Selecciona los platillos o bebidas que participan:
+                        </label>
+                        <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-white rounded-xl border border-slate-200">
+                          {recipes.map((r) => {
+                            const rId = r.id || (r as any)._id;
+                            const isSelected = formData.targetRecipes.includes(rId);
+                            return (
+                              <label
+                                key={rId}
+                                className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border cursor-pointer transition ${isSelected ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData({ ...formData, targetRecipes: [...formData.targetRecipes, rId] });
+                                    } else {
+                                      setFormData({
+                                        ...formData,
+                                        targetRecipes: formData.targetRecipes.filter((id) => id !== rId),
+                                      });
+                                    }
+                                  }}
+                                />
+                                <span>{r.name} (${r.price})</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Descripción / Regla operativa</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Ej. Válido sólo en consumo en restaurante los martes..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Resumen en tiempo real de la configuración */}
+                <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-3.5 space-y-1.5 text-xs text-indigo-950">
+                  <div className="flex items-center gap-1.5 font-bold text-indigo-900">
+                    <AppIcon name="receipt" size={14} className="text-indigo-600" />
+                    <span>Resumen Operativo de la Promoción:</span>
+                  </div>
+                  <div className="text-[11px] leading-relaxed text-indigo-900 space-y-0.5">
+                    <p>
+                      <strong>Beneficio:</strong>{' '}
+                      {formData.type === 'two_for_one'
+                        ? `${formData.buyQuantity}x${(formData.buyQuantity || 2) - (formData.getQuantity || 1)} (${formData.getQuantity} cortesía por cada ${formData.buyQuantity} consumidos)`
+                        : formData.type === 'percentage_discount'
+                        ? `${formData.discountValue}% de descuento directo`
+                        : formData.type === 'fixed_discount'
+                        ? `$${formData.discountValue} de descuento directo`
+                        : formData.type === 'birthday'
+                        ? '100% de bonificación por cumpleaños (1 por ticket)'
+                        : `Obsequio de ${formData.rewardQuantity || 1} producto(s) por la compra de ${formData.triggerQuantity || 1}`}
+                    </p>
+                    <p>
+                      <strong>Vigencia:</strong>{' '}
+                      {formData.daysOfWeek.length === 0
+                        ? 'Todos los días'
+                        : formData.daysOfWeek.map((d) => DAYS_NAMES[d]).join(', ')}
+                      {formData.startTime || formData.endTime
+                        ? ` de ${formData.startTime || '00:00'} a ${formData.endTime || '23:59'} hrs`
+                        : ''}
+                    </p>
+                    <p>
+                      <strong>Alcance:</strong>{' '}
+                      {formData.type === 'package_gift'
+                        ? 'Detonante y obsequio definidos'
+                        : formData.scope === 'all'
+                        ? 'Toda la cuenta'
+                        : formData.scope === 'categories'
+                        ? `${formData.targetCategories.length} categoría(s)${formData.excludedRecipes.length > 0 ? ` con ${formData.excludedRecipes.length} platillo(s) excluidos` : ''}`
+                        : `${formData.targetRecipes.length} platillo(s) participantes`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Autorización de Gerencia */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Autorización Gerencial Requerida
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Usuario Gerente/Admin</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="root o gerente"
+                        value={formData.authUsername}
+                        onChange={(e) => setFormData({ ...formData, authUsername: e.target.value })}
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Contraseña</label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Contraseña"
+                        value={formData.authPassword}
+                        onChange={(e) => setFormData({ ...formData, authPassword: e.target.value })}
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t">
+              <div className="flex justify-end gap-2 p-3 sm:p-4 border-t border-slate-200 bg-slate-50 shrink-0">
                 <button
                   type="button"
                   disabled={saving}
@@ -645,7 +1015,7 @@ export default function PromotionsManager() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 shadow-sm"
                 >
                   {saving ? 'Validando…' : editingPromo ? 'Guardar Cambios' : 'Crear Promoción'}
                 </button>

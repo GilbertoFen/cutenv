@@ -17,6 +17,7 @@ export const createRecipe = async (data: {
   name: string;
   price: number;
   category?: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
   steps?: string;
   imageUrl?: string;
   ingredients: { ingredientId: string; quantity: number; unitMesure: string }[];
@@ -36,6 +37,7 @@ export const updateRecipe = async (id: string, data: Partial<{
   name: string;
   price: number;
   category?: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
   steps?: string;
   imageUrl?: string;
   ingredients: { ingredientId: string; quantity: number; unit: string }[];

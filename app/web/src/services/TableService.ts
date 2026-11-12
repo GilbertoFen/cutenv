@@ -17,6 +17,9 @@ export const updateTableStatus = async (id: string, status: string) => {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) throw new Error("No se pudo actualizar el estado de la mesa");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "No se pudo actualizar el estado de la mesa");
+  }
   return res.json();
 };

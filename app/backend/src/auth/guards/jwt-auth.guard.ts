@@ -4,13 +4,19 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { JwtService } from '../jwt.service';
+import { UserSession, UserSessionDocument } from '../../schemasMongo/user-session.schema';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    @InjectModel(UserSession.name) private readonly sessionModel: Model<UserSessionDocument>,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers['authorization'] || request.headers['Authorization'];
 
@@ -23,12 +29,26 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Formato de autorización inválido. Debe ser: Bearer <token>');
     }
 
+    let payload: any;
     try {
-      const payload = this.jwtService.verify(token);
-      request.user = payload;
-      return true;
+      payload = this.jwtService.verify(token);
     } catch (error: any) {
       throw new UnauthorizedException(error.message || 'Token de autenticación inválido o expirado');
     }
+
+    // Validación autoritativa de la sesión en base de datos
+    if (payload.sessionId && payload.sessionId !== 'root-session' && Types.ObjectId.isValid(payload.sessionId)) {
+      const session = await this.sessionModel.findById(payload.sessionId).lean();
+      if (!session || !session.isActive) {
+        throw new UnauthorizedException(
+          session?.revokedReason
+            ? `Acceso revocado: ${session.revokedReason}`
+            : 'Su sesión ha sido revocada o ha finalizado.',
+        );
+      }
+    }
+
+    request.user = payload;
+    return true;
   }
 }

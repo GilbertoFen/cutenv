@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import type { InventoryItem } from '@/types';
 import { AppIcon, IngredientIcon } from '@/components/icons';
+import { useNotification } from '@/context/NotificationContext';
 
 interface Props {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function RecipeIngredientPickerModal({
   onClose,
   onAdd,
 }: Props) {
+  const { notify } = useNotification();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
@@ -73,7 +75,7 @@ export default function RecipeIngredientPickerModal({
     if (!selectedProduct) return;
     const numQty = parseFloat(quantity);
     if (!Number.isFinite(numQty) || numQty <= 0) {
-      alert('Por favor ingrese una cantidad o porcentaje válido mayor a 0');
+      notify.warning('Por favor ingrese una cantidad o porcentaje válido mayor a 0');
       return;
     }
 

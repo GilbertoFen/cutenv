@@ -5,6 +5,7 @@ import { cancelSale } from '@/services/SaleService';
 import type { SaleData } from '@/types';
 import { currency } from '@/utils/Manager/manager.functions';
 import { AppIcon } from '@/components/icons';
+import { useNotification } from '@/context/NotificationContext';
 
 interface Props {
   sale: SaleData | null;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function CancelSaleModal({ sale, onClose, onCancelled }: Props) {
+  const { notify } = useNotification();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [reason, setReason] = useState('');
@@ -37,7 +39,7 @@ export default function CancelSaleModal({ sale, onClose, onCancelled }: Props) {
         password,
         reason: reason.trim(),
       });
-      alert('La cuenta ha sido cancelada exitosamente y la mesa ha sido liberada.');
+      notify.success('La cuenta ha sido cancelada exitosamente y la mesa ha sido liberada.');
       onCancelled();
       onClose();
     } catch (err: any) {

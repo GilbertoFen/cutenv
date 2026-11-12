@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { InvoicingController } from './invoicing.controller';
 import { InvoicingService } from './invoicing.service';
+import { FiscalistoService } from './fiscalisto.service';
+import { FiscalistoPacAdapter } from './pac/fiscalisto-pac.adapter';
 import { PacFactory } from './pac/pac-factory';
 import { MockSandboxPacAdapter } from './pac/mock-sandbox-pac.adapter';
 import { FiscalConfig, FiscalConfigSchema } from '../schemasMongo/fiscal-config.schema';
@@ -19,7 +21,7 @@ import { Sale, SaleSchema } from '../schemasMongo/sale.schema';
     ]),
   ],
   controllers: [InvoicingController],
-  providers: [InvoicingService, PacFactory, MockSandboxPacAdapter],
-  exports: [InvoicingService],
+  providers: [InvoicingService, FiscalistoService, FiscalistoPacAdapter, PacFactory, MockSandboxPacAdapter],
+  exports: [InvoicingService, FiscalistoService],
 })
 export class InvoicingModule {}

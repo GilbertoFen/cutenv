@@ -46,6 +46,7 @@ export interface CfdiPayload {
     usoCFDI: string;
     email?: string;
   };
+  sendEmail?: boolean;
   informacionGlobal?: {
     periodicidad: '01' | '02' | '03' | '04';
     meses: string;
@@ -75,6 +76,7 @@ export interface PacStampResult {
   cadenaOriginalSAT?: string;
   xmlContent: string;
   qrCodeUrl?: string;
+  fiscalistoInvoiceId?: string;
   error?: string;
 }
 
@@ -99,7 +101,7 @@ export interface IPacProvider {
   /**
    * Envía el comprobante para timbrado ante el PAC y el SAT
    */
-  stamp(payload: CfdiPayload): Promise<PacStampResult>;
+  stamp(payload: CfdiPayload, idempotencyKey?: string): Promise<PacStampResult>;
 
   /**
    * Solicita la cancelación de un CFDI timbrado

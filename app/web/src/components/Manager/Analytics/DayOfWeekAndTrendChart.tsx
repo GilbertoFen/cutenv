@@ -24,9 +24,9 @@ export default function DayOfWeekAndTrendChart({ dayOfWeek, dailyTrend, periodLa
   const maxTrendRevenue = Math.max(1, ...dailyTrend.map((d) => d.revenue));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0 w-full">
       {/* 1. Ventas por Día de la Semana */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2">
@@ -92,7 +92,7 @@ export default function DayOfWeekAndTrendChart({ dayOfWeek, dailyTrend, periodLa
       </div>
 
       {/* 2. Tendencia Temporal Diaria */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2">
@@ -112,23 +112,34 @@ export default function DayOfWeekAndTrendChart({ dayOfWeek, dailyTrend, periodLa
           </span>
         </div>
 
-        {/* Visualizador de barras cronológicas */}
-        <div className="pt-2">
-          <div className="h-44 flex items-end gap-1 border-b border-slate-200 pb-1">
-            {dailyTrend.map((day) => {
+        {/* Visualizador de barras cronológicas adaptativo */}
+        <div className="pt-2 w-full min-w-0 overflow-x-auto">
+          <div className="h-44 flex items-end gap-0.5 sm:gap-1 border-b border-slate-200 pb-1 min-w-[280px]">
+            {dailyTrend.map((day, idx) => {
               const heightPercent = maxTrendRevenue > 0 ? Math.max(3, (day.revenue / maxTrendRevenue) * 100) : 3;
               const [, mm, dd] = day.date.split('-');
+              const dayNum = parseInt(dd, 10);
+
+              // Smart stepping: if > 14 days, abbreviate and step labels to never blow out width
+              const showLabel =
+                dailyTrend.length <= 14
+                  ? true
+                  : dailyTrend.length <= 21
+                    ? idx === 0 || idx === dailyTrend.length - 1 || idx % 2 === 0
+                    : idx === 0 || idx === dailyTrend.length - 1 || dayNum % 5 === 0;
 
               return (
                 <div
                   key={day.date}
-                  className="flex-1 flex flex-col items-center h-full justify-end group relative"
+                  className="flex-1 min-w-[6px] sm:min-w-0 flex flex-col items-center h-full justify-end group relative"
                 >
                   {/* Tooltip flotante */}
                   <div className="absolute -top-14 opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-20 bg-slate-900 text-white text-[10px] rounded-lg py-1 px-2 whitespace-nowrap shadow-lg">
                     <div className="font-bold">{day.date}</div>
                     <div className="text-emerald-400">{formatMoney(day.revenue)}</div>
-                    <div>{day.salesCount} ticket(s) • {day.unitsSold} u.</div>
+                    <div>
+                      {day.salesCount} ticket(s) • {day.unitsSold} u.
+                    </div>
                     {day.averageTicket !== null && (
                       <div className="text-slate-400 text-[9px]">
                         Ticket prom: {formatMoney(day.averageTicket)}
@@ -139,21 +150,31 @@ export default function DayOfWeekAndTrendChart({ dayOfWeek, dailyTrend, periodLa
                   {/* Barra */}
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className={`w-full rounded-t-sm transition-all duration-300 ${
-                      day.revenue > 0 ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-100'
-                    }`}
+                    className={`w-full rounded-t-sm transition-all duration-300 ${day.revenue > 0 ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-100'
+                      }`}
                   />
-                  <span className="text-[9px] text-slate-400 mt-1 truncate">
-                    {dd}/{mm}
-                  </span>
+
+                  {/* Label eje X */}
+                  {showLabel ? (
+                    <span className="text-[9px] text-slate-400 mt-1 truncate block text-center leading-none">
+                      {dailyTrend.length > 16 ? `${dayNum}` : `${dd}/${mm}`}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-slate-200 mt-1 select-none leading-none">
+                      ·
+                    </span>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-100">
-          Consejo analítico: Los días atípicos deben correlacionarse con festividades, clima o promociones vigentes.
+        <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1">
+          <span>Consejo analítico: Correlacione días atípicos con promociones o eventos.</span>
+          {dailyTrend.length > 16 && (
+            <span className="text-[9px] text-slate-400">Eje X: día del mes</span>
+          )}
         </div>
       </div>
     </div>

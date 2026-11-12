@@ -74,5 +74,7 @@ export class SaleResponseDto {
     rule?: string;
     benefitedItems?: string[];
     appliedAt?: Date;
+    authorizedBy?: string;
+    authReason?: string;
   };
 }

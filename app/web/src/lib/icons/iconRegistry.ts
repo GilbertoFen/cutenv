@@ -85,6 +85,9 @@ import {
   Tag,
   Clock,
   LogOut,
+  Bell,
+  History,
+  Copy,
   LucideIcon,
   LucideProps,
 } from 'lucide-react';
@@ -123,6 +126,7 @@ export type IconName =
   | 'lock'
   | 'unlock'
   | 'shield'
+  | 'security'
 
   // Acciones
   | 'add'
@@ -140,6 +144,8 @@ export type IconName =
   | 'check'
   | 'check-double'
   | 'arrow-left'
+  | 'copy'
+  | 'history'
   | 'filter'
   | 'view'
   | 'print'
@@ -191,9 +197,11 @@ export type IconName =
   | 'oil'
   | 'frozen'
   | 'clean'
-  | 'box';
+  | 'box'
+  | 'bell';
 
 export const ICON_REGISTRY: Record<IconName, LucideIcon> = {
+  bell: Bell,
   // Navegación y módulos
   home: Home,
   inventory: Boxes,
@@ -227,6 +235,7 @@ export const ICON_REGISTRY: Record<IconName, LucideIcon> = {
   lock: Lock,
   unlock: Unlock,
   shield: Shield,
+  security: Shield,
 
   // Acciones
   add: Plus,
@@ -243,6 +252,8 @@ export const ICON_REGISTRY: Record<IconName, LucideIcon> = {
   close: X,
   check: Check,
   'check-double': CheckCheck,
+  copy: Copy,
+  history: History,
   'arrow-left': ArrowLeft,
   filter: Filter,
   view: Eye,

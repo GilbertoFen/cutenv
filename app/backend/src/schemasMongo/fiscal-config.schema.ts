@@ -20,8 +20,8 @@ export class FiscalConfig {
   @Prop({ required: true, trim: true, length: 5 })
   postalCode: string; // LugarExpedicion (CP de 5 dígitos)
 
-  @Prop({ required: true, enum: ['facturama', 'finkok', 'mock_sandbox'], default: 'mock_sandbox' })
-  pacProvider: 'facturama' | 'finkok' | 'mock_sandbox';
+  @Prop({ required: true, enum: ['facturama', 'finkok', 'mock_sandbox', 'fiscalisto'], default: 'fiscalisto' })
+  pacProvider: 'facturama' | 'finkok' | 'mock_sandbox' | 'fiscalisto';
 
   @Prop({ trim: true, default: '' })
   pacUsername: string;

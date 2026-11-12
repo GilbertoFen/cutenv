@@ -3,7 +3,7 @@
 import React from 'react';
 import { AppIcon, IconName } from '@/components/icons';
 
-export type ManagerTab = "employees" | "sales" | "analytics" | "summary" | "inventory" | "recipes" | "invoicing" | "promotions";
+export type ManagerTab = "employees" | "sales" | "cash-cut" | "analytics" | "summary" | "inventory" | "recipes" | "invoicing" | "promotions";
 
 export default function Sidebar({
   active,
@@ -25,11 +25,10 @@ export default function Sidebar({
     return (
       <button
         onClick={() => onSelect(id)}
-        className={`w-full rounded-2xl px-4 py-3 text-left text-xs font-bold transition-all duration-150 flex items-center gap-3 shrink-0 active:scale-[0.99] ${
-          isActive
-            ? "bg-indigo-600 text-white shadow-soft-sm shadow-indigo-600/20"
-            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-        }`}
+        className={`w-full rounded-2xl px-4 py-3 text-left text-xs font-bold transition-all duration-150 flex items-center gap-3 shrink-0 active:scale-[0.99] ${isActive
+          ? "bg-indigo-600 text-white shadow-soft-sm shadow-indigo-600/20"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+          }`}
       >
         <AppIcon
           name={icon}
@@ -48,6 +47,7 @@ export default function Sidebar({
       </div>
       <nav className="flex md:flex-col gap-1.5 overflow-x-auto no-scrollbar pb-2 md:pb-0">
         <Item id="sales" label="Ventas y Cuentas" icon="sales" />
+        <Item id="cash-cut" label="Corte de caja" icon="cashier" />
         <Item id="analytics" label="Analíticas de Ventas" icon="kpis" />
         <Item id="promotions" label="Promociones y Cupones" icon="zap" />
         <Item id="invoicing" label="Facturación CFDI 4.0" icon="invoicing" />

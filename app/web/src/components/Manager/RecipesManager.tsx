@@ -13,6 +13,7 @@ interface RecipeItem {
   name: string;
   price: number;
   category?: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
   steps?: string;
   imageUrl?: string;
   ingredients?: {
@@ -37,15 +38,88 @@ export default function RecipesManager() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Edición explícita de insumo en receta
+  const [editingIngredientIdx, setEditingIngredientIdx] = useState<number | null>(null);
+  const [editQty, setEditQty] = useState<string>('1');
+  const [editUnit, setEditUnit] = useState<string>('g');
+
+  const getIngredientCost = (ing: { ingredientId: string; quantity: number; unitMesure: string }) => {
+    const prod = inventory.find((p) => p.id === ing.ingredientId);
+    if (!prod) return { cost: 0, hasCost: false, unitCost: 0, prodName: 'Insumo', prod: undefined };
+
+    const unitCost =
+      prod.unitCost ??
+      (prod.acquisitionCost && (prod.packageContent || 1) > 0
+        ? prod.acquisitionCost / (prod.packageContent || 1)
+        : 0);
+
+    if (!unitCost || unitCost <= 0) {
+      return { cost: 0, hasCost: false, unitCost: 0, prodName: prod.name, prod };
+    }
+
+    const prodUnit = (prod.unit || 'pza').toLowerCase().trim();
+    const ingUnit = (ing.unitMesure || prodUnit).toLowerCase().trim();
+    const qty = Number(ing.quantity) || 0;
+
+    let factor = 1;
+    if (prodUnit === ingUnit) {
+      factor = 1;
+    } else if (
+      (prodUnit === 'kg' || prodUnit === 'kilo' || prodUnit === 'kilogramo') &&
+      (ingUnit === 'g' || ingUnit === 'gramo' || ingUnit === 'gramos')
+    ) {
+      factor = 1 / 1000;
+    } else if (
+      (prodUnit === 'g' || prodUnit === 'gramo' || prodUnit === 'gramos') &&
+      (ingUnit === 'kg' || ingUnit === 'kilo' || ingUnit === 'kilogramo')
+    ) {
+      factor = 1000;
+    } else if (
+      (prodUnit === 'l' || prodUnit === 'lt' || prodUnit === 'litro' || prodUnit === 'litros') &&
+      (ingUnit === 'ml' || ingUnit === 'mililitro' || ingUnit === 'mililitros')
+    ) {
+      factor = 1 / 1000;
+    } else if (
+      (prodUnit === 'ml' || prodUnit === 'mililitro' || prodUnit === 'mililitros') &&
+      (ingUnit === 'l' || ingUnit === 'lt' || ingUnit === 'litro' || ingUnit === 'litros')
+    ) {
+      factor = 1000;
+    } else if ((prodUnit === 'kg' || prodUnit === 'kilo') && (ingUnit === 'oz' || ingUnit === 'onza')) {
+      factor = 0.0283495;
+    } else if ((prodUnit === 'l' || prodUnit === 'lt') && (ingUnit === 'oz' || ingUnit === 'onza')) {
+      factor = 0.0295735;
+    }
+
+    const cost = qty * factor * unitCost;
+    return { cost, hasCost: true, unitCost, prodName: prod.name, prod };
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
     price: '',
     category: 'Platos Fuertes',
+    station: 'caliente' as 'fria' | 'caliente' | 'ninguna',
     steps: '',
     imageUrl: '',
     ingredients: [] as { ingredientId: string; quantity: number; unitMesure: string }[],
   });
+
+  const recipeCostInfo = React.useMemo(() => {
+    let totalCost = 0;
+    let hasMissingCosts = false;
+
+    for (const ing of formData.ingredients) {
+      const info = getIngredientCost(ing);
+      if (info.hasCost) {
+        totalCost += info.cost;
+      } else {
+        hasMissingCosts = true;
+      }
+    }
+
+    return { totalCost, hasMissingCosts };
+  }, [formData.ingredients, inventory]);
 
   const loadData = async () => {
     setLoading(true);
@@ -73,6 +147,7 @@ export default function RecipesManager() {
       name: '',
       price: '',
       category: 'Platos Fuertes',
+      station: 'caliente',
       steps: '',
       imageUrl: '',
       ingredients: [],
@@ -83,10 +158,12 @@ export default function RecipesManager() {
 
   const openEditModal = (r: RecipeItem) => {
     setEditingRecipe(r);
+    const defaultStation = r.station || (r.category?.toLowerCase() === 'bebidas' ? 'ninguna' : 'caliente');
     setFormData({
       name: r.name,
       price: String(r.price ?? 0),
       category: r.category || 'Platos Fuertes',
+      station: defaultStation,
       steps: r.steps || '',
       imageUrl: r.imageUrl || '',
       ingredients: (r.ingredients || []).map((ing: any) => ({
@@ -186,6 +263,7 @@ export default function RecipesManager() {
         name: formData.name.trim(),
         price: priceNum,
         category: formData.category,
+        station: formData.station,
         steps: formData.steps.trim() || undefined,
         imageUrl: formData.imageUrl.trim() || undefined,
         ingredients: formData.ingredients.map((ing) => ({
@@ -200,6 +278,7 @@ export default function RecipesManager() {
           name: payload.name,
           price: payload.price,
           category: payload.category,
+          station: payload.station,
           steps: payload.steps,
           imageUrl: payload.imageUrl,
           ingredients: payload.ingredients.map((i) => ({
@@ -339,10 +418,37 @@ export default function RecipesManager() {
                     containerClassName="w-14 h-14 rounded-xl shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 uppercase">
-                      {r.category || 'General'}
-                    </span>
-                    <h3 className="font-bold text-sm text-slate-900 mt-1 truncate">{r.name}</h3>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 uppercase">
+                        {r.category || 'General'}
+                      </span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 ${r.station === 'fria'
+                        ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                        : r.station === 'caliente'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                        {r.station === 'fria' && (
+                          <>
+                            <AppIcon name="frozen" size={12} />
+                            <span>Cocina Fría</span>
+                          </>
+                        )}
+                        {r.station === 'caliente' && (
+                          <>
+                            <AppIcon name="flame" size={12} />
+                            <span>Cocina Caliente</span>
+                          </>
+                        )}
+                        {(!r.station || r.station === 'ninguna') && (
+                          <>
+                            <AppIcon name="coffee" size={12} />
+                            <span>Sin estación</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-900 truncate">{r.name}</h3>
                     <p className="font-extrabold text-sm text-emerald-700 mt-0.5">{currency(r.price)}</p>
                   </div>
                 </div>
@@ -445,7 +551,14 @@ export default function RecipesManager() {
                   </label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    onChange={(e) => {
+                      const newCat = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        category: newCat,
+                        station: newCat.toLowerCase() === 'bebidas' ? 'ninguna' : (prev.station === 'ninguna' ? 'caliente' : prev.station),
+                      }));
+                    }}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white"
                   >
                     <option value="Platos Fuertes">Platos Fuertes</option>
@@ -458,29 +571,105 @@ export default function RecipesManager() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    URL de Imagen (Opcional)
+                    Estación de Cocina <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, station: 'fria' })}
+                      className={`py-2 px-2 rounded-lg border text-[11px] font-black transition flex items-center justify-center gap-1 ${formData.station === 'fria'
+                        ? 'bg-sky-600 text-white border-sky-700 shadow-sm ring-2 ring-sky-300'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      title="Barra fría (sushi, sashimi, ensaladas)"
+                    >
+                      <AppIcon name="frozen" size={13} />
+                      <span>Fría</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, station: 'caliente' })}
+                      className={`py-2 px-2 rounded-lg border text-[11px] font-black transition flex items-center justify-center gap-1 ${formData.station === 'caliente'
+                        ? 'bg-amber-600 text-white border-amber-700 shadow-sm ring-2 ring-amber-300'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      title="Cocina caliente (ramen, wok, tempura)"
+                    >
+                      <AppIcon name="flame" size={13} />
+                      <span>Caliente</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, station: 'ninguna' })}
+                      className={`py-2 px-2 rounded-lg border text-[11px] font-black transition flex items-center justify-center gap-1 ${formData.station === 'ninguna'
+                        ? 'bg-slate-700 text-white border-slate-800 shadow-sm ring-2 ring-slate-400'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      title="Sin preparación en cocina (bebidas, licores, productos directos)"
+                    >
+                      <AppIcon name="coffee" size={13} />
+                      <span>Ninguna</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pasos / Instrucciones de Preparación
+                  Pasos / Instrucciones de Preparación <span className="text-slate-400 font-normal">(Opcional)</span>
                 </label>
                 <textarea
                   rows={2}
                   value={formData.steps}
                   onChange={(e) => setFormData({ ...formData, steps: e.target.value })}
-                  placeholder="Detalles para el cocinero..."
+                  placeholder="Detalles para el cocinero (opcional)..."
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Costo estimado de preparación */}
+              <div className="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-indigo-900 uppercase tracking-wide">
+                      Costo Estimado de Preparación
+                    </span>
+                    <p className="text-lg font-black text-indigo-950">
+                      {currency(recipeCostInfo.totalCost)}{' '}
+                      <span className="text-xs font-normal text-indigo-700">MXN</span>
+                    </p>
+                  </div>
+                  {Number(formData.price) > 0 && recipeCostInfo.totalCost > 0 && (
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">
+                        Margen Bruto Estimado
+                      </span>
+                      <p
+                        className={`text-sm font-black ${Number(formData.price) >= recipeCostInfo.totalCost
+                          ? 'text-emerald-700'
+                          : 'text-rose-600'
+                          }`}
+                      >
+                        {currency(Number(formData.price) - recipeCostInfo.totalCost)} (
+                        {Math.round(
+                          ((Number(formData.price) - recipeCostInfo.totalCost) /
+                            Number(formData.price)) *
+                          100
+                        )}
+                        %)
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {recipeCostInfo.hasMissingCosts && (
+                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+                    <AppIcon name="warning" size={13} className="text-amber-600 shrink-0" />
+                    <span>
+                      Uno o más insumos no tienen costo unitario en almacén. El costo calculado es parcial.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Insumos / Ingredientes */}
@@ -503,14 +692,6 @@ export default function RecipesManager() {
                       <AppIcon name="search" size={13} />
                       <span>+ Agregar Insumo</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={addIngredientRow}
-                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition"
-                      title="Agregar fila vacía manualmente"
-                    >
-                      + Fila Manual
-                    </button>
                   </div>
                 </div>
 
@@ -526,76 +707,162 @@ export default function RecipesManager() {
                 ) : (
                   <div className="space-y-2">
                     {formData.ingredients.map((ing, idx) => {
-                      const prod = inventory.find((p) => p.id === ing.ingredientId);
+                      const costInfo = getIngredientCost(ing);
+                      const prod = costInfo.prod || inventory.find((p) => p.id === ing.ingredientId);
+                      const isEditing = editingIngredientIdx === idx;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={idx}
+                            className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200 space-y-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-xs text-indigo-950">
+                                Modificar dosis de: <span className="font-bold">{prod?.name || 'Insumo'}</span>
+                              </div>
+                              <span className="text-[10px] text-indigo-700">
+                                Stock actual: {prod?.currentQty ?? 0} {prod?.unit || 'pza'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                                  Cantidad / Porción
+                                </label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  min="0.0001"
+                                  value={editQty}
+                                  onChange={(e) => setEditQty(e.target.value)}
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                  placeholder="Ej. 150"
+                                />
+                              </div>
+                              <div className="w-28">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                                  Unidad
+                                </label>
+                                <select
+                                  value={editUnit}
+                                  onChange={(e) => setEditUnit(e.target.value)}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-slate-700 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                >
+                                  <option value="g">g (gramos)</option>
+                                  <option value="kg">kg (kilos)</option>
+                                  <option value="ml">ml (mililitros)</option>
+                                  <option value="l">l (litros)</option>
+                                  <option value="pza">pza (piezas)</option>
+                                  <option value="oz">oz (onzas)</option>
+                                  <option value="porcion">porción</option>
+                                  <option value="cda">cucharada</option>
+                                </select>
+                              </div>
+                              <div className="flex items-end gap-1 pt-4">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const num = parseFloat(editQty);
+                                    if (Number.isFinite(num) && num > 0) {
+                                      handleIngredientChange(idx, 'quantity', num);
+                                      handleIngredientChange(idx, 'unitMesure', editUnit);
+                                      setEditingIngredientIdx(null);
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                                  title="Guardar cambios de porción"
+                                >
+                                  <AppIcon name="check" size={13} />
+                                  <span>Guardar</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingIngredientIdx(null)}
+                                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div
                           key={idx}
-                          className="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200"
+                          className="flex items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 transition"
                         >
-                          <div className="flex-1 min-w-[180px]">
-                            <select
-                              value={ing.ingredientId}
-                              onChange={(e) => handleIngredientChange(idx, 'ingredientId', e.target.value)}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-medium focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                            >
-                              {inventory.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name} {p.brand ? `(${p.brand})` : ''} — Stock: {p.currentQty} {p.unit || ''}
-                                </option>
-                              ))}
-                            </select>
-                            {prod && (
-                              <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
-                                <span>Almacén: <strong className="text-slate-600">{prod.currentQty} {prod.unit || 'pza'}</strong></span>
-                                {prod.currentQty <= 0 && (
-                                  <span className="text-rose-500 font-bold flex items-center gap-1">
-                                    <AppIcon name="warning" size={11} className="text-rose-500" />
-                                    <span>Agotado</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-slate-900 truncate">
+                                {prod?.name || 'Insumo'}
+                              </span>
+                              {prod?.brand && (
+                                <span className="text-[10px] text-slate-400 truncate">({prod.brand})</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
+                              <span>
+                                Porción:{' '}
+                                <strong className="text-slate-800">
+                                  {ing.quantity} {ing.unitMesure || prod?.unit || 'pza'}
+                                </strong>
+                              </span>
+                              <span className="text-slate-300">•</span>
+                              <span>
+                                Stock:{' '}
+                                <strong
+                                  className={
+                                    prod && prod.currentQty <= 0
+                                      ? 'text-rose-600'
+                                      : 'text-slate-600'
+                                  }
+                                >
+                                  {prod?.currentQty ?? 0} {prod?.unit || 'pza'}
+                                </strong>
+                              </span>
+                              {costInfo.hasCost ? (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-emerald-700 font-semibold">
+                                    Costo: {currency(costInfo.cost)}
                                   </span>
-                                )}
-                              </div>
-                            )}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-amber-600 text-[10px]">Sin costo reg.</span>
+                                </>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <label className="text-[10px] uppercase font-bold text-slate-500">Porción:</label>
-                            <input
-                              type="number"
-                              step="any"
-                              min="0.0001"
-                              value={ing.quantity}
-                              onChange={(e) => handleIngredientChange(idx, 'quantity', e.target.value)}
-                              className="w-24 px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                              placeholder="0.00"
-                            />
-                          </div>
-
-                          <div className="w-24">
-                            <select
-                              value={ing.unitMesure}
-                              onChange={(e) => handleIngredientChange(idx, 'unitMesure', e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-slate-700 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingIngredientIdx(idx);
+                                setEditQty(String(ing.quantity));
+                                setEditUnit(ing.unitMesure || prod?.unit || 'pza');
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                              title="Editar porción del insumo"
+                              aria-label="Editar insumo"
                             >
-                              <option value="g">g (gramos)</option>
-                              <option value="kg">kg (kilos)</option>
-                              <option value="ml">ml (mililitros)</option>
-                              <option value="l">l (litros)</option>
-                              <option value="pza">pza (piezas)</option>
-                              <option value="oz">oz (onzas)</option>
-                              <option value="porcion">porción</option>
-                              <option value="cda">cucharada</option>
-                            </select>
+                              <AppIcon name="edit" size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeIngredientRow(idx)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="Eliminar insumo de la receta"
+                              aria-label="Eliminar insumo"
+                            >
+                              <AppIcon name="delete" size={15} />
+                            </button>
                           </div>
-
-                          <button
-                            type="button"
-                            onClick={() => removeIngredientRow(idx)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                            title="Eliminar insumo de la receta"
-                            aria-label="Eliminar insumo"
-                          >
-                            <AppIcon name="delete" size={15} />
-                          </button>
                         </div>
                       );
                     })}
@@ -631,7 +898,7 @@ export default function RecipesManager() {
             <div className="bg-rose-50 border-b border-rose-100 p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold">
-                  🔒
+                  <AppIcon name="shield" size={18} className="text-white" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-rose-950">Autorización Requerida</h3>

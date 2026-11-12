@@ -40,5 +40,9 @@ export class UpdateRecipeDto {
 
   @IsOptional()
   @IsString()
+  station?: 'fria' | 'caliente' | 'ninguna';
+
+  @IsOptional()
+  @IsString()
   imageUrl?: string;
 }

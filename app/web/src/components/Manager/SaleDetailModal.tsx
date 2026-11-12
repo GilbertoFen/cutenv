@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { getSaleById } from "@/services/SaleService";
+import { getInvoiceXmlUrl, getInvoicePdfUrl } from "@/services/InvoicingService";
 import type { SaleData } from "@/types";
-import { Th, Td, Kpi, currency } from "@/utils/Manager/manager.functions";
+import { Th, Td, Kpi, currency, translateSaleStatus } from "@/utils/Manager/manager.functions";
 import IssueInvoiceModal from "@/components/Invoicing/IssueInvoiceModal";
 import { AppIcon } from "@/components/icons";
 
@@ -48,8 +49,13 @@ export default function SaleDetailModal({ saleId, onClose, onInvoiceCreated }: P
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <Kpi label="Folio" value={sale.folio ?? "—"} />
                 <Kpi label="Fecha" value={sale.date ? new Date(sale.date).toLocaleDateString() : "—"} />
-                <Kpi label="Estado" value={sale.status ?? "—"} />
-                <Kpi label="Total" value={currency(sale.totalAmount || 0)} />
+                <Kpi label="Estado" value={translateSaleStatus(sale.status)} />
+                <Kpi
+                  label="Total de la Venta"
+                  value={currency(sale.totalAmount || 0)}
+                  className="bg-indigo-50/60 border-indigo-200"
+                  valueClassName="text-indigo-900"
+                />
               </div>
 
               {sale.status === 'paid' && (
@@ -69,10 +75,33 @@ export default function SaleDetailModal({ saleId, onClose, onInvoiceCreated }: P
                   </div>
 
                   {sale.isFacturada ? (
-                    <span className="px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
-                      <AppIcon name="check" size={13} className="text-emerald-700" />
-                      <span>Facturada</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
+                        <AppIcon name="check" size={13} className="text-emerald-700" />
+                        <span>Facturada</span>
+                      </span>
+                      {sale.invoiceId && (
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={getInvoiceXmlUrl(String(sale.invoiceId))}
+                            target="_blank"
+                            rel="noreferrer"
+                            download
+                            className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition"
+                          >
+                            XML
+                          </a>
+                          <a
+                            href={getInvoicePdfUrl(String(sale.invoiceId))}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition"
+                          >
+                            PDF
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <button
                       onClick={() => setShowInvoiceModal(true)}

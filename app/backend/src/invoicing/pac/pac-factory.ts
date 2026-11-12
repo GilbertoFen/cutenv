@@ -2,13 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { IPacProvider } from './pac-provider.interface';
 import { MockSandboxPacAdapter } from './mock-sandbox-pac.adapter';
 import { FacturamaPacAdapter } from './facturama-pac.adapter';
+import { FiscalistoPacAdapter } from './fiscalisto-pac.adapter';
+import { FiscalistoService } from '../fiscalisto.service';
 import { FiscalConfig } from '../../schemasMongo/fiscal-config.schema';
 
 @Injectable()
 export class PacFactory {
-  constructor(private readonly mockSandboxPacAdapter: MockSandboxPacAdapter) {}
+  constructor(
+    private readonly mockSandboxPacAdapter: MockSandboxPacAdapter,
+    private readonly fiscalistoPacAdapter: FiscalistoPacAdapter,
+    private readonly fiscalistoService: FiscalistoService
+  ) {}
 
   getProvider(config?: FiscalConfig): IPacProvider {
+    // Si Fiscalisto está configurado con FISCALISTO_API_KEY o pacProvider es fiscalisto, usar Fiscalisto
+    if (this.fiscalistoService.isConfigured() || config?.pacProvider === 'fiscalisto') {
+      return this.fiscalistoPacAdapter;
+    }
+
     if (!config) {
       return this.mockSandboxPacAdapter;
     }
@@ -21,7 +32,6 @@ export class PacFactory {
       );
     }
 
-    // Default: MockSandboxPacAdapter para pruebas locales y cuando no hay credenciales externas
     return this.mockSandboxPacAdapter;
   }
 }

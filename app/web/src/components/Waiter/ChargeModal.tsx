@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { SaleData } from "@/types";
 import { getUnpaidSaleByTable, paySale, getSaleById } from "@/services/SaleService";
 import type { Props, OrderType, PaymentMethod } from "@/types/Waiter/waiter.types";
+import CustomSelect from "@/components/UI/CustomSelect";
 
 export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
   const [sale, setSale] = useState<SaleData | null>(null);
@@ -100,8 +101,9 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
         </div>
 
         {(() => {
-          const grouped = (sale.orders ?? [])
-            .flatMap((o) => o.items ?? [])
+          const activeOrders = (sale.orders ?? []).filter((o: any) => o.status !== 'cancelled');
+          const grouped = activeOrders
+            .flatMap((o) => (o.items ?? []).filter((it: any) => it.status !== 'cancelled'))
             .reduce((acc, it) => {
               const key = it.recipe;
               if (!acc[key]) acc[key] = { qty: 0, price: it.price };
@@ -131,31 +133,31 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
 
         <div className="space-y-3 mt-4 text-sm">
           <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="block text-xs font-semibold text-slate-600 mb-1">Tipo de orden</span>
-              <select
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+            <div>
+              <CustomSelect
+                label="Tipo de orden"
                 value={orderType}
-                onChange={(e) => setOrderType(e.target.value as OrderType)}
-              >
-                <option value="local">Local</option>
-                <option value="para llevar">Para llevar</option>
-                <option value="evento">Evento</option>
-                <option value="domicilio">Domicilio</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-xs font-semibold text-slate-600 mb-1">Método de pago</span>
-              <select
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                onChange={(v) => setOrderType(v as OrderType)}
+                options={[
+                  { value: 'local', label: 'Local' },
+                  { value: 'para llevar', label: 'Para llevar' },
+                  { value: 'evento', label: 'Evento' },
+                  { value: 'domicilio', label: 'Domicilio' },
+                ]}
+              />
+            </div>
+            <div>
+              <CustomSelect
+                label="Método de pago"
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </label>
+                onChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                options={[
+                  { value: 'efectivo', label: 'Efectivo' },
+                  { value: 'tarjeta', label: 'Tarjeta' },
+                  { value: 'transferencia', label: 'Transferencia' },
+                ]}
+              />
+            </div>
           </div>
 
           <div className="pt-2 flex justify-between items-center border-t text-base font-bold text-slate-900">

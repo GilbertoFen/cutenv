@@ -7,9 +7,10 @@ export class IngredientResponseDto {
 export class RecipeResponseDto {
   id: string;
   name: string;
-  steps: string;
+  steps?: string;
   price: number;
   ingredients: IngredientResponseDto[];
   imageUrl?: string;
   category?: string;
+  station?: 'fria' | 'caliente' | 'ninguna';
 }

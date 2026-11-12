@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Post, Body, Patch, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, Patch, Query, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { PaySaleDto } from './dto/pay-sale.dto';
@@ -64,6 +65,21 @@ export class SalesController {
   @Get('/tickets')
   getPendingTickets(@Query('status') status: 'requested' | 'printed' = 'requested') {
     return this.salesService.getTicketQueue(status);
+  }
+
+  @Get('cash-cut/today')
+  getCashCutToday(@Query('date') date?: string) {
+    return this.salesService.getCashCutData(date);
+  }
+
+  @Get('cash-cut/pdf')
+  async getCashCutPdf(@Query('date') date: string | undefined, @Res() res: Response) {
+    const pdfBuffer = await this.salesService.generateCashCutPdf(date);
+    const filename = `corte-de-caja-${date || new Date().toISOString().slice(0, 10)}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
   }
 
   @Get(':id')

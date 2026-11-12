@@ -12,19 +12,25 @@ import { CashierGateway } from 'src/gateways/cashier.gateway';
 import { AuthModule } from 'src/auth/auth.module';
 import { PromotionsModule } from 'src/promotions/promotions.module';
 
+import { Restaurant, RestaurantSchema } from '../schemasMongo/restaurant.schema';
+import { Recipe, RecipeSchema } from '../schemasMongo/recipe.schema';
+
 @Module({
   imports: [
-    MongooseModule.forFeature(
-      [{ name: Sale.name, schema: SaleSchema },
-      { name: Order.name, schema: OrderSchema },  
-      { name: Table.name, schema: TableSchema },]),
-      forwardRef(() => OrdersModule),
-      forwardRef(() => TablesModule),
-      AuthModule,
-      PromotionsModule,
-  ], 
+    MongooseModule.forFeature([
+      { name: Sale.name, schema: SaleSchema },
+      { name: Order.name, schema: OrderSchema },
+      { name: Table.name, schema: TableSchema },
+      { name: Restaurant.name, schema: RestaurantSchema },
+      { name: Recipe.name, schema: RecipeSchema },
+    ]),
+    forwardRef(() => OrdersModule),
+    forwardRef(() => TablesModule),
+    AuthModule,
+    PromotionsModule,
+  ],
   controllers: [SalesController],
   providers: [SalesService, CashierGateway],
   exports: [SalesService, MongooseModule],
 })
-export class SalesModule {}
+export class SalesModule { }

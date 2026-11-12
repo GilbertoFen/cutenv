@@ -46,6 +46,12 @@ export class Sale {
   @Prop({ default: 0 })
   discountAmount: number;
 
+  @Prop({ default: 0 })
+  paidAmount?: number;
+
+  @Prop({ type: [{ method: String, amount: Number, date: Date }], default: [] })
+  payments?: Array<{ method: string; amount: number; date?: Date }>;
+
   @Prop({ type: Object, required: false })
   promotionApplied?: {
     promotionId: string;
@@ -57,6 +63,8 @@ export class Sale {
     rule?: string;
     benefitedItems?: string[];
     appliedAt?: Date;
+    authorizedBy?: string;
+    authReason?: string;
   };
 }
 

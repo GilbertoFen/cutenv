@@ -5,6 +5,7 @@ import type { Reservation, Table } from "@/types";
 import { seatReservation, cancelReservation, noShowReservation } from "@/services/ReservationService";
 import { fmt } from "@/utils/Receptionist/receptionist.functions";
 import { AppIcon } from "@/components/icons";
+import { useNotification } from "@/context/NotificationContext";
 
 type Props = {
   reservation: Reservation;
@@ -19,34 +20,53 @@ export default function ReservationDetailsModal({
   onClose,
   onChanged,
 }: Props) {
+  const { notify, confirm } = useNotification();
   const seat = async () => {
     try {
       await seatReservation(reservation.id);
+      notify.success("Comensales sentados en la mesa");
       onChanged();
       onClose();
     } catch (e: any) {
-      alert(e?.message || e || "Error al sentar");
+      notify.error(e?.message || e || "Error al sentar");
     }
   };
 
   const cancel = async () => {
-    if (!confirm("¿Cancelar esta reservación?")) return;
+    const ok = await confirm({
+      title: "Cancelar reservación",
+      message: "¿Confirmas que deseas cancelar esta reservación? La mesa quedará liberada.",
+      confirmText: "Sí, cancelar",
+      cancelText: "Volver",
+      type: "danger",
+    });
+    if (!ok) return;
     try {
       await cancelReservation(reservation.id);
+      notify.success("Reservación cancelada");
       onChanged();
       onClose();
     } catch (e: any) {
-      alert(e?.message || e || "Error al cancelar");
+      notify.error(e?.message || e || "Error al cancelar");
     }
   };
 
   const noShow = async () => {
+    const ok = await confirm({
+      title: "Registrar inasistencia",
+      message: "¿Confirmas que el cliente no se presentó a la reservación?",
+      confirmText: "Confirmar inasistencia",
+      cancelText: "Volver",
+      type: "warning",
+    });
+    if (!ok) return;
     try {
       await noShowReservation(reservation.id);
+      notify.success("Inasistencia registrada");
       onChanged();
       onClose();
     } catch (e: any) {
-      alert(e?.message || e || "Error al marcar inasistencia");
+      notify.error(e?.message || e || "Error al marcar inasistencia");
     }
   };
 

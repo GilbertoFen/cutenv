@@ -80,22 +80,20 @@ export default function InventoryConsumptionPanel({ consumption, note }: Props) 
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <span
-                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
-                          isOutOfStock
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : isLowStock
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${isOutOfStock
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : isLowStock
                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isOutOfStock
-                              ? 'bg-rose-500'
-                              : isLowStock
+                          className={`w-1.5 h-1.5 rounded-full ${isOutOfStock
+                            ? 'bg-rose-500'
+                            : isLowStock
                               ? 'bg-amber-500'
                               : 'bg-emerald-500'
-                          }`}
+                            }`}
                         />
                         {c.stockStatus}
                       </span>
@@ -116,7 +114,7 @@ export default function InventoryConsumptionPanel({ consumption, note }: Props) 
         <AppIcon name="info" size={15} className="text-slate-400 shrink-0 mt-0.5" />
         <div>
           <strong>Metodología de inventario: </strong>
-          {note} El inventario actual no se modifica desde este módulo analítico.
+          {note} Este panel es informativo y no modifica las existencias físicas actuales.
         </div>
       </div>
     </div>

@@ -3,7 +3,8 @@
 import { useCallback, useMemo, useState } from "react";
 import type { SaleData } from "@/types";
 import type { Props } from "@/types/Manager/manager.types";
-import { Kpi, Th, Td, currency, dateFormat, num, safe } from "@/utils/Manager/manager.functions";
+import { Kpi, Th, Td, currency, dateFormat, num, safe, translateSaleStatus } from "@/utils/Manager/manager.functions";
+import { exportSalesToExcel, exportSalesToCSV } from "@/utils/Manager/salesExport";
 
 import { AppIcon } from "@/components/icons";
 
@@ -83,30 +84,20 @@ export default function ReportsPanel({ allSales, defaultDate }: Props) {
       .map(([date, v]) => ({ date, ...v, avg: v.count ? v.total / v.count : 0 }));
   }, [filtered]);
 
-  const exportCSV = () => {
-    const rows = [
-      ["Fecha desde", from],
-      ["Fecha hasta", to],
-      [],
-      ["KPIs"],
-      ["Ventas", String(kpis.count)],
-      ["Total", currency(kpis.total)],
-      ["Ticket promedio", currency(kpis.avg)],
-      ["Pagadas", String(kpis.paid)],
-      ["Abiertas", String(kpis.open)],
-      [],
-      ["Detalle por día"],
-      ["Fecha", "Ventas", "Total", "Promedio"],
-      ...byDay.map((r) => [r.date, String(r.count), num(r.total), num(r.avg)]),
-    ];
-    const csv = rows.map((r) => r.map(safe).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reporte_${from}_a_${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExportExcel = () => {
+    exportSalesToExcel(filtered, {
+      from,
+      to,
+      orderType,
+    });
+  };
+
+  const handleExportCSV = () => {
+    exportSalesToCSV(filtered, {
+      from,
+      to,
+      orderType,
+    });
   };
 
   return (
@@ -158,7 +149,19 @@ export default function ReportsPanel({ allSales, defaultDate }: Props) {
           <button className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-100" onClick={setThisMonth}>
             Este mes
           </button>
-          <button className="rounded-lg bg-[#14144f] hover:bg-[#1f1f6d] text-white px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1.5" onClick={exportCSV}>
+          <button
+            className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm active:scale-95"
+            onClick={handleExportExcel}
+            title="Exportar archivo Excel (.xlsx) con resumen, detalle de cuentas y desglose de platillos"
+          >
+            <AppIcon name="download" size={13} />
+            <span>Exportar XLSX</span>
+          </button>
+          <button
+            className="rounded-lg bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm active:scale-95"
+            onClick={handleExportCSV}
+            title="Exportar archivo CSV con codificación UTF-8 BOM para Excel"
+          >
             <AppIcon name="download" size={13} />
             <span>Exportar CSV</span>
           </button>

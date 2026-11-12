@@ -3,4 +3,5 @@ export class TableResponseDto {
   number: number;
   status: string; 
   capacity: number;
+  occupiedAt?: Date;
 }

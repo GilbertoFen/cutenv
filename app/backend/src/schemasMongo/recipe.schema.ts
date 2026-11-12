@@ -6,19 +6,20 @@ export type RecipeDocument = Recipe & Document;
 @Schema({ timestamps: true })
 export class Recipe {
 
-  @Prop({ 
-    required: true 
+  @Prop({
+    required: true
   })
   name: string;
-  
+
   @Prop({
-    required: true,
+    required: false,
+    default: '',
   })
-  steps: string;
+  steps?: string;
 
 
   @Prop({
-    required : true
+    required: true
   })
   price: number;
 
@@ -37,9 +38,18 @@ export class Recipe {
 
   @Prop()
   category?: string;
-  
+
+  @Prop({ type: String, enum: ['fria', 'caliente', 'ninguna'], default: 'ninguna' })
+  station: 'fria' | 'caliente' | 'ninguna';
+
   @Prop()
   imageUrl?: string;
+
+  @Prop({ type: String, required: false, default: '90101501' })
+  claveProdServ?: string;
+
+  @Prop({ type: String, required: false, default: 'E48' })
+  claveUnidad?: string;
 
   @Prop({ default: true })
   isActive: boolean;

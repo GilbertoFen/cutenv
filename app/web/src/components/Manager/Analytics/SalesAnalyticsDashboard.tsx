@@ -105,13 +105,7 @@ export default function SalesAnalyticsDashboard() {
       <header className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="bg-indigo-100 text-indigo-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                Módulo Analítico
-              </span>
-              <span className="text-xs text-slate-400">Datos Reales en MongoDB Atlas</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 mt-1">
+            <h1 className="text-2xl font-black text-slate-900">
               Analíticas de Ventas y Rendimiento
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -148,11 +142,10 @@ export default function SalesAnalyticsDashboard() {
               <button
                 key={opt.id}
                 onClick={() => setPeriod(opt.id)}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  period === opt.id
-                    ? 'bg-white text-indigo-950 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${period === opt.id
+                  ? 'bg-white text-indigo-950 font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 {opt.label}
               </button>
@@ -204,7 +197,7 @@ export default function SalesAnalyticsDashboard() {
       {loading && !data && (
         <div className="space-y-4 py-12 text-center text-slate-400">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs font-semibold">Calculando agregaciones en MongoDB Atlas…</p>
+          <p className="text-xs font-semibold">Cargando analíticas de ventas…</p>
         </div>
       )}
 

@@ -34,17 +34,17 @@ export class WaiterGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     emitToWaiter(waiterId: string, event: string, data: any) {
-        this.server.to(`waiter:${waiterId}`).emit(event, data);
+        this.server?.to(`waiter:${waiterId}`)?.emit(event, data);
     }
 
     emitToTable(tableId: string, event: string, data: any) {
         console.log('----- SOCKET ---- WAITER emitToTable:', `table:${tableId}`, event, { id: data?.id, status: data?.status });
-        this.server.to(`table:${tableId}`).emit(event, data);
+        this.server?.to(`table:${tableId}`)?.emit(event, data);
     }
 
     emitToAll(event: string, data: any) {
         console.log('----- SOCKET ---- WAITER  emitToAll:', event, { id: data?.id, status: data?.status });
-        this.server.emit(event, data)
+        this.server?.emit(event, data);
     }
 
 

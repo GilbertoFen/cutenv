@@ -39,35 +39,32 @@ export default function WorkerPage() {
 
   const isOperatorAdmin = Boolean(
     adminUser &&
-      (adminUser.role === 'owner' || adminUser.role === 'manager') &&
-      (!workerUser || workerUser.role !== 'worker')
+    (adminUser.role === 'owner' || adminUser.role === 'manager') &&
+    (!workerUser || workerUser.role !== 'worker')
   );
 
   const modules = [
     {
       id: 'waiter',
-      title: 'Mesero y Comandas',
-      subtitle: 'Toma de pedidos, gestión de mesas activas y entrega de platillos',
+      title: 'Mesero',
       href: '/waiter',
       icon: 'waiter' as const,
-      color: 'from-blue-600 to-indigo-700',
+      color: 'from-emerald-600 to-teal-700',
       badge: 'Servicio en Sala',
-      badgeColor: 'bg-blue-100 text-blue-800',
+      badgeColor: 'bg-emerald-100 text-emerald-800',
     },
     {
       id: 'cook',
-      title: 'Cocina y Preparación',
-      subtitle: 'Comandas en cola, tiempos de preparación y pase de platillos listos',
+      title: 'Cocina',
       href: '/cook',
       icon: 'chef' as const,
-      color: 'from-amber-600 to-orange-700',
+      color: 'from-emerald-600 to-teal-700',
       badge: 'Área de Cocina',
-      badgeColor: 'bg-amber-100 text-amber-900',
+      badgeColor: 'bg-emerald-100 text-emerald-800',
     },
     {
       id: 'cashier',
-      title: 'Caja y Cobro',
-      subtitle: 'Emisión de tickets, promociones 2x1 y registro de cobros',
+      title: 'Cajero',
       href: '/cashier',
       icon: 'cashier' as const,
       color: 'from-emerald-600 to-teal-700',
@@ -76,25 +73,24 @@ export default function WorkerPage() {
     },
     {
       id: 'receptionist',
-      title: 'Recepción y Host',
-      subtitle: 'Asignación de mesas a comensales y control de reservaciones',
+      title: 'Recepción',
       href: '/receptionist',
       icon: 'reception' as const,
-      color: 'from-purple-600 to-indigo-800',
+      color: 'from-emerald-600 to-teal-700',
       badge: 'Llegadas y Agenda',
-      badgeColor: 'bg-purple-100 text-purple-800',
+      badgeColor: 'bg-emerald-100 text-emerald-800',
     },
   ];
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 animate-fadeIn px-2 sm:px-4 py-2">
-      {/* Header Operativo para Tablet */}
+      {/* Header Operativo */}
       <header className="bg-white rounded-3xl p-6 sm:p-8 shadow-soft-xs border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              {isOperatorAdmin ? 'Modo Operativo (Administrador)' : 'Estación Operativa • Modo Táctil'}
+              {isOperatorAdmin ? 'Modo Operativo (Administrador)' : 'Estación Operativa'}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
@@ -132,7 +128,7 @@ export default function WorkerPage() {
           <Link
             key={m.id}
             href={m.href}
-            className="group relative bg-white rounded-3xl p-6 sm:p-8 shadow-soft-xs hover:shadow-soft-lg border border-slate-200/90 hover:border-indigo-400 transition-all duration-200 flex flex-col justify-between min-h-[210px] sm:min-h-[230px] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-indigo-500/20"
+            className="group relative bg-white rounded-3xl p-6 sm:p-7 shadow-soft-xs hover:shadow-soft-lg border border-slate-200/90 hover:border-indigo-400 transition-all duration-200 flex flex-col justify-between min-h-[160px] sm:min-h-[170px] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-indigo-500/20"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-4">
@@ -155,18 +151,8 @@ export default function WorkerPage() {
                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight">
                     {m.title}
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                    {m.subtitle}
-                  </p>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400">
-              <span className="flex items-center gap-1">
-                <span>📱 Optimizado para pantalla táctil</span>
-              </span>
-              <span className="text-indigo-600 font-black">Tocar para ingresar</span>
             </div>
           </Link>
         ))}

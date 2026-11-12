@@ -54,6 +54,8 @@ export async function paySale(
     paymentMethod: PaymentMethod;
     promotionId?: string;
     discountAmount?: number;
+    authorizedBy?: string;
+    authReason?: string;
     promotionApplied?: any;
   }
 ) {
@@ -130,4 +132,92 @@ export async function cancelSale(
   }
 
   return res.json();
+}
+
+export interface CashCutData {
+  restaurantName: string;
+  date: string;
+  dateFormatted: string;
+  generatedAt: string;
+  generatedAtFormatted: string;
+  timezone: string;
+  summary: {
+    totalRevenue: number;
+    totalOrders: number;
+    totalTransactions: number;
+    averageTicket: number;
+    totalDiscounts: number;
+  };
+  byPaymentMethod: {
+    items: Array<{
+      method: string;
+      label: string;
+      total: number;
+      transactionsCount: number;
+      percentage: number;
+    }>;
+    totalRevenue: number;
+    totalTransactions: number;
+  };
+  byOrderType: {
+    items: Array<{
+      orderType: string;
+      label: string;
+      total: number;
+      ordersCount: number;
+      percentage: number;
+    }>;
+    totalAmount: number;
+    totalOrders: number;
+  };
+  kitchenActivity: {
+    coldComandasCount: number;
+    hotComandasCount: number;
+    ordersWithColdCount: number;
+    ordersWithHotCount: number;
+    coldDishesCount: number;
+    hotDishesCount: number;
+    totalComandasCount: number;
+    totalOrdersCount: number;
+    totalDishesCount: number;
+  };
+  recentSales: Array<{
+    id: string;
+    folio: string;
+    tableNumber: number | string;
+    orderType: string;
+    paymentMethod: string;
+    status: string;
+    totalAmount: number;
+    discountAmount: number;
+    date: string | Date;
+    time: string;
+  }>;
+}
+
+export async function getCashCutToday(date?: string): Promise<CashCutData> {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const res = await apiFetch(`/sales/cash-cut/today${query}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al obtener el corte de caja del día');
+  }
+  return res.json();
+}
+
+export async function downloadCashCutPdf(date?: string): Promise<void> {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const res = await apiFetch(`/sales/cash-cut/pdf${query}`);
+  if (!res.ok) {
+    throw new Error('Error al descargar el PDF de corte de caja');
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `corte-de-caja-${date || new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
 }

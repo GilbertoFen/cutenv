@@ -15,7 +15,6 @@ export default function InventoryReportModal({ isOpen, onClose, items }: Props) 
   if (!isOpen) return null;
 
   const totalItems = items.length;
-  const totalStock = items.reduce((acc, i) => acc + (Number(i.currentQty) || 0), 0);
   const totalValuation = items.reduce(
     (acc, i) => acc + (Number(i.currentQty) || 0) * (Number(i.price) || 0),
     0
@@ -73,18 +72,12 @@ export default function InventoryReportModal({ isOpen, onClose, items }: Props) 
           </div>
 
           {/* Resumen KPIs */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
               <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500 block mb-1">
                 Total de Insumos Registrados
               </span>
               <span className="text-2xl font-black text-slate-900">{fmtNum(totalItems)}</span>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
-              <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500 block mb-1">
-                Stock Total Físico (Unidades)
-              </span>
-              <span className="text-2xl font-black text-indigo-700">{fmtNum(totalStock)}</span>
             </div>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
               <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500 block mb-1">

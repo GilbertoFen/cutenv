@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Order } from '@/types';
 import { getPreparingOrders } from '@/services/OrderService';
 import { getKitchenSocket } from '@/gateways/socketKitchen';
+import { isTicketACocinaEnabled, printKitchenOrderToLocalAgent } from '@/services/PrinterService';
 
 export function useKitchenOrders(authToken?: string) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -17,6 +18,13 @@ export function useKitchenOrders(authToken?: string) {
     const onCreated = (o: Order) => {
       if (o.status !== 'preparing') return;
       setOrders((prev) => (prev.some((x) => x.id === o.id) ? prev : [o, ...prev]));
+
+      // Impresión automática silenciosa en cocina si TICKET_A_COCINA=TRUE
+      if (isTicketACocinaEnabled()) {
+        printKitchenOrderToLocalAgent(o).catch((err) =>
+          console.warn('[useKitchenOrders] Fallo silencioso en auto-print de cocina:', err)
+        );
+      }
     };
 
     const onUpdated = (o: Order) => {

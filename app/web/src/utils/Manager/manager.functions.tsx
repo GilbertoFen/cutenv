@@ -1,12 +1,61 @@
 import React from "react";
 
-export function Kpi({ label, value }: { label: string; value: string }) {
+export function Kpi({
+  label,
+  value,
+  className = "",
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  valueClassName?: string;
+}) {
   return (
-    <div className="min-w-[170px] rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-soft-xs bg-white hover:shadow-soft-sm transition-all duration-150">
-      <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">{label}</div>
-      <div className="text-xl sm:text-2xl font-black text-slate-900 whitespace-nowrap tracking-tight">{value}</div>
+    <div className={`w-full min-w-0 rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 md:p-5 shadow-soft-xs bg-white hover:shadow-soft-sm transition-all duration-150 flex flex-col justify-between ${className}`}>
+      <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1 truncate">{label}</div>
+      <div className={`text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight break-normal ${valueClassName}`}>{value}</div>
     </div>
   );
+}
+
+export function translateSaleStatus(status?: string): string {
+  if (!status) return "—";
+  const s = status.toLowerCase().trim();
+  switch (s) {
+    case "paid":
+      return "Pagada";
+    case "unpaid":
+      return "Sin pagar";
+    case "partial":
+      return "Pago parcial";
+    case "pending":
+      return "Pendiente";
+    case "cancelled":
+      return "Cancelada";
+    case "refunded":
+      return "Reembolsada";
+    case "open":
+      return "Abierta";
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+
+export function getSaleStatusBadgeClass(status?: string): string {
+  const s = (status || "").toLowerCase().trim();
+  switch (s) {
+    case "paid":
+      return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    case "cancelled":
+      return "bg-rose-50 text-rose-800 border-rose-200";
+    case "partial":
+    case "pending":
+      return "bg-amber-50 text-amber-800 border-amber-200";
+    case "unpaid":
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200";
+  }
 }
 
 export function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {

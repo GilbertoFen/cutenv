@@ -3,6 +3,8 @@ import { getModelToken } from '@nestjs/mongoose';
 import { TablesService } from './tables.service';
 import { Table } from '../schemasMongo/table.schema';
 import { Sale } from '../schemasMongo/sale.schema';
+import { Order } from '../schemasMongo/order.schema';
+import { Reservation } from '../schemasMongo/reservation.schema';
 import { TablesGateway } from '../gateways/tables.gateway';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
@@ -35,6 +37,8 @@ describe('TablesService', () => {
         TablesService,
         { provide: getModelToken(Table.name), useValue: mockTableModel },
         { provide: getModelToken(Sale.name), useValue: mockSaleModel },
+        { provide: getModelToken(Order.name), useValue: { find: jest.fn().mockResolvedValue([]) } },
+        { provide: getModelToken(Reservation.name), useValue: { find: jest.fn().mockResolvedValue([]), findOne: jest.fn().mockResolvedValue(null) } },
         { provide: TablesGateway, useValue: mockTablesGateway },
       ],
     }).compile();

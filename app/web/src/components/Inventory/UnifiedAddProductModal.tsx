@@ -31,6 +31,8 @@ const PURCHASE_UNITS = [
   { val: 'lata', label: 'Lata' },
   { val: 'cubeta', label: 'Cubeta / Bidón' },
   { val: 'pieza', label: 'Pieza individual' },
+  { val: 'kg', label: 'Kilogramos (kg)' },
+  { val: 'l', label: 'Litros (l)' },
 ];
 
 const MEASURE_UNITS = [
@@ -42,12 +44,18 @@ const MEASURE_UNITS = [
 ];
 
 export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: Props) {
-  const [activeTab, setActiveTab] = useState<'scan' | 'manual'>('manual');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<BarcodeLookupResponse | null>(null);
+
+  // Notificaciones limpias de búsqueda
+  const [searchMessage, setSearchMessage] = useState<string | null>(null);
+  const [searchSuccess, setSearchSuccess] = useState<boolean | null>(null);
+
+  // Opción producto genérico / sin código de barras
+  const [isGeneric, setIsGeneric] = useState(false);
 
   // Cámara / Escáner
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -58,23 +66,30 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
   // Formulario único de insumo
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('Abarrotes y Secos');
+  const [category, setCategory] = useState('Verduras y Frutas');
   const [price, setPrice] = useState('0');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
   // Lógica de empaque y unidades
-  const [purchaseUnit, setPurchaseUnit] = useState('caja');
-  const [packagesCount, setPackagesCount] = useState('1'); // Cuántas cajas se adquieren
-  const [contentPerUnit, setContentPerUnit] = useState('1'); // Cantidad dentro de cada caja (ej. 12 botellas, o 1.5)
-  const [contentUnit, setContentUnit] = useState('l'); // Unidad del contenido (l, ml, kg, g, pza)
-  const [baseUnit, setBaseUnit] = useState('ml'); // Unidad base elegida para el consumo en recetas
+  const [purchaseUnit, setPurchaseUnit] = useState('pieza');
+  const [packagesCount, setPackagesCount] = useState('1'); // Cuántas unidades/cajas se adquieren
+  const [contentPerUnit, setContentPerUnit] = useState('1'); // Contenido dentro de cada unidad (ej. 1 kg, 12 botellas, etc.)
+  const [contentUnit, setContentUnit] = useState('kg'); // Unidad del contenido (kg, g, l, ml, pza)
+  const [baseUnit, setBaseUnit] = useState('g'); // Unidad base elegida para recetas (g, ml, pza)
+
+  // Costos de adquisición
+  const [acquisitionCost, setAcquisitionCost] = useState('0');
+  const [returnableOnCancel, setReturnableOnCancel] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setError(null);
+      setSearchMessage(null);
+      setSearchSuccess(null);
       setLookupResult(null);
       setBarcodeInput('');
+      setIsGeneric(false);
       setName('');
       setBrand('');
       setCategory('Abarrotes y Secos');
@@ -84,9 +99,10 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
       setPurchaseUnit('caja');
       setPackagesCount('1');
       setContentPerUnit('1');
-      setContentUnit('l');
-      setBaseUnit('ml');
-      setActiveTab('manual');
+      setContentUnit('kg');
+      setBaseUnit('g');
+      setAcquisitionCost('0');
+      setReturnableOnCancel(false);
     } else {
       stopCamera();
     }
@@ -106,6 +122,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
 
   const startCamera = async () => {
     setError(null);
+    setSearchMessage(null);
     setIsCameraActive(true);
     try {
       const { BrowserMultiFormatReader } = await import('@zxing/browser');
@@ -121,7 +138,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
         const controls = await reader.decodeFromVideoDevice(
           deviceId,
           videoRef.current,
-          (res, err) => {
+          (res) => {
             if (res) {
               const code = res.getText();
               setBarcodeInput(code);
@@ -141,45 +158,51 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
   const handleProcessBarcode = async (codeToSearch?: string) => {
     const code = (codeToSearch || barcodeInput).trim();
     if (!code) {
-      setError('Ingrese un código de barras para consultar');
+      setError('Ingresa un código de barras para consultar');
       return;
     }
 
     setLookingUp(true);
     setError(null);
+    setSearchMessage(null);
+    setSearchSuccess(null);
+
     try {
       const res = await lookupBarcode(code);
       setLookupResult(res);
 
-      if (res.source === 'local' && res.product) {
-        // Producto ya existe en la base de datos (detectar duplicado)
-        setName(res.product.name);
-        setBrand(res.product.brand || '');
-        setCategory(res.product.category || 'Abarrotes y Secos');
-        setPrice(String(res.product.price || 0));
-        setDescription(res.product.description || '');
-        setImageUrl(res.product.imageUrl || '');
-        if (res.product.unitMesure) {
-          setContentUnit(res.product.unitMesure);
-          setBaseUnit(res.product.unitMesure);
+      const prod = res.product || res.data;
+
+      if (res.found && prod) {
+        setName(prod.name || '');
+        setBrand(prod.brand || '');
+        setCategory(prod.category || 'Abarrotes y Secos');
+        setDescription(prod.description || '');
+        setImageUrl(prod.imageUrl || '');
+        if (prod.price || prod.unitCost) {
+          setPrice(String(prod.price || prod.unitCost || 0));
         }
-      } else if (res.source === 'openfoodfacts' && res.product) {
-        // Información precargada desde catálogo internacional
-        setName(res.product.name);
-        setBrand(res.product.brand || '');
-        setCategory(res.product.category || 'Abarrotes y Secos');
-        setDescription(res.product.description || '');
-        setImageUrl(res.product.imageUrl || '');
-        if (res.product.quantity && res.product.unitMesure) {
-          setContentPerUnit(String(res.product.quantity));
-          setContentUnit(res.product.unitMesure);
+        if (prod.acquisitionCost) {
+          setAcquisitionCost(String(prod.acquisitionCost));
         }
+        if (prod.quantity && prod.unitMesure) {
+          setContentPerUnit(String(prod.quantity));
+          setContentUnit(prod.unitMesure);
+          setBaseUnit(prod.unitMesure);
+        }
+        if (prod.returnableOnCancel !== undefined) {
+          setReturnableOnCancel(Boolean(prod.returnableOnCancel));
+        }
+        setSearchMessage('Producto encontrado.');
+        setSearchSuccess(true);
       } else {
-        // Código nuevo no encontrado en catálogo: mantener código y permitir captura manual directa
         setBarcodeInput(code);
+        setSearchMessage('Producto no encontrado. Ingresa los datos manualmente.');
+        setSearchSuccess(false);
       }
-    } catch (e: any) {
-      setError(`Error al buscar código: ${e.message || 'Sin conexión'}. Puede capturarlo manualmente.`);
+    } catch {
+      setSearchMessage('Producto no encontrado. Ingresa los datos manualmente.');
+      setSearchSuccess(false);
     } finally {
       setLookingUp(false);
     }
@@ -222,6 +245,12 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
 
   const calc = calculateResultingStock();
 
+  // Cálculo de costo unitario por unidad base
+  const totalCost = Math.max(0, parseFloat(acquisitionCost) || 0);
+  const unitCostCalculated = calc.convertedTotal > 0 && totalCost > 0
+    ? +(totalCost / calc.convertedTotal).toFixed(4)
+    : 0;
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -242,15 +271,19 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
         await registerStockEntry(
           lookupResult.product.id,
           calc.convertedTotal,
-          `Entrada unificada: ${packagesCount} ${purchaseUnit}(s) de ${contentPerUnit} ${contentUnit}`
+          `Entrada: ${packagesCount} ${purchaseUnit}(s) de ${contentPerUnit} ${contentUnit}`
         );
       } else {
         await createProduct({
           name: name.trim(),
           brand: brand.trim() || undefined,
           category,
-          price: parseFloat(price) || 0,
-          barCode: barcodeInput.trim() || undefined,
+          price: unitCostCalculated || parseFloat(price) || 0,
+          acquisitionCost: totalCost,
+          unitCost: unitCostCalculated,
+          isGeneric,
+          returnableOnCancel,
+          barCode: isGeneric ? undefined : (barcodeInput.trim() || undefined),
           description: description.trim() || undefined,
           imageUrl: imageUrl.trim() || undefined,
           purchaseUnit,
@@ -283,11 +316,11 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                Registro Unificado de Insumos e Inventario
+                Registro de Insumos e Inventario
               </h2>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Escaneo óptico, catálogo asistido y calculadora de empaques a unidades base
+              Captura asistida por código de barras o registro directo de productos genéricos
             </p>
           </div>
           <button
@@ -298,59 +331,60 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
           </button>
         </header>
 
-        {/* Barra superior de modo de captura */}
-        <div className="p-4 border-b border-slate-100 bg-white flex flex-wrap items-center gap-2 shrink-0">
-          <div className="inline-flex rounded-xl overflow-hidden border border-slate-300">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('manual');
-                stopCamera();
-              }}
-              className={`px-4 py-2 text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'manual'
-                  ? 'bg-[#14144f] text-white shadow-sm'
-                  : 'bg-white text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <AppIcon name="add" size={14} />
-              <span>Captura de Insumo</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('scan');
-                startCamera();
-              }}
-              className={`px-4 py-2 text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'scan'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-white text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <AppIcon name="scan" size={14} />
-              <span>Escanear Código</span>
-            </button>
-          </div>
-
-          <div className="flex-1 min-w-[200px] flex items-center gap-2">
+        {/* Barra superior de captura */}
+        <div className="p-4 border-b border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 flex-1 min-w-[260px]">
             <input
               ref={barcodeInputRef}
               type="text"
-              placeholder="Escanear o teclear código de barras…"
+              disabled={isGeneric}
+              placeholder={isGeneric ? "Insumo genérico (sin código de barras)" : "Escanear o teclear código de barras…"}
               value={barcodeInput}
               onChange={(e) => setBarcodeInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleProcessBarcode())}
-              className="flex-1 px-3 py-1.5 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="flex-1 px-3.5 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
             />
             <button
               type="button"
-              disabled={lookingUp}
+              disabled={lookingUp || isGeneric}
               onClick={() => handleProcessBarcode()}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-soft-xs"
             >
-              {lookingUp ? 'Buscando…' : 'Consultar'}
+              {lookingUp ? 'Buscando…' : 'Buscar'}
             </button>
+            <button
+              type="button"
+              onClick={isCameraActive ? stopCamera : startCamera}
+              disabled={isGeneric}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${isCameraActive
+                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                } disabled:opacity-50`}
+              title="Encender cámara para escanear"
+            >
+              <AppIcon name="scan" size={14} />
+              <span>{isCameraActive ? 'Detener Cámara' : 'Cámara'}</span>
+            </button>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 transition">
+              <input
+                type="checkbox"
+                checked={isGeneric}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsGeneric(checked);
+                  if (checked) {
+                    setBarcodeInput('');
+                    setSearchMessage(null);
+                    stopCamera();
+                  }
+                }}
+                className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+              />
+              <span>Producto genérico / Sin código de barras</span>
+            </label>
           </div>
         </div>
 
@@ -362,30 +396,35 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
             </div>
           )}
 
-          {/* Advertencia de duplicado o producto local existente */}
+          {/* Notificación limpia de búsqueda */}
+          {searchMessage && (
+            <div
+              className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${searchSuccess
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                : 'bg-amber-50 border border-amber-200 text-amber-900'
+                }`}
+            >
+              <AppIcon name={searchSuccess ? 'check' : 'warning'} size={15} />
+              <span>{searchMessage}</span>
+            </div>
+          )}
+
+          {/* Advertencia de producto local existente */}
           {lookupResult?.source === 'local' && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-amber-800">
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-indigo-800">
                 <span>⚠️ Producto existente en inventario:</span>
                 <span className="underline">{lookupResult.product?.name}</span>
               </div>
-              <p className="text-[11px] text-amber-800">
+              <p className="text-[11px] text-indigo-800">
                 Stock actual: <strong>{lookupResult.product?.stock} {lookupResult.product?.unitMesure}</strong>. Al guardar se sumarán las unidades calculadas como una entrada de mercancía.
               </p>
             </div>
           )}
 
-          {/* Mensaje de datos externos recuperados */}
-          {lookupResult?.source === 'openfoodfacts' && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
-              <span className="font-bold block">✓ Datos recuperados desde Open Food Facts</span>
-              Se precargaron nombre, marca y contenido. Revisa y completa los campos de empaque antes de registrar.
-            </div>
-          )}
-
           {/* Cámara activa */}
           {isCameraActive && (
-            <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-h-56 mx-auto border-2 border-emerald-500">
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-h-52 mx-auto border-2 border-emerald-500">
               <video ref={videoRef} className="w-full h-full object-cover" />
               <div className="absolute inset-0 border-2 border-dashed border-emerald-400 m-8 rounded-lg pointer-events-none"></div>
               <button
@@ -401,14 +440,16 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
           {/* Datos básicos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 mb-1">Nombre del Insumo / Producto *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Nombre del Insumo / Producto <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="text"
                 required
-                placeholder="Ej. Jugo de Naranja Natural, Harina de Trigo, Queso Mozzarella"
+                placeholder="Ej. Jitomate bola, Cebolla blanca, Queso Mozzarella, Agua embotellada 600ml"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium"
               />
             </div>
 
@@ -416,7 +457,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
               <label className="block text-xs font-bold text-slate-700 mb-1">Marca / Proveedor</label>
               <input
                 type="text"
-                placeholder="Ej. Lala, La Costeña, Local"
+                placeholder="Ej. Local, Central de Abastos, Bonafont, Bimbo"
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -439,14 +480,14 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
             </div>
           </div>
 
-          {/* SECCIÓN 2.2: REESTRUCTURACIÓN DE UNIDADES, EMPAQUES Y EXISTENCIAS */}
+          {/* SECCIÓN: UNIDADES, EMPAQUE Y CONVERSIÓN */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <AppIcon name="inventory" size={14} className="text-indigo-600" />
-                <span>Estructura de Empaque, Unidades y Conversión</span>
+                <span>Presentación de Compra y Conversión a Recetas</span>
               </h3>
-              <span className="text-[10px] text-slate-500">Reglas compatibles de inventario</span>
+              <span className="text-[10px] text-slate-500">Unidades base</span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -455,7 +496,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
                 <select
                   value={purchaseUnit}
                   onChange={(e) => setPurchaseUnit(e.target.value)}
-                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none font-medium"
                 >
                   {PURCHASE_UNITS.map((u) => (
                     <option key={u.val} value={u.val}>
@@ -466,14 +507,14 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Cant. Empaques</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Cant. Adquirida</label>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
+                  min="0.01"
+                  step="any"
                   value={packagesCount}
                   onChange={(e) => setPackagesCount(e.target.value)}
-                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs focus:outline-none"
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs focus:outline-none font-bold"
                 />
               </div>
 
@@ -482,10 +523,10 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
                 <input
                   type="number"
                   min="0.01"
-                  step="0.01"
+                  step="any"
                   value={contentPerUnit}
                   onChange={(e) => setContentPerUnit(e.target.value)}
-                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs focus:outline-none"
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs focus:outline-none font-bold"
                 />
               </div>
 
@@ -494,7 +535,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
                 <select
                   value={contentUnit}
                   onChange={(e) => setContentUnit(e.target.value)}
-                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none"
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white focus:outline-none font-medium"
                 >
                   {MEASURE_UNITS.map((u) => (
                     <option key={u.val} value={u.val}>
@@ -522,17 +563,16 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
                   ))}
                 </select>
                 <span className="text-[10px] text-slate-400">
-                  Las recetas descontarán insumos calculados en esta unidad base.
+                  Las recetas descontarán porciones calculadas en esta unidad base.
                 </span>
               </div>
 
               {/* Tarjeta de cálculo y verificación en vivo */}
               <div
-                className={`p-3 rounded-xl border flex flex-col justify-center ${
-                  calc.isIncompatible
-                    ? 'bg-rose-50 border-rose-200 text-rose-800'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                }`}
+                className={`p-3 rounded-xl border flex flex-col justify-center ${calc.isIncompatible
+                  ? 'bg-rose-50 border-rose-200 text-rose-800'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  }`}
               >
                 <span className="text-[10px] font-extrabold uppercase tracking-wider block">
                   {calc.isIncompatible ? 'Conversión Inválida' : 'Inventario Resultante Calculado:'}
@@ -550,6 +590,72 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 7: COSTO DE ADQUISICIÓN Y COSTO UNITARIO CALCULADO */}
+          <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <AppIcon name="cashier" size={14} className="text-indigo-600" />
+                <span>Costo de Adquisición y Costo Unitario</span>
+              </h3>
+              <span className="text-[10px] text-indigo-700 font-semibold">Cálculo automático para costeo de recetas</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Costo Total de Adquisición ($ MXN) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={acquisitionCost}
+                    onChange={(e) => setAcquisitionCost(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 border rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Importe total pagado por el restaurante por esta compra.
+                </p>
+              </div>
+
+              {/* Resultado del costo unitario */}
+              <div className="bg-white p-3 rounded-xl border border-indigo-100 flex flex-col justify-center shadow-soft-xs">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                  Costo Unitario Calculado:
+                </span>
+                <div className="text-sm sm:text-base font-black text-indigo-900 mt-0.5">
+                  ${unitCostCalculated.toFixed(4)} <span className="text-xs font-bold text-slate-500">/ {baseUnit}</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Base: ${totalCost.toFixed(2)} por {calc.convertedTotal.toLocaleString()} {baseUnit}
+                </p>
+              </div>
+            </div>
+
+            {/* Checkbox de reincorporación al cancelar orden */}
+            <div className="pt-2 border-t border-indigo-100/70">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={returnableOnCancel}
+                  onChange={(e) => setReturnableOnCancel(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                />
+                <span className="text-xs font-bold text-slate-800">
+                  ¿Es bebida en presentación individual cerrada? (Reincorporable a inventario si se cancela la orden)
+                </span>
+              </label>
+              <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
+                Aplica únicamente para aguas, refrescos y bebidas embotelladas sin abrir. Los platillos preparados nunca se reincorporan.
+              </p>
             </div>
           </div>
 

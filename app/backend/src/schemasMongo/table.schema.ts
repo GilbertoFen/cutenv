@@ -12,6 +12,9 @@ export class Table {
 
   @Prop({ required: true, min: 1 })
   capacity: number;
+
+  @Prop({ type: Date, required: false })
+  occupiedAt?: Date;
 }
 
 export const TableSchema = SchemaFactory.createForClass(Table);

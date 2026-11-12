@@ -48,4 +48,7 @@ export class IssueIndividualInvoiceDto {
 
   @IsOptional()
   saveCustomer?: boolean; // Guardar cliente para futuras facturas
+
+  @IsOptional()
+  sendEmail?: boolean;
 }

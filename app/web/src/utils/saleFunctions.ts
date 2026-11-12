@@ -54,6 +54,11 @@ export function normalizeSalesResponse(json: unknown): SaleData[] {
         cancelReason: (s as any).cancelReason,
         cancelledBy: (s as any).cancelledBy,
         cancelledAt: (s as any).cancelledAt,
+        isFacturada: Boolean((s as any).isFacturada || (s as any).invoiceId),
+        invoiceId: (s as any).invoiceId ? String((s as any).invoiceId) : undefined,
+        invoiceStatus: (s as any).invoiceStatus,
+        discountAmount: toNumber((s as any).discountAmount),
+        promotionApplied: (s as any).promotionApplied,
       } as SaleData;
     });
 }

@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    TICKET_A_COCINA: process.env.TICKET_A_COCINA || process.env.NEXT_PUBLIC_TICKET_A_COCINA || 'TRUE',
+  },
   async redirects() {
     return [
       {
