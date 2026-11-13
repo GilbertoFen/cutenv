@@ -23,10 +23,14 @@ yarn-error.log*
 
 # Local environment files (NEVER commit secrets)
 .env
+.env*
+.env.*
+*.env
+*.env.*
+.env.example
 .env*.local
 .env.production
 .env.development
-!.env.example
 
 # OS
 .DS_Store
