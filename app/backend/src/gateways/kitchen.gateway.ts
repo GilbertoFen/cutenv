@@ -13,11 +13,10 @@ export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @WebSocketServer() server: Server;
 
   handleConnection(client: Socket) {
-    console.log('----- Socket ---- KITCHEN connected: ', client.id);
+    console.log(`[WS /kitchen] Cliente conectado: ${client.id}`);
   }
   handleDisconnect(client: Socket) {
-    console.log('----- Socket ---- KITCHEN  disconnected: ', client.id);
-
+    console.log(`[WS /kitchen] Cliente desconectado: ${client.id}`);
   }
 
   @SubscribeMessage('joinKitchen')
@@ -29,6 +28,7 @@ export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect 
       ? `kitchen:${load.restaurantId}`
       : `kitchen:all`;
     client.join(room);
+    console.log(`[WS /kitchen] Cliente ${client.id} suscrito a sala: ${room}`);
   }
 
   emitToAll(event: string, data: KitchenOrderLoad | any) {

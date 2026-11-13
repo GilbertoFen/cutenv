@@ -303,8 +303,8 @@ export default function CookPage() {
                 {/* Order Card Header */}
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-sm shrink-0">
-                      #{String(order.id).slice(-4)}
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                      <AppIcon name="tables" size={20} />
                     </div>
                     <div>
                       <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
@@ -376,31 +376,31 @@ export default function CookPage() {
                                 : 'bg-white border-slate-200/90 shadow-soft-xs'
                           }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
                             {item.imageUrl ? (
                               <img
                                 src={item.imageUrl}
                                 alt={item.name}
-                                className="w-12 h-12 object-cover rounded-xl border border-slate-200 shrink-0"
+                                className="w-12 h-12 object-cover rounded-xl border border-slate-200 shrink-0 mt-0.5"
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0">
+                              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
                                 <AppIcon name="utensils" size={18} />
                               </div>
                             )}
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p
-                                className={`font-black text-sm text-slate-900 truncate ${isItemCancelled ? 'line-through text-slate-400' : ''
+                                className={`font-black text-sm sm:text-base text-slate-900 break-words leading-snug ${isItemCancelled ? 'line-through text-slate-400' : ''
                                   }`}
                               >
                                 {item.name}
                               </p>
                               {item.description && (
-                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description}</p>
+                                <p className="text-xs text-slate-500 mt-0.5 break-words line-clamp-2">{item.description}</p>
                               )}
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md shrink-0">
                                   Cant: {item.quantity}
                                 </span>
                                 <span
@@ -454,7 +454,7 @@ export default function CookPage() {
                                 </span>
                               </div>
                               {item.notes && (
-                                <p className="text-[11px] text-amber-900 italic mt-1 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                <p className="text-[11px] text-amber-900 italic mt-1 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 break-words">
                                   Nota: {item.notes}
                                 </p>
                               )}
@@ -463,7 +463,7 @@ export default function CookPage() {
 
                           {/* Action Buttons for Cook */}
                           {!isItemCancelled && !isItemDelivered && itemId && (
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
                               <button
                                 type="button"
                                 onClick={() =>

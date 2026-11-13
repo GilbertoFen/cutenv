@@ -358,7 +358,7 @@ export default function RootAdminPage() {
             <img
               src="/logo.png"
               alt="Logo Restaurante"
-              className="h-12 w-auto max-w-[180px] object-contain drop-shadow-md mx-auto"
+              className="h-16 sm:h-18 w-auto max-w-[220px] object-contain drop-shadow-md mx-auto"
             />
           </div>
           <h1 className="text-xl font-black text-center mb-1">Root Admin Platform</h1>

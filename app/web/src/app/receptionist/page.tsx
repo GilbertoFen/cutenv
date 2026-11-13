@@ -9,6 +9,7 @@ import ReceptionistTableCard from "@/components/Receptionist/TableCard";
 import ReservationModal from "@/components/Receptionist/ReceptionistModal";
 import ReservationDetailsModal from "@/components/Receptionist/ReservationDetailsModal";
 import { getTablesSocket } from "@/gateways/tableSocket";
+import { getClientOperatingSchedule } from "@/utils/operatingSchedule";
 import type { TableStatusLoad } from "@/types/Receptionist/receptionist.types";
 import Modal from "@/components/UI/Modal";
 import TableDetailPanel from "@/components/Waiter/TableDetailPanel";
@@ -57,6 +58,8 @@ export default function ReceptionistPage() {
 
   useEffect(() => {
     const id = setInterval(() => {
+      // Fuera del horario operativo no generar tráfico artificial periódico
+      if (!getClientOperatingSchedule().isOperating) return;
       refresh();
       setResvVersion((v) => v + 1);
     }, 60_000);

@@ -19,6 +19,7 @@ import CreateEmployeeModal from './CreateEmployeeModal';
 import EditEmployeeModal from './EditEmployeeModal';
 import RestaurantScheduleModal from './RestaurantScheduleModal';
 import AuditLogModal from './AuditLogModal';
+import { getClientOperatingSchedule } from '@/utils/operatingSchedule';
 
 export default function EmployeesPanel() {
   const { adminUser } = useAuth();
@@ -72,8 +73,11 @@ export default function EmployeesPanel() {
 
   useEffect(() => {
     fetchData();
-    // Refrescar cada 30 segundos para presencia en vivo
-    const interval = setInterval(fetchData, 30000);
+    // Refrescar periódicamente solo si estamos dentro de horario operativo para respetar suspensión
+    const interval = setInterval(() => {
+      if (!getClientOperatingSchedule().isOperating) return;
+      fetchData();
+    }, 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
 

@@ -67,7 +67,7 @@ function NavbarContent() {
                 <img
                   src="/logo.png"
                   alt="Restaurante"
-                  className="h-8 sm:h-9 w-auto max-w-[140px] sm:max-w-[180px] object-contain drop-shadow-sm"
+                  className="h-10 sm:h-11 w-auto max-w-[170px] sm:max-w-[210px] object-contain drop-shadow-sm transition-transform hover:scale-105"
                 />
               </Link>
 
@@ -217,7 +217,7 @@ function NavbarContent() {
               <img
                 src="/logo.png"
                 alt="Restaurante"
-                className="h-8 sm:h-9 w-auto max-w-[140px] sm:max-w-[180px] object-contain drop-shadow-sm"
+                className="h-10 sm:h-11 w-auto max-w-[170px] sm:max-w-[210px] object-contain drop-shadow-sm transition-transform hover:scale-105"
               />
             </Link>
 

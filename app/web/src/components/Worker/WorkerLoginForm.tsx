@@ -77,7 +77,7 @@ export default function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <img
               src="/logo.png"
               alt="Logo Restaurante"
-              className="h-14 sm:h-16 w-auto max-w-[220px] object-contain drop-shadow-md mx-auto"
+              className="h-16 sm:h-20 w-auto max-w-[240px] object-contain drop-shadow-md mx-auto"
             />
           </div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight">Acceso de Trabajador</h1>

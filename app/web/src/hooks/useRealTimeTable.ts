@@ -6,7 +6,14 @@ export function useTableRealtime(tableId: string, onStatusChange: (p: any) => vo
     if (!tableId) return;
     const socket = getTablesSocket();
 
-    socket.emit('joinTable', { tableId });
+    const join = () => {
+      socket.emit('joinTable', { tableId });
+    };
+
+    if (socket.connected) {
+      join();
+    }
+    socket.on('connect', join);
 
     const handler = (p: any) => {
       if (p.tableId === tableId) onStatusChange(p);
@@ -14,6 +21,7 @@ export function useTableRealtime(tableId: string, onStatusChange: (p: any) => vo
 
     socket.on('table.status.changed', handler);
     return () => {
+      socket.off('connect', join);
       socket.off('table.status.changed', handler);
     };
   }, [tableId, onStatusChange]);

@@ -14,10 +14,10 @@ export class CashierGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @WebSocketServer() server: Server;
 
   handleConnection(client: Socket) {
-    console.log('----- Socket ---- CASHIER connected: ', client.id);
+    console.log(`[WS /cashier] Cliente conectado: ${client.id}`);
   }
   handleDisconnect(client: Socket) {
-    console.log('----- Socket ---- CASHIER disconnected: ', client.id);
+    console.log(`[WS /cashier] Cliente desconectado: ${client.id}`);
   }
 
   emitTicketRequested(request: TicketRequestedLoad) {

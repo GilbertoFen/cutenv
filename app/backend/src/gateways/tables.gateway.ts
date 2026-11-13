@@ -14,22 +14,25 @@ export class TablesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
   handleConnection(client: Socket) {
-    console.log('----- Socket ---- TABLES connected: ', client.id);
-
+    console.log(`[WS /tables] Cliente conectado: ${client.id}`);
   }
   handleDisconnect(client: Socket) {
-    console.log('----- Socket ---- TABLES disconnected: ', client.id);
+    console.log(`[WS /tables] Cliente desconectado: ${client.id}`);
   }
 
   @SubscribeMessage('joinTable')
   joinTable(@ConnectedSocket() client: Socket, @MessageBody() load: { tableId: string }) {
-    if (load?.tableId) client.join(`table:${load.tableId}`);
+    if (load?.tableId) {
+      client.join(`table:${load.tableId}`);
+      console.log(`[WS /tables] Cliente ${client.id} suscrito a sala: table:${load.tableId}`);
+    }
     return { ok: true };
   }
 
   @SubscribeMessage('joinReception')
   joinReception(@ConnectedSocket() client: Socket) {
     client.join('role:reception');
+    console.log(`[WS /tables] Cliente ${client.id} suscrito a sala: role:reception`);
     return { ok: true };
   }
 

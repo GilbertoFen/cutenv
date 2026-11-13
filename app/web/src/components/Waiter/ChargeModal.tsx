@@ -47,6 +47,14 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
       onPaid();
     } catch (e: any) {
       console.error(e);
+      // Comprobar si el backend procesó el pago antes de la desconexión
+      try {
+        const verifySale = await getSaleById(sale.id);
+        if (verifySale && (verifySale.status === 'paid' || (verifySale as any).ticketStatus === 'printed')) {
+          onPaid();
+          return;
+        }
+      } catch {}
       setError(e?.message || "Error al procesar el pago. Verifique que no haya platillos pendientes de entrega.");
     } finally {
       setSubmitting(false);

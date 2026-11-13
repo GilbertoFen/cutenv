@@ -20,6 +20,7 @@ import {
 } from '@/services/AuthService';
 import { getAuthToken, clearAuthToken } from '@/lib/api';
 import { getWaiterSocket } from '@/gateways/socketWaiter';
+import { getClientOperatingSchedule } from '@/utils/operatingSchedule';
 
 interface AuthContextType {
   user: User | null;
@@ -148,15 +149,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('pos:auth-unauthorized', handleUnauthorized);
 
-    // 4. Heartbeat periódico cada 60 segundos para presencia y verificación continua de horario
+    // 4. Heartbeat periódico para presencia y validación de turnos.
+    // Durante el horario operativo (06:00 a 21:00) corre cada 60s si hay sesión activa.
+    // Fuera de horario operativo no genera solicitudes artificiales para permitir suspensión de Render.
     const heartbeatInterval = setInterval(async () => {
       const token = getAuthToken();
       if (!token) return;
+
+      const schedule = getClientOperatingSchedule();
+      if (!schedule.isOperating) {
+        // Fuera de horario operativo: no generar tráfico periódico en segundo plano
+        return;
+      }
+
       try {
         await sendHeartbeat();
       } catch (err: any) {
-        console.warn('[AuthContext] Heartbeat expirado o fuera de horario:', err?.message || err);
-        handleUnauthorized();
+        // Si el fallo es por pérdida de conexión temporal o suspensión del backend, NO cerrar sesión.
+        // Solo las revocaciones explícitas (401/403) enviadas por el servidor deben cerrar sesión.
+        const msg = String(err?.message || '');
+        if (msg.includes('Sesión') || msg.includes('concluido') || msg.includes('restringido')) {
+          console.warn('[AuthContext] Sesión revocada por el servidor:', msg);
+          handleUnauthorized();
+        } else {
+          console.warn('[AuthContext] Servidor no disponible temporalmente durante heartbeat:', msg);
+        }
       }
     }, 60 * 1000);
 

@@ -270,6 +270,17 @@ export default function CashierPage() {
       notify.success('Cobro registrado exitosamente.');
     } catch (e: any) {
       console.error(e);
+      // Comprobar si el backend procesó el pago antes de la desconexión
+      try {
+        const verify = await getSaleById(sale.id);
+        if (verify && verify.status === 'paid') {
+          notify.success('El cobro ya se encontraba procesado exitosamente en el servidor.');
+          setQueue((prev) => prev.filter((x) => x.saleId !== sale.id));
+          setSelected((sel) => (sel?.saleId === sale.id ? null : sel));
+          setSale(null);
+          return;
+        }
+      } catch {}
       notify.error(e.message || 'Error al pagar');
     } finally {
       setPaying(false);

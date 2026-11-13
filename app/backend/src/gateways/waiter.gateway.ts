@@ -14,11 +14,11 @@ export class WaiterGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer() server: Server;
 
     handleConnection(client: Socket) {
-        console.log('----- Socket ---- WAITER connected: ', client.id);
+        console.log(`[WS /waiter] Cliente conectado: ${client.id}`);
     }
 
     handleDisconnect(client: Socket) {
-        console.log('----- Socket ---- WAITER connected: ', client.id);
+        console.log(`[WS /waiter] Cliente desconectado: ${client.id}`);
     }
 
     @SubscribeMessage('joinWaiter')
@@ -30,6 +30,7 @@ export class WaiterGateway implements OnGatewayConnection, OnGatewayDisconnect {
             client.join(`waiter:${load.waiterId}`);
         }
         (load?.tableIds ?? []).forEach(tid => client.join(`table:${tid}`));
+        console.log(`[WS /waiter] Cliente ${client.id} suscrito a salas: waiter:${load?.waiterId || 'none'}, mesas:[${(load?.tableIds ?? []).join(',')}]`);
         return { ok: true }
     }
 

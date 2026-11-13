@@ -16,6 +16,7 @@ import { AuditModule } from './audit/audit.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { EmployeesModule } from './employees/employees.module';
 import { PrinterModule } from './printer/printer.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { PrinterModule } from './printer/printer.module';
     RestaurantsModule,
     EmployeesModule,
     PrinterModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import ConnectionStatusBanner from '@/components/UI/ConnectionStatusBanner';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { adminUser, workerUser, hasWorkerAccess, hasAdminAccess, loading } = useAuth();
@@ -87,6 +88,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <NotificationProvider>
         <AuthGuard>{children}</AuthGuard>
+        <ConnectionStatusBanner />
       </NotificationProvider>
     </AuthProvider>
   );
