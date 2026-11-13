@@ -43,12 +43,17 @@ Thumbs.db
 
 # Environment & Credentials (NEVER commit secrets)
 .env
+.env*
 .env.*
 *.env
-!.env.example
-!app/backend/.env.example
-!app/web/.env.example
+*.env.*
+.env.example
+*.env.example
 atlas-credentials.env
 *.pem
 *.key
 .vercel/
+
+# Agents & AI skills directory
+.agents/
+**/.agents/
