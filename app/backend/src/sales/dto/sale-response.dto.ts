@@ -13,6 +13,14 @@ export class SaleResponseDto {
   @IsNumber()
   totalAmount: number;
 
+  @IsOptional()
+  @IsNumber()
+  tipAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  totalCollected?: number;
+
   @IsArray()
   orders: SaleOrderDto[];
 

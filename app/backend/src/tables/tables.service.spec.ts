@@ -143,4 +143,140 @@ describe('TablesService', () => {
       expect(mockTableInstance.save).not.toHaveBeenCalled();
     });
   });
+
+  describe('Mesas Virtuales (Pedidos Para Llevar, Domicilio y Telefónicos)', () => {
+    it('debe crear un pedido para llevar generando código virtual, folio de venta e inicializando estado ocupado', async () => {
+      const mockCreatedTable = {
+        _id: new Types.ObjectId(),
+        number: 1001,
+        status: 'ocupada',
+        capacity: 1,
+        occupiedAt: new Date(),
+        isVirtual: true,
+        tableType: 'para_llevar',
+        virtualCode: 'LL-01',
+        customerName: 'Juan Pérez',
+      };
+
+      mockTableModel.countDocuments = jest.fn().mockResolvedValue(0);
+      mockTableModel.exists = jest.fn().mockResolvedValue(false);
+      mockTableModel.findOne = jest.fn().mockReturnValue({
+        sort: jest.fn().mockResolvedValue({ number: 10 }),
+      });
+      mockTableModel.create = jest.fn().mockResolvedValue(mockCreatedTable);
+      mockSaleModel.create = jest.fn().mockResolvedValue({ _id: new Types.ObjectId() });
+
+      const result = await service.createVirtualTable({
+        tableType: 'para_llevar',
+        customerName: 'Juan Pérez',
+      });
+
+      expect(result.isVirtual).toBe(true);
+      expect(result.virtualCode).toBe('LL-01');
+      expect(result.tableType).toBe('para_llevar');
+      expect(result.customerName).toBe('Juan Pérez');
+      expect(mockSaleModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          table: mockCreatedTable._id,
+          orderType: 'para llevar',
+          status: 'unpaid',
+        }),
+      );
+      expect(mockTablesGateway.emitTableStatusChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tableId: mockCreatedTable._id.toString(),
+          status: 'ocupada',
+          isVirtual: true,
+          virtualCode: 'LL-01',
+        }),
+      );
+    });
+
+    it('debe crear un pedido a domicilio con dirección y teléfono asignados', async () => {
+      const mockCreatedTable = {
+        _id: new Types.ObjectId(),
+        number: 1002,
+        status: 'ocupada',
+        capacity: 1,
+        occupiedAt: new Date(),
+        isVirtual: true,
+        tableType: 'domicilio',
+        virtualCode: 'DOM-01',
+        customerName: 'María García',
+        customerPhone: '5512345678',
+        deliveryAddress: 'Av. Insurgentes 123',
+      };
+
+      mockTableModel.countDocuments = jest.fn().mockResolvedValue(0);
+      mockTableModel.exists = jest.fn().mockResolvedValue(false);
+      mockTableModel.findOne = jest.fn().mockReturnValue({
+        sort: jest.fn().mockResolvedValue({ number: 1001 }),
+      });
+      mockTableModel.create = jest.fn().mockResolvedValue(mockCreatedTable);
+      mockSaleModel.create = jest.fn().mockResolvedValue({ _id: new Types.ObjectId() });
+
+      const result = await service.createVirtualTable({
+        tableType: 'domicilio',
+        customerName: 'María García',
+        customerPhone: '5512345678',
+        deliveryAddress: 'Av. Insurgentes 123',
+      });
+
+      expect(result.isVirtual).toBe(true);
+      expect(result.virtualCode).toBe('DOM-01');
+      expect(result.tableType).toBe('domicilio');
+      expect(result.deliveryAddress).toBe('Av. Insurgentes 123');
+      expect(mockSaleModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderType: 'domicilio',
+        }),
+      );
+    });
+
+    it('al liberar un pedido virtual debe pasar a estado "completada" para no reutilizarse', async () => {
+      const virtualTableId = new Types.ObjectId().toString();
+      const mockVirtualTable = {
+        _id: new Types.ObjectId(virtualTableId),
+        number: 1001,
+        status: 'ocupada',
+        isVirtual: true,
+        tableType: 'para_llevar',
+        virtualCode: 'LL-01',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockTableModel.findById.mockResolvedValue(mockVirtualTable);
+      mockSaleModel.findOne.mockResolvedValue(null); // Venta ya liquidada
+
+      const result = await service.updateTableStatus(virtualTableId, { status: 'disponible' });
+
+      expect(mockVirtualTable.status).toBe('completada');
+      expect(mockVirtualTable.save).toHaveBeenCalled();
+      expect(mockTablesGateway.emitTableStatusChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tableId: virtualTableId,
+          status: 'completada',
+          isVirtual: true,
+          virtualCode: 'LL-01',
+        }),
+      );
+    });
+
+    it('no debe permitir reservar un pedido virtual', async () => {
+      const virtualTableId = new Types.ObjectId().toString();
+      const mockVirtualTable = {
+        _id: new Types.ObjectId(virtualTableId),
+        number: 1001,
+        status: 'ocupada',
+        isVirtual: true,
+        tableType: 'para_llevar',
+      };
+
+      mockTableModel.findById.mockResolvedValue(mockVirtualTable);
+
+      await expect(
+        service.updateTableStatus(virtualTableId, { status: 'reservada' }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
 });

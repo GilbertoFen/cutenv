@@ -88,6 +88,8 @@ import {
   Bell,
   History,
   Copy,
+  Bike,
+  Phone,
   LucideIcon,
   LucideProps,
 } from 'lucide-react';
@@ -113,6 +115,9 @@ export type IconName =
   | 'calendar'
   | 'clock'
   | 'logout'
+  | 'shopping-bag'
+  | 'bike'
+  | 'phone'
 
   // Roles y permisos
   | 'owner'
@@ -307,6 +312,11 @@ export const ICON_REGISTRY: Record<IconName, LucideIcon> = {
   frozen: Snowflake,
   clean: Sparkles,
   box: Box,
+
+  // Servicios y entrega
+  'shopping-bag': ShoppingBag,
+  bike: Bike,
+  phone: Phone,
 };
 
 export function getIcon(name: IconName): LucideIcon {

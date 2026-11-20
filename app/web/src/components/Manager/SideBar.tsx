@@ -53,7 +53,6 @@ export default function Sidebar({
         <Item id="invoicing" label="Facturación CFDI 4.0" icon="invoicing" />
         <Item id="recipes" label="Recetas del Menú" icon="recipes" />
         <Item id="inventory" label="Inventario / Stock" icon="inventory" />
-        <Item id="summary" label="Resumen y KPIs" icon="kpis" />
         <Item id="employees" label="Empleados en Turno" icon="users" />
       </nav>
     </aside>

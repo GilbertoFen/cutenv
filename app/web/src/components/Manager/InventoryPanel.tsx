@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { getInventory, adjustStock } from "@/services/InventoryService";
+import { getInventory, adjustStock, updateProduct } from "@/services/InventoryService";
 import type { InventoryItem } from "@/types";
 import { Kpi, Th, Td, fmtNum, currency } from "@/utils/Manager/manager.functions";
 import InventoryReportModal from "./InventoryReportModal";
@@ -22,6 +22,19 @@ export default function InventoryPanel() {
   const [error, setError] = useState<string>("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+
+  // Modal de edición de insumo
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    brand: '',
+    category: '',
+    unit: '',
+    price: '',
+    sku: '',
+    description: 'Sin nota',
+  });
+  const [editError, setEditError] = useState<string>('');
 
   const refreshInventory = () => {
     getInventory().then(setRows).catch(console.error);
@@ -93,6 +106,65 @@ export default function InventoryPanel() {
     } catch (e: any) {
       const msg = e?.message || "No se pudo registrar el ajuste de inventario";
       setError(msg);
+      notify.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditModal = (r: InventoryItem) => {
+    setEditingItem(r);
+    setEditForm({
+      name: r.name || '',
+      brand: r.brand || '',
+      category: r.category || 'Abarrotes y Secos',
+      unit: r.unit || 'pza',
+      price: r.price != null ? String(r.price) : '0',
+      sku: r.sku || '',
+      description: r.description || 'Sin nota',
+    });
+    setEditError('');
+  };
+
+  const confirmEdit = async () => {
+    if (!editingItem) return;
+    if (!editForm.name.trim()) {
+      setEditError('El nombre del insumo es obligatorio.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const updatedData: Record<string, any> = {
+        name: editForm.name.trim(),
+        brand: editForm.brand.trim() || undefined,
+        category: editForm.category.trim() || undefined,
+        unitMesure: editForm.unit.trim() || undefined,
+        price: parseFloat(editForm.price) || 0,
+        barCode: editForm.sku.trim() || undefined,
+        description: editForm.description.trim() || 'Sin nota',
+      };
+      await updateProduct(editingItem.id, updatedData);
+      setRows((prev) =>
+        prev.map((x) =>
+          x.id === editingItem.id
+            ? {
+                ...x,
+                name: editForm.name.trim(),
+                brand: editForm.brand.trim() || undefined,
+                category: editForm.category.trim() || undefined,
+                unit: editForm.unit.trim() || undefined,
+                price: parseFloat(editForm.price) || 0,
+                sku: editForm.sku.trim() || undefined,
+                description: editForm.description.trim() || 'Sin nota',
+              }
+            : x
+        )
+      );
+      notify.success(`Insumo "${editForm.name}" actualizado exitosamente.`);
+      setEditingItem(null);
+    } catch (e: any) {
+      const msg = e?.message || 'Error al actualizar el insumo';
+      setEditError(msg);
       notify.error(msg);
     } finally {
       setSaving(false);
@@ -239,6 +311,15 @@ export default function InventoryPanel() {
                       >
                         Ajuste
                       </button>
+                      <button
+                        disabled={saving}
+                        className="min-h-[26px] rounded-lg px-2.5 py-0.5 text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition shadow-soft-xs active:scale-95 disabled:opacity-50 flex items-center gap-1"
+                        onClick={() => openEditModal(r)}
+                        title="Editar datos del insumo"
+                      >
+                        <AppIcon name="edit" size={11} />
+                        <span>Editar</span>
+                      </button>
                     </div>
                   </Td>
                   <Td className="px-2 py-2 text-slate-400 text-[11px] whitespace-nowrap hidden xl:table-cell">
@@ -377,6 +458,139 @@ export default function InventoryPanel() {
                   onClick={confirmAdjust}
                 >
                   {saving ? "Guardando…" : "Confirmar Ajuste"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edición de datos del insumo */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-scaleIn">
+            <header className="flex items-center justify-between border-b border-slate-100 p-5 bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  <AppIcon name="edit" size={18} />
+                </span>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900">Editar Insumo</h3>
+                  <p className="text-[11px] text-slate-400">Modificación de información de catálogo e insumo</p>
+                </div>
+              </div>
+              <button
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
+                onClick={() => setEditingItem(null)}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nombre del Insumo *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ej. Salmón fresco, Queso crema..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Marca / Fabricante</label>
+                  <input
+                    type="text"
+                    value={editForm.brand}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, brand: e.target.value }))}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Ej. Philadelphia, Kikkoman..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Categoría</label>
+                  <input
+                    type="text"
+                    value={editForm.category}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Ej. Pescados y Mariscos, Lácteos..."
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Unidad de Medida</label>
+                  <input
+                    type="text"
+                    value={editForm.unit}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, unit: e.target.value }))}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono"
+                    placeholder="g, ml, pza, kg..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Costo / Precio ($)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, price: e.target.value }))}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Código / SKU</label>
+                  <input
+                    type="text"
+                    value={editForm.sku}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, sku: e.target.value }))}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono"
+                    placeholder="Código de barras..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Descripción / Notas</label>
+                <textarea
+                  rows={2}
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Sin nota"
+                />
+              </div>
+
+              {editError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-bold">
+                  {editError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  className="min-h-[40px] rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                  onClick={() => setEditingItem(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="min-h-[40px] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 text-xs font-black transition-all shadow-soft-xs active:scale-95 disabled:opacity-50"
+                  onClick={confirmEdit}
+                >
+                  {saving ? "Guardando…" : "Guardar Cambios"}
                 </button>
               </div>
             </div>

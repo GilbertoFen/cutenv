@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TableCard, { type TableAlert } from "@/components/Waiter/TableCard";
+import CreateVirtualOrderModal from "@/components/Waiter/CreateVirtualOrderModal";
 import { getAllTables } from "@/services/TableService";
 import { getAllOrders } from "@/services/OrderService";
 import { getTablesSocket } from "@/gateways/tableSocket";
@@ -22,6 +23,10 @@ export default function WaiterPage() {
   const { notify } = useNotification();
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [showVirtualModal, setShowVirtualModal] = useState(false);
+  const [virtualType, setVirtualType] = useState<'para_llevar' | 'domicilio' | 'telefonico'>('para_llevar');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'fisica' | 'virtual'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'disponible' | 'ocupada' | 'reservada'>('all');
 
   useEffect(() => {
     if (!authLoading && !hasWorkerAccess) {
@@ -35,6 +40,13 @@ export default function WaiterPage() {
       number: Number(t.number),
       capacity: Number(t.capacity ?? 0),
       status: t.status as TableStatus,
+      isVirtual: Boolean(t.isVirtual),
+      tableType: t.tableType,
+      virtualCode: t.virtualCode,
+      customerName: t.customerName,
+      customerPhone: t.customerPhone,
+      deliveryAddress: t.deliveryAddress,
+      deliveryNotes: t.deliveryNotes,
     }));
 
   const refresh = useCallback(() => {
@@ -277,16 +289,21 @@ export default function WaiterPage() {
     };
   }, [authLoading, hasWorkerAccess, extractOrderAlerts]);
 
-  const [filterStatus, setFilterStatus] = useState<'all' | 'disponible' | 'ocupada' | 'reservada'>('all');
-
   const counts = {
     all: tables.length,
+    fisica: tables.filter((t) => !t.isVirtual).length,
+    virtual: tables.filter((t) => t.isVirtual).length,
     disponible: tables.filter((t) => t.status === 'disponible').length,
     ocupada: tables.filter((t) => t.status === 'ocupada').length,
     reservada: tables.filter((t) => t.status === 'reservada').length,
   };
 
-  const filteredTables = filterStatus === 'all' ? tables : tables.filter((t) => t.status === filterStatus);
+  const filteredTables = tables.filter((t) => {
+    if (activeCategory === 'fisica' && t.isVirtual) return false;
+    if (activeCategory === 'virtual' && !t.isVirtual) return false;
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    return true;
+  });
 
   if (authLoading) {
     return (
@@ -306,109 +323,184 @@ export default function WaiterPage() {
   return (
     <div className="space-y-6">
       {/* Header Panel */}
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-soft-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-soft-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Servicio en Sala • Módulo Mesero
+              Servicio en Sala y Pedidos Virtuales • Módulo Mesero
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Mesas del Restaurante
+            Mesas y Pedidos
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Toca una mesa para abrir comanda, consultar consumo o solicitar ticket al cajero
+            Gestiona mesas físicas de comedor o inicia pedidos para llevar, a domicilio y telefónicos
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Virtual Order Action Buttons */}
+          <button
+            onClick={() => {
+              setVirtualType('para_llevar');
+              setShowVirtualModal(true);
+            }}
+            className="min-h-[42px] px-3.5 py-2 text-xs font-black bg-sky-600 hover:bg-sky-700 text-white rounded-2xl transition shadow-soft-xs active:scale-95 flex items-center gap-1.5"
+            title="Crear nueva mesa virtual para llevar"
+          >
+            <AppIcon name="shopping-bag" size={15} />
+            <span>Para llevar</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setVirtualType('domicilio');
+              setShowVirtualModal(true);
+            }}
+            className="min-h-[42px] px-3.5 py-2 text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition shadow-soft-xs active:scale-95 flex items-center gap-1.5"
+            title="Crear nuevo pedido con entrega a domicilio"
+          >
+            <AppIcon name="bike" size={15} />
+            <span>A domicilio</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setVirtualType('telefonico');
+              setShowVirtualModal(true);
+            }}
+            className="min-h-[42px] px-3.5 py-2 text-xs font-black bg-purple-600 hover:bg-purple-700 text-white rounded-2xl transition shadow-soft-xs active:scale-95 flex items-center gap-1.5"
+            title="Registrar pedido tomado por llamada telefónica"
+          >
+            <AppIcon name="phone" size={15} />
+            <span>Telefónico</span>
+          </button>
+
+          <div className="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+
           <Link
             href="/worker"
-            className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-2xl transition active:scale-95 shadow-soft-xs"
-            title="Volver a los 4 módulos operativos"
+            className="min-h-[42px] inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-2xl transition active:scale-95 shadow-soft-xs"
+            title="Volver al selector de módulos"
           >
             <AppIcon name="arrow-left" size={14} />
-            <span>Inicio de trabajador</span>
+            <span className="hidden sm:inline">Inicio</span>
           </Link>
+
           <button
             onClick={refresh}
-            className="min-h-[44px] px-4 py-2.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl transition shadow-soft-xs active:scale-95 flex items-center gap-1.5"
+            className="min-h-[42px] px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl transition shadow-soft-xs active:scale-95 flex items-center gap-1.5"
+            title="Refrescar listado"
           >
             <span>↻</span>
-            <span>Actualizar</span>
+            <span className="hidden sm:inline">Actualizar</span>
           </button>
         </div>
       </div>
 
-      {/* Quick Status Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-        <button
-          onClick={() => setFilterStatus('all')}
-          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
-            filterStatus === 'all'
-              ? 'bg-slate-900 text-white shadow-soft-sm'
-              : 'bg-white text-slate-600 border border-slate-200/90 hover:bg-slate-50'
-          }`}
-        >
-          <span>Todas las mesas</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-            filterStatus === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-          }`}>
-            {counts.all}
-          </span>
-        </button>
+      {/* Quick Category & Status Filter Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Category Switcher: Todas / Mesas Físicas / Pedidos Virtuales */}
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/80 shrink-0">
+          <button
+            onClick={() => setActiveCategory('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+              activeCategory === 'all'
+                ? 'bg-white text-slate-900 shadow-soft-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Todo ({counts.all})
+          </button>
+          <button
+            onClick={() => setActiveCategory('fisica')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 ${
+              activeCategory === 'fisica'
+                ? 'bg-white text-slate-900 shadow-soft-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>🍽️</span>
+            <span>Mesas físicas ({counts.fisica})</span>
+          </button>
+          <button
+            onClick={() => setActiveCategory('virtual')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 ${
+              activeCategory === 'virtual'
+                ? 'bg-white text-indigo-700 shadow-soft-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <AppIcon name="shopping-bag" size={14} />
+            <span>Pedidos virtuales ({counts.virtual})</span>
+          </button>
+        </div>
 
-        <button
-          onClick={() => setFilterStatus('disponible')}
-          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
-            filterStatus === 'disponible'
-              ? 'bg-emerald-600 text-white shadow-soft-sm shadow-emerald-600/20'
-              : 'bg-white text-emerald-800 border border-emerald-200/80 hover:bg-emerald-50/50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Disponibles</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-            filterStatus === 'disponible' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'
-          }`}>
-            {counts.disponible}
-          </span>
-        </button>
+        {/* Status Filters */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          <button
+            onClick={() => setFilterStatus('all')}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 ${
+              filterStatus === 'all'
+                ? 'bg-slate-900 text-white shadow-soft-sm'
+                : 'bg-white text-slate-600 border border-slate-200/90 hover:bg-slate-50'
+            }`}
+          >
+            <span>Todos</span>
+          </button>
 
-        <button
-          onClick={() => setFilterStatus('ocupada')}
-          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
-            filterStatus === 'ocupada'
-              ? 'bg-amber-600 text-white shadow-soft-sm shadow-amber-600/20'
-              : 'bg-white text-amber-900 border border-amber-200/80 hover:bg-amber-50/50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-          <span>Ocupadas</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-            filterStatus === 'ocupada' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'
-          }`}>
-            {counts.ocupada}
-          </span>
-        </button>
+          <button
+            onClick={() => setFilterStatus('disponible')}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 ${
+              filterStatus === 'disponible'
+                ? 'bg-emerald-600 text-white shadow-soft-sm shadow-emerald-600/20'
+                : 'bg-white text-emerald-800 border border-emerald-200/80 hover:bg-emerald-50/50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Disponibles</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+              filterStatus === 'disponible' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              {counts.disponible}
+            </span>
+          </button>
 
-        <button
-          onClick={() => setFilterStatus('reservada')}
-          className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 ${
-            filterStatus === 'reservada'
-              ? 'bg-purple-600 text-white shadow-soft-sm shadow-purple-600/20'
-              : 'bg-white text-purple-900 border border-purple-200/80 hover:bg-purple-50/50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-          <span>Reservadas</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-            filterStatus === 'reservada' ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-800'
-          }`}>
-            {counts.reservada}
-          </span>
-        </button>
+          <button
+            onClick={() => setFilterStatus('ocupada')}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 ${
+              filterStatus === 'ocupada'
+                ? 'bg-amber-600 text-white shadow-soft-sm shadow-amber-600/20'
+                : 'bg-white text-amber-900 border border-amber-200/80 hover:bg-amber-50/50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>Ocupadas / Activas</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+              filterStatus === 'ocupada' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'
+            }`}>
+              {counts.ocupada}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setFilterStatus('reservada')}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 ${
+              filterStatus === 'reservada'
+                ? 'bg-purple-600 text-white shadow-soft-sm shadow-purple-600/20'
+                : 'bg-white text-purple-900 border border-purple-200/80 hover:bg-purple-50/50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+            <span>Reservadas</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+              filterStatus === 'reservada' ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-800'
+            }`}>
+              {counts.reservada}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Tables Grid */}
@@ -429,11 +521,27 @@ export default function WaiterPage() {
         })}
       </div>
 
+      {filteredTables.length === 0 && (
+        <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/90 shadow-soft-xs space-y-3">
+          <span className="text-4xl block">🍽️</span>
+          <p className="text-sm font-bold text-slate-700">No se encontraron mesas o pedidos con los filtros aplicados</p>
+          <button
+            onClick={() => {
+              setActiveCategory('all');
+              setFilterStatus('all');
+            }}
+            className="text-xs font-black text-indigo-600 hover:underline"
+          >
+            Restablecer todos los filtros
+          </button>
+        </div>
+      )}
+
       {/* Modal with Table Detail */}
       <Modal
         open={!!selectedTableId}
         onClose={() => setSelectedTableId(null)}
-        title={selectedTableId ? `Mesa en Atención` : undefined}
+        title={selectedTableId ? `Detalle de Atención` : undefined}
         maxWidthClass="max-w-6xl"
       >
         {selectedTableId && (
@@ -443,6 +551,18 @@ export default function WaiterPage() {
           />
         )}
       </Modal>
+
+      {/* Modal for Creating Virtual Orders */}
+      {showVirtualModal && (
+        <CreateVirtualOrderModal
+          initialType={virtualType}
+          onClose={() => setShowVirtualModal(false)}
+          onSuccess={(newTable) => {
+            refresh();
+            setSelectedTableId(newTable.id);
+          }}
+        />
+      )}
     </div>
   );
 }

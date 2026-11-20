@@ -52,6 +52,7 @@ export async function paySale(
   body: {
     orderType: OrderType;
     paymentMethod: PaymentMethod;
+    tipAmount?: number;
     promotionId?: string;
     discountAmount?: number;
     authorizedBy?: string;
@@ -142,7 +143,10 @@ export interface CashCutData {
   generatedAtFormatted: string;
   timezone: string;
   summary: {
+    totalNetSales?: number;
+    totalTips?: number;
     totalRevenue: number;
+    totalCollected?: number;
     totalOrders: number;
     totalTransactions: number;
     averageTicket: number;
@@ -152,11 +156,16 @@ export interface CashCutData {
     items: Array<{
       method: string;
       label: string;
+      netSales?: number;
+      tips?: number;
       total: number;
       transactionsCount: number;
       percentage: number;
     }>;
+    totalNetSales?: number;
+    totalTips?: number;
     totalRevenue: number;
+    totalCollected?: number;
     totalTransactions: number;
   };
   byOrderType: {
@@ -188,7 +197,10 @@ export interface CashCutData {
     orderType: string;
     paymentMethod: string;
     status: string;
+    netAmount?: number;
+    tipAmount?: number;
     totalAmount: number;
+    totalCollected?: number;
     discountAmount: number;
     date: string | Date;
     time: string;

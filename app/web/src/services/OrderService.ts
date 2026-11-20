@@ -62,9 +62,20 @@ export async function updateOrder(orderId: string, items: UpdateOrderItem[], not
   }
 }
 
-interface CreateOrderDto {
+export interface CreateOrderDto {
   table: string;
-  items: { recipe: string; quantity: number }[];
+  items: {
+    recipe: string;
+    quantity: number;
+    notes?: string;
+    station?: 'fria' | 'caliente' | 'ninguna';
+    modifiers?: Array<{
+      name: string;
+      price?: number;
+      station?: 'fria' | 'caliente' | 'ninguna';
+      notes?: string;
+    }>;
+  }[];
   notes?: string;
 }
 

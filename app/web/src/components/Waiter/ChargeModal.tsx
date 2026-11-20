@@ -10,6 +10,7 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
   const [sale, setSale] = useState<SaleData | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('local');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [tipAmount, setTipAmount] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
@@ -20,7 +21,11 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
         const s = await getUnpaidSaleByTable(tableId);
         if (s?.id) {
           const full = await getSaleById(s.id);
-          setSale(full ?? s);
+          const targetSale = full ?? s;
+          setSale(targetSale);
+          if (targetSale?.orderType) {
+            setOrderType(targetSale.orderType as OrderType);
+          }
           setError("");
         } else {
           setSale(null);
@@ -43,7 +48,8 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
     setSubmitting(true);
     setError("");
     try {
-      await paySale(sale.id, { orderType, paymentMethod });
+      const tipNumber = Math.max(0, parseFloat(tipAmount) || 0);
+      await paySale(sale.id, { orderType, paymentMethod, tipAmount: tipNumber });
       onPaid();
     } catch (e: any) {
       console.error(e);
@@ -168,9 +174,73 @@ export default function ChargeModal({ tableId, onClose, onPaid }: Props) {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-between items-center border-t text-base font-bold text-slate-900">
-            <span>Total a pagar:</span>
-            <span className="text-xl text-indigo-700">${sale.totalAmount?.toFixed?.(2) ?? "0.00"}</span>
+          {/* Sección de Propina */}
+          <div className="pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700">Propina (Opcional):</label>
+              <span className="text-[11px] text-slate-400">Gratificación de servicio</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+              <button
+                type="button"
+                onClick={() => setTipAmount('0')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition border ${
+                  tipAmount === '0' || tipAmount === ''
+                    ? 'bg-slate-800 text-white border-slate-800'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                $0
+              </button>
+              {[5, 10, 15, 20, 25].map((pct) => {
+                const amt = ((sale.totalAmount || 0) * (pct / 100)).toFixed(2);
+                const isSelected = tipAmount === amt;
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => setTipAmount(amt)}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold transition border ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {pct}% (${Math.round((sale.totalAmount || 0) * (pct / 100))})
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">$</span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                placeholder="0.00"
+                value={tipAmount}
+                onChange={(e) => setTipAmount(e.target.value)}
+                className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Desglose de Importes Separados */}
+          <div className="pt-2 border-t space-y-1 text-xs">
+            <div className="flex justify-between text-slate-600">
+              <span>Venta neta:</span>
+              <span className="font-semibold">${sale.totalAmount?.toFixed?.(2) ?? "0.00"}</span>
+            </div>
+            <div className="flex justify-between text-indigo-700">
+              <span>Propina:</span>
+              <span className="font-semibold">+${(parseFloat(tipAmount) || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center pt-1.5 border-t text-base font-black text-slate-900">
+              <span>Total cobrado:</span>
+              <span className="text-xl text-emerald-700">
+                ${((sale.totalAmount || 0) + (parseFloat(tipAmount) || 0)).toFixed(2)}
+              </span>
+            </div>
           </div>
 
           {error && <div className="text-xs text-rose-600">{error}</div>}

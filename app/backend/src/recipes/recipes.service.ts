@@ -29,11 +29,11 @@ export class RecipesService implements OnModuleInit {
         { $set: { station: 'ninguna' } }
       );
 
-      // 2. Si las recetas preexistentes incluyen sushi, sashimi o ceviche, asignarlas a cocina fría
+      // 2. Si las recetas preexistentes sin estación incluyen sushi, sashimi o ceviche, asignarlas a cocina fría
       await this.recipeModel.updateMany(
         {
           name: { $regex: /sushi|sashimi|ceviche|roll|nigiri|ensalada|poke/i },
-          station: { $ne: 'ninguna' },
+          $or: [{ station: { $exists: false } }, { station: null }, { station: '' }],
         },
         { $set: { station: 'fria' } }
       );

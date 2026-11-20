@@ -18,8 +18,8 @@ import { useNotification } from "@/context/NotificationContext";
 type TableStatusPayload = {
   tableId: string;
   number: number;
-  prevStatus: "disponible" | "ocupada" | "reservada";
-  status: "disponible" | "ocupada" | "reservada";
+  prevStatus: "disponible" | "ocupada" | "reservada" | "completada";
+  status: "disponible" | "ocupada" | "reservada" | "completada";
   at: number;
 };
 
@@ -123,7 +123,7 @@ export default function TableDetailPanel({ tableId, onClose }: Props) {
       if (p.tableId !== tableId) return;
       setTableInfo((prev) => (prev ? { ...prev, status: p.status } : prev));
 
-      if (p.status === "disponible") {
+      if (p.status === "disponible" || p.status === "completada") {
         setOrders([]);
         setSelectedOrder(null);
         setShowAddModal(false);
@@ -308,35 +308,74 @@ export default function TableDetailPanel({ tableId, onClose }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xl shrink-0">
-            {tableInfo?.number ?? "—"}
+            {tableInfo?.isVirtual ? (
+              <span>{tableInfo.tableType === 'para_llevar' ? '🛍️' : tableInfo.tableType === 'domicilio' ? '🛵' : '📞'}</span>
+            ) : (
+              tableInfo?.number ?? "—"
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Mesa {tableInfo?.number}
+                {tableInfo?.isVirtual ? (
+                  tableInfo.tableType === 'para_llevar'
+                    ? `Para Llevar — ${tableInfo.virtualCode || 'LL'}`
+                    : tableInfo.tableType === 'domicilio'
+                    ? `A Domicilio — ${tableInfo.virtualCode || 'DOM'}`
+                    : `Telefónico — ${tableInfo.virtualCode || 'TEL'}`
+                ) : (
+                  `Mesa ${tableInfo?.number}`
+                )}
               </h2>
               <span
-                className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 ${tableInfo?.status === "ocupada"
-                  ? "bg-amber-50 text-amber-800 border border-amber-200"
-                  : tableInfo?.status === "reservada"
+                className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                  tableInfo?.status === "ocupada"
+                    ? "bg-amber-50 text-amber-800 border border-amber-200"
+                    : tableInfo?.status === "reservada"
                     ? "bg-purple-50 text-purple-800 border border-purple-200"
+                    : tableInfo?.status === "completada"
+                    ? "bg-slate-100 text-slate-700 border border-slate-200"
                     : "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                  }`}
+                }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${tableInfo?.status === "ocupada"
-                    ? "bg-amber-500"
-                    : tableInfo?.status === "reservada"
+                  className={`w-2 h-2 rounded-full ${
+                    tableInfo?.status === "ocupada"
+                      ? "bg-amber-500"
+                      : tableInfo?.status === "reservada"
                       ? "bg-purple-500"
+                      : tableInfo?.status === "completada"
+                      ? "bg-slate-500"
                       : "bg-emerald-500"
-                    }`}
+                  }`}
                 ></span>
-                <span>{tableInfo?.status}</span>
+                <span>{tableInfo?.isVirtual && tableInfo?.status === 'ocupada' ? 'Activo' : tableInfo?.status}</span>
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Capacidad: {tableInfo?.capacity} comensales • Control de órdenes y entrega
-            </p>
+            {tableInfo?.isVirtual ? (
+              <div className="mt-0.5 space-y-0.5 text-xs">
+                {tableInfo.customerName && (
+                  <p className="font-semibold text-slate-800">
+                    Cliente: <span className="text-slate-900 font-bold">{tableInfo.customerName}</span>
+                    {tableInfo.customerPhone && ` • Tel: ${tableInfo.customerPhone}`}
+                  </p>
+                )}
+                {tableInfo.deliveryAddress && (
+                  <p className="text-slate-600">
+                    📍 Entrega: <span className="font-semibold">{tableInfo.deliveryAddress}</span>
+                  </p>
+                )}
+                {tableInfo.deliveryNotes && (
+                  <p className="text-[11px] text-slate-500 italic">
+                    Notas: {tableInfo.deliveryNotes}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 mt-0.5">
+                Capacidad: {tableInfo?.capacity} comensales • Control de órdenes y entrega
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -348,7 +387,7 @@ export default function TableDetailPanel({ tableId, onClose }: Props) {
         <div className="lg:col-span-4 space-y-4">
           <div className="border border-slate-200/90 bg-slate-50/70 p-5 rounded-2xl shadow-soft-xs space-y-3.5">
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400">
-              Acciones de Mesa
+              {tableInfo?.isVirtual ? 'Acciones del Pedido' : 'Acciones de Mesa'}
             </h3>
 
             {tableInfo?.status === "disponible" && (

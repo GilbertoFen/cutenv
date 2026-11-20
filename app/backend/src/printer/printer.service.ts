@@ -360,7 +360,7 @@ export class PrinterService implements OnApplicationBootstrap {
     const width = paperWidth === '58mm' ? 32 : 48;
     const line = (char = '-') => char.repeat(width);
     const center = (text: string) => {
-      if (text.length >= width) return text.slice(0, width);
+      if (text.length >= width) return text;
       const pad = Math.floor((width - text.length) / 2);
       return ' '.repeat(pad) + text;
     };
@@ -448,11 +448,11 @@ export class PrinterService implements OnApplicationBootstrap {
     return lines.join('\n');
   }
 
-  private formatKitchenPlainText(order: any, paperWidth: '58mm' | '80mm'): string {
+  public formatKitchenPlainText(order: any, paperWidth: '58mm' | '80mm' = '58mm'): string {
     const width = paperWidth === '58mm' ? 32 : 48;
     const line = (char = '-') => char.repeat(width);
     const center = (text: string) => {
-      if (text.length >= width) return text.slice(0, width);
+      if (text.length >= width) return text;
       const pad = Math.floor((width - text.length) / 2);
       return ' '.repeat(pad) + text;
     };
@@ -461,18 +461,49 @@ export class PrinterService implements OnApplicationBootstrap {
       return left + ' '.repeat(space) + right;
     };
 
-    const tableNum =
-      order.tableNumber ??
-      (typeof order.table === 'object' && order.table !== null ? order.table?.number : order.table) ??
-      '—';
+    const isVirtual = Boolean(order.isVirtual || order.table?.isVirtual);
+    const virtualCode = order.virtualCode || order.table?.virtualCode;
+    const tableType = order.tableType || order.table?.tableType;
+    const typeLabel =
+      tableType === 'para_llevar'
+        ? 'LLEVAR'
+        : tableType === 'domicilio'
+        ? 'DOMICILIO'
+        : tableType === 'telefonico'
+        ? 'TELÉFONO'
+        : '';
+    const tableNum = order.tableLabel || (
+      isVirtual
+        ? `${virtualCode || 'VIRTUAL'}${typeLabel ? ` (${typeLabel})` : ''}`
+        : (order.tableNumber ??
+          (typeof order.table === 'object' && order.table !== null ? order.table?.number : order.table) ??
+          '—')
+    );
 
     const orderId = order.id || order._id || 'ORD-0000';
     const shortId = typeof orderId === 'string' && orderId.length > 6 ? orderId.slice(-6).toUpperCase() : String(orderId).toUpperCase();
     const dateStr = new Date(order.createdAt || Date.now()).toLocaleDateString('es-MX');
     const timeStr = new Date(order.createdAt || Date.now()).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-    const station = order.stationName || (order.station === 'fria' ? 'COCINA FRÍA' : order.station === 'caliente' ? 'COCINA CALIENTE' : '');
-    const titleText = station ? `*** COMANDA DE ${station.toUpperCase()} ***` : '*** COMANDA DE COCINA ***';
+    const rawStation = order.station;
+    const isNoKitchen = rawStation === 'ninguna' || rawStation === 'sin_cocina' || rawStation === 'bebidas';
+    const isCold = rawStation === 'fria';
+    const isHot = rawStation === 'caliente';
+
+    const defaultStationName = isCold
+      ? 'COCINA FRÍA'
+      : isHot
+        ? 'COCINA CALIENTE'
+        : isNoKitchen
+          ? 'PRODUCTOS SIN COCINA (BEBIDAS)'
+          : '';
+
+    const station = order.stationName || defaultStationName;
+    const titleText = isNoKitchen
+      ? '*** PRODUCTOS SIN COCINA (BEBIDAS) ***'
+      : station
+        ? `*** COMANDA DE ${station.toUpperCase()} ***`
+        : '*** COMANDA DE COCINA ***';
 
     const lines = [
       center('================================'),
@@ -483,13 +514,24 @@ export class PrinterService implements OnApplicationBootstrap {
       row(`FECHA: ${dateStr}`, `HORA: ${timeStr}`),
     ];
 
+    if (order.customerName) {
+      lines.push(row(`CLIENTE:`, `${order.customerName}${order.customerPhone ? ` (${order.customerPhone})` : ''}`.toUpperCase()));
+    }
+    if (order.deliveryAddress) {
+      lines.push(`DIR: ${order.deliveryAddress.toUpperCase()}`);
+    }
+
     if (order.notes) {
       lines.push(line('-'));
       lines.push(`NOTAS: ${order.notes.toUpperCase()}`);
     }
 
     lines.push(line('='));
-    lines.push(width === 48 ? 'CANT  PLATILLO / ESPECIFICACION' : 'CANT PLATILLO / NOTAS');
+    lines.push(
+      width === 48
+        ? (isNoKitchen ? 'CANT  PRODUCTO / ESPECIFICACION' : 'CANT  PLATILLO / ESPECIFICACION')
+        : (isNoKitchen ? 'CANT PRODUCTO / NOTAS' : 'CANT PLATILLO / NOTAS')
+    );
     lines.push(line('-'));
 
     const items = (order.recipes || order.items || []).filter((it: any) => it.status !== 'cancelled');
@@ -508,15 +550,30 @@ export class PrinterService implements OnApplicationBootstrap {
         lines.push(`${qtyStr.padEnd(5, ' ')} ${name.toUpperCase()}`);
       }
 
+      // Agregados, toppings o extras
+      if (it.modifiers && Array.isArray(it.modifiers) && it.modifiers.length > 0) {
+        for (const mod of it.modifiers) {
+          const modName = typeof mod === 'string' ? mod : mod.name;
+          const hasPrice = typeof mod === 'object' && Number(mod.price) > 0;
+          const priceTag = hasPrice ? ` (+$${Number(mod.price).toFixed(2)})` : ' (Sin costo)';
+          const stationOrigin =
+            typeof mod === 'object' && mod.station && mod.station !== rawStation
+              ? ` [De Cocina ${mod.station.toUpperCase()}]`
+              : '';
+          const prefix = hasPrice ? '+ ' : '* ';
+          lines.push(`      ${prefix}${modName.toUpperCase()}${priceTag}${stationOrigin}`);
+        }
+      }
+
       if (notes) {
         lines.push(`      >> ${notes}`);
       }
     }
 
     lines.push(line('-'));
-    lines.push(row('TOTAL PLATILLOS:', `${totalItemsCount} pzas`));
+    lines.push(row(isNoKitchen ? 'TOTAL PRODUCTOS:' : 'TOTAL PLATILLOS:', `${totalItemsCount} pzas`));
     lines.push(line('='));
-    lines.push(center('--- ENVIADO A COCINA ---'));
+    lines.push(center(isNoKitchen ? '--- DESPACHO DE BEBIDAS / SALA ---' : '--- ENVIADO A COCINA ---'));
     lines.push('');
     lines.push('');
 

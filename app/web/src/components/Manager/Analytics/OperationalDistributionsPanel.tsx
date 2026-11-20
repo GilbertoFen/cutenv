@@ -148,12 +148,19 @@ export default function OperationalDistributionsPanel({
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <AppIcon name={info.icon} size={14} className="text-slate-400" />
-                      <span className="font-bold text-slate-800">{info.label}</span>
+                      <div>
+                        <span className="font-bold text-slate-800 block">{info.label}</span>
+                        {(p.tips || 0) > 0 && (
+                          <span className="text-[10px] text-amber-700 font-semibold block">
+                            Venta: {formatMoney(p.netSales ?? p.revenue)} • Propina: +{formatMoney(p.tips!)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-slate-500 text-[11px]">{p.ticketsCount} tickets</span>
                       <span className="font-bold text-slate-900 w-24 text-right">
-                        {formatMoney(p.revenue)}
+                        {formatMoney(p.totalCollected ?? p.revenue)}
                       </span>
                       <span className="text-xs font-black text-emerald-700 w-12 text-right">
                         {p.percentage}%

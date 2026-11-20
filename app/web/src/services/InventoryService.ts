@@ -54,6 +54,18 @@ export async function createProduct(productData: Record<string, any>) {
   return res.json().catch(() => ({}));
 }
 
+export async function updateProduct(productId: string, data: Record<string, any>) {
+  const res = await apiFetch(`/products/${productId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(`Error al actualizar insumo: ${res.status} ${msg}`);
+  }
+  return res.json().catch(() => ({}));
+}
+
 export async function deleteProduct(productId: string | number) {
   const res = await apiFetch(`/products/${productId}`, {
     method: "DELETE",

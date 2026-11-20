@@ -45,6 +45,8 @@ export function normalizeSalesResponse(json: unknown): SaleData[] {
         _id: s._id,
         folio: String(s.folio ?? "—"),
         totalAmount: toNumber(s.totalAmount),
+        tipAmount: toNumber((s as any).tipAmount),
+        totalCollected: Number((toNumber(s.totalAmount) + toNumber((s as any).tipAmount)).toFixed(2)),
         orders,
         orderType: s.orderType as OrderType | undefined,
         paymentMethod: s.paymentMethod as PaymentMethod | undefined,

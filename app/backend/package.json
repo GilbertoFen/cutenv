@@ -13,6 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts",
+    "seed:omikami": "ts-node -r tsconfig-paths/register src/scripts/seed-omikami-menu.ts",
     "seed:analytics": "ts-node -r tsconfig-paths/register src/scripts/seed-analytics-sales.ts",
     "seed:testing": "ts-node -r tsconfig-paths/register src/scripts/seed-pos-testing-suite.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

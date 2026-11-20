@@ -47,6 +47,9 @@ export class Sale {
   discountAmount: number;
 
   @Prop({ default: 0 })
+  tipAmount: number;
+
+  @Prop({ default: 0 })
   paidAmount?: number;
 
   @Prop({ type: [{ method: String, amount: Number, date: Date }], default: [] })

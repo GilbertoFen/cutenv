@@ -69,6 +69,10 @@ export default function CashierPage() {
   } | null>(null);
   const [calculatingPromo, setCalculatingPromo] = useState(false);
 
+  // Propinas
+  const [tipAmount, setTipAmount] = useState<string>('0');
+  const [selectedTipPercentage, setSelectedTipPercentage] = useState<number | null>(0);
+
   const socketRef = useRef<ReturnType<typeof getCashierSocket> | null>(null);
 
   const fetchQueue = async () => {
@@ -185,6 +189,8 @@ export default function CashierPage() {
       setSale(full);
       setSelectedPromo(null);
       setPromoCalculation(null);
+      setTipAmount('0');
+      setSelectedTipPercentage(0);
 
       if (full?.orderType) setOrderType(full.orderType as OrderType);
       else setOrderType('local');
@@ -233,6 +239,41 @@ export default function CashierPage() {
     }
   };
 
+  const currentNetTotal = promoCalculation ? promoCalculation.finalTotal : Number(sale?.totalAmount || 0);
+  const numericTip = Math.max(0, parseFloat(tipAmount) || 0);
+  const totalWithTip = currentNetTotal + numericTip;
+
+  const applyTipPercentage = (percentage: number) => {
+    setSelectedTipPercentage(percentage);
+    if (percentage === 0) {
+      setTipAmount('0');
+      return;
+    }
+    const calculated = currentNetTotal * (percentage / 100);
+    setTipAmount(calculated.toFixed(2));
+  };
+
+  const handleCustomTipChange = (value: string) => {
+    setTipAmount(value);
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || parsed < 0) {
+      setSelectedTipPercentage(null);
+      return;
+    }
+    const matchedPct = [5, 10, 15, 20, 25].find(
+      (pct) => Math.abs(currentNetTotal * (pct / 100) - parsed) < 0.05
+    );
+    setSelectedTipPercentage(matchedPct ?? (parsed === 0 ? 0 : null));
+  };
+
+  // Recalcular monto de propina si cambia la promoción y había un porcentaje activo
+  useEffect(() => {
+    if (selectedTipPercentage !== null && selectedTipPercentage > 0 && currentNetTotal > 0) {
+      const recalculated = currentNetTotal * (selectedTipPercentage / 100);
+      setTipAmount(recalculated.toFixed(2));
+    }
+  }, [promoCalculation?.finalTotal, sale?.totalAmount]);
+
   const printTicket = () => {
     if (!sale) return;
     setIsTicketModalOpen(true);
@@ -246,11 +287,13 @@ export default function CashierPage() {
         return;
       }
     }
+    const tipNumber = Math.max(0, parseFloat(tipAmount) || 0);
     try {
       setPaying(true);
       await paySale(sale.id, {
         orderType,
         paymentMethod,
+        tipAmount: tipNumber,
         promotionId: selectedPromo ? (selectedPromo.id || (selectedPromo as any)._id) : undefined,
         discountAmount: promoCalculation?.discountAmount || 0,
         authorizedBy: promoAuthWorker.trim() || undefined,
@@ -267,7 +310,11 @@ export default function CashierPage() {
             }
           : undefined,
       });
-      notify.success('Cobro registrado exitosamente.');
+      notify.success(
+        tipNumber > 0
+          ? `Cobro registrado exitosamente con propina de $${tipNumber.toFixed(2)}.`
+          : 'Cobro registrado exitosamente.'
+      );
     } catch (e: any) {
       console.error(e);
       // Comprobar si el backend procesó el pago antes de la desconexión
@@ -607,6 +654,132 @@ export default function CashierPage() {
                 )}
               </div>
 
+              {/* Sección de Propina / Gratificación */}
+              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-amber-50/30 p-4 sm:p-5 space-y-3.5 shadow-soft-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0">
+                      <AppIcon name="sparkles" size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight">
+                        Propina del Cliente (Gratificación)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Selecciona un porcentaje sugerido o ingresa el monto numérico directo
+                      </p>
+                    </div>
+                  </div>
+                  {numericTip > 0 && (
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto flex items-center gap-1.5 shadow-soft-xs">
+                      <span>+${numericTip.toFixed(2)}</span>
+                      <span className="text-[10px] text-emerald-600 font-bold">
+                        ({currentNetTotal > 0 ? ((numericTip / currentNetTotal) * 100).toFixed(1) : 0}%)
+                      </span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Botones Rápidos de Porcentaje: 0%, 5%, 10%, 15%, 20%, 25% */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1.5">
+                    Botones rápidos de porcentaje:
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applyTipPercentage(0)}
+                      className={`min-h-[44px] px-2 py-1.5 rounded-xl text-xs font-bold transition-all border active:scale-95 flex flex-col items-center justify-center ${
+                        selectedTipPercentage === 0 || (!numericTip && selectedTipPercentage === null)
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-soft-xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="font-extrabold text-xs">0%</span>
+                      <span className="text-[10px] opacity-75">Sin propina</span>
+                    </button>
+
+                    {[5, 10, 15, 20, 25].map((pct) => {
+                      const isSel = selectedTipPercentage === pct;
+                      const amount = currentNetTotal * (pct / 100);
+                      return (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => applyTipPercentage(pct)}
+                          className={`min-h-[44px] px-2 py-1.5 rounded-xl text-xs font-black transition-all border active:scale-95 flex flex-col items-center justify-center ${
+                            isSel
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-soft-xs ring-2 ring-indigo-500/20'
+                              : 'bg-white text-indigo-950 border-indigo-200 hover:bg-indigo-50/70 hover:border-indigo-300'
+                          }`}
+                        >
+                          <span className="font-extrabold text-xs">{pct}%</span>
+                          <span className={`text-[10px] font-bold ${isSel ? 'text-indigo-100' : 'text-slate-500'}`}>
+                            ${amount.toFixed(2)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Entrada manual de número o porcentaje personalizado */}
+                <div className="pt-2 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Monto numérico exacto ($ MXN):
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-2.5 text-slate-400 text-sm font-black">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="0.00"
+                        value={tipAmount}
+                        onChange={(e) => handleCustomTipChange(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white shadow-soft-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      O ingresar porcentaje personalizado (%):
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="any"
+                        placeholder="0"
+                        value={
+                          selectedTipPercentage !== null && selectedTipPercentage !== 0
+                            ? String(selectedTipPercentage)
+                            : currentNetTotal > 0 && numericTip > 0
+                            ? ((numericTip / currentNetTotal) * 100).toFixed(1)
+                            : ''
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val || val === '0') {
+                            applyTipPercentage(0);
+                          } else {
+                            const pct = parseFloat(val);
+                            if (!isNaN(pct) && pct >= 0) {
+                              applyTipPercentage(pct);
+                            }
+                          }
+                        }}
+                        className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white shadow-soft-xs"
+                      />
+                      <span className="absolute right-3.5 top-2.5 text-slate-400 text-sm font-black">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Totals Breakdown */}
               <div className="pt-3 border-t border-slate-200 space-y-2 text-xs">
                 <div className="flex justify-between text-slate-600 text-sm">
@@ -621,10 +794,24 @@ export default function CashierPage() {
                     <span>-${Number(promoCalculation ? promoCalculation.discountAmount : sale.discountAmount).toFixed(2)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-slate-700 font-semibold text-sm">
+                  <span>Venta neta (alimentos y bebidas):</span>
+                  <span className="font-bold text-slate-900">${currentNetTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-amber-900 font-black text-sm bg-amber-50/70 px-3 py-2 rounded-xl border border-amber-200">
+                  <span className="flex items-center gap-1.5">
+                    <AppIcon name="sparkles" size={14} className="text-amber-600" />
+                    <span>Propina {selectedTipPercentage ? `(${selectedTipPercentage}%)` : numericTip > 0 ? '(Personalizada)' : ''}:</span>
+                  </span>
+                  <span className="text-base font-black text-amber-900">+${numericTip.toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between items-center pt-3 border-t border-slate-200">
-                  <span className="text-base font-black text-slate-900">Total a Cobrar:</span>
+                  <div>
+                    <span className="text-base font-black text-slate-900 block leading-tight">Total a Cobrar:</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Venta neta + propina</span>
+                  </div>
                   <span className="text-3xl font-black text-emerald-600 tracking-tight">
-                    ${(promoCalculation ? promoCalculation.finalTotal : Number(sale.totalAmount || 0)).toFixed(2)}
+                    ${totalWithTip.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -697,11 +884,20 @@ export default function CashierPage() {
 
       {/* Modal de Impresión Térmica USB / Navegador */}
       <ThermalTicketModal
-        sale={sale}
+        sale={
+          sale
+            ? {
+                ...sale,
+                tipAmount: numericTip,
+                totalAmount: currentNetTotal,
+                discountAmount: promoCalculation ? promoCalculation.discountAmount : Number(sale.discountAmount || 0),
+              }
+            : null
+        }
         isOpen={isTicketModalOpen}
         onClose={() => setIsTicketModalOpen(false)}
         onPrintedSuccess={() => {
-          setSale((prev: any) => prev ? { ...prev, ticketStatus: 'printed' } : prev);
+          setSale((prev: any) => (prev ? { ...prev, ticketStatus: 'printed' } : prev));
         }}
       />
     </div>

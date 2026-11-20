@@ -64,24 +64,41 @@ export default function ReportsPanel({ allSales, defaultDate }: Props) {
 
   const kpis = useMemo(() => {
     const count = filtered.length;
-    const total = filtered.reduce((a, sale) => a + (sale.totalAmount || 0), 0);
-    const avg = count ? total / count : 0;
+    const netSales = filtered.reduce(
+      (a, sale) => a + (sale.status !== 'cancelled' ? (sale.totalAmount || 0) : 0),
+      0
+    );
+    const tips = filtered.reduce(
+      (a, sale) => a + (sale.status !== 'cancelled' ? (sale.tipAmount || 0) : 0),
+      0
+    );
+    const totalCollected = netSales + tips;
+    const avg = count ? netSales / count : 0;
     const paid = filtered.filter((s) => s.status === "paid").length;
     const open = filtered.filter((s) => s.status !== "paid").length;
-    return { count, total, avg, paid, open };
+    return { count, netSales, tips, totalCollected, avg, paid, open };
   }, [filtered]);
 
   const byDay = useMemo(() => {
-    const map: Record<string, { count: number; total: number }> = {};
+    const map: Record<string, { count: number; netSales: number; tips: number; totalCollected: number }> = {};
     for (const s of filtered) {
+      if (s.status === 'cancelled') continue;
       const key = s.date ? dateFormat(new Date(s.date)) : "—";
-      if (!map[key]) map[key] = { count: 0, total: 0 };
+      if (!map[key]) map[key] = { count: 0, netSales: 0, tips: 0, totalCollected: 0 };
+      const net = s.totalAmount || 0;
+      const tip = s.tipAmount || 0;
       map[key].count += 1;
-      map[key].total += (s.totalAmount || 0);
+      map[key].netSales += net;
+      map[key].tips += tip;
+      map[key].totalCollected += (net + tip);
     }
     return Object.entries(map)
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, v]) => ({ date, ...v, avg: v.count ? v.total / v.count : 0 }));
+      .map(([date, v]) => ({
+        date,
+        ...v,
+        avg: v.count ? v.netSales / v.count : 0,
+      }));
   }, [filtered]);
 
   const handleExportExcel = () => {
@@ -168,12 +185,13 @@ export default function ReportsPanel({ allSales, defaultDate }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Kpi label="Ventas" value={String(kpis.count)} />
-        <Kpi label="Total recaudado" value={currency(kpis.total)} />
-        <Kpi label="Ticket promedio" value={currency(kpis.avg)} />
-        <Kpi label="Pagadas" value={String(kpis.paid)} />
-        <Kpi label="Abiertas" value={String(kpis.open)} />
+        <Kpi label="Venta Neta" value={currency(kpis.netSales)} />
+        <Kpi label="Propinas" value={currency(kpis.tips)} />
+        <Kpi label="Total Cobrado" value={currency(kpis.totalCollected)} className="bg-emerald-50/60 border-emerald-200" valueClassName="text-emerald-900" />
+        <Kpi label="Ticket Promedio" value={currency(kpis.avg)} />
+        <Kpi label="Pagadas / Abiertas" value={`${kpis.paid} / ${kpis.open}`} />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -182,14 +200,16 @@ export default function ReportsPanel({ allSales, defaultDate }: Props) {
             <tr>
               <Th>Fecha</Th>
               <Th>Ventas</Th>
-              <Th>Total</Th>
-              <Th>Promedio</Th>
+              <Th>Venta Neta</Th>
+              <Th>Propinas</Th>
+              <Th>Total Cobrado</Th>
+              <Th>Ticket Promedio</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {byDay.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-400" colSpan={4}>
+                <td className="px-4 py-8 text-center text-slate-400" colSpan={6}>
                   No hay datos en el rango seleccionado.
                 </td>
               </tr>
@@ -198,7 +218,9 @@ export default function ReportsPanel({ allSales, defaultDate }: Props) {
                 <tr key={r.date} className="hover:bg-slate-50 transition-colors">
                   <Td className="font-bold text-slate-900">{r.date}</Td>
                   <Td>{r.count}</Td>
-                  <Td className="font-bold text-indigo-700">{currency(r.total)}</Td>
+                  <Td className="font-bold text-slate-800">{currency(r.netSales)}</Td>
+                  <Td className="font-semibold text-amber-700">{r.tips > 0 ? `+${currency(r.tips)}` : '—'}</Td>
+                  <Td className="font-black text-emerald-700">{currency(r.totalCollected)}</Td>
                   <Td>{currency(r.avg)}</Td>
                 </tr>
               ))

@@ -11,6 +11,10 @@ export class PaySaleDto {
 
   @IsOptional()
   @IsNumber()
+  tipAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
   discountAmount?: number;
 
   @IsOptional()

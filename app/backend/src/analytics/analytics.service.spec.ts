@@ -206,5 +206,178 @@ describe('AnalyticsService', () => {
       expect(local?.revenue).toBe(110);
       expect(paraLlevar?.revenue).toBe(60);
     });
+
+    it('debe separar propinas de ventas netas en overview KPIs, distribución operativa y ticket promedio', async () => {
+      const range = service.getDateRange({ period: 'today' });
+      const saleDate = new Date(range.start.getTime() + 7200000);
+
+      // Limpiar colecciones
+      await saleModel.deleteMany({});
+      await orderModel.deleteMany({});
+
+      // Venta 1: Neta $3,000, Propina $300, Total Cobrado $3,300 (Efectivo)
+      await saleModel.create({
+        table: new mongoose.Types.ObjectId(),
+        orders: [],
+        totalAmount: 3000,
+        tipAmount: 300,
+        discountAmount: 0,
+        status: 'paid',
+        date: saleDate,
+        folio: 'KPI-TIP-001',
+        orderType: 'local',
+        paymentMethod: 'efectivo',
+      });
+
+      // Venta 2: Neta $2,000, Propina $200, Total Cobrado $2,200 (Tarjeta)
+      await saleModel.create({
+        table: new mongoose.Types.ObjectId(),
+        orders: [],
+        totalAmount: 2000,
+        tipAmount: 200,
+        discountAmount: 0,
+        status: 'paid',
+        date: saleDate,
+        folio: 'KPI-TIP-002',
+        orderType: 'para llevar',
+        paymentMethod: 'tarjeta',
+      });
+
+      const overview = await service.getOverviewKpis({ period: 'today' });
+
+      // Ventas netas: 3000 + 2000 = 5000 (sin propinas)
+      expect(overview.current.netSales).toBe(5000);
+      // Propinas totales: 300 + 200 = 500
+      expect(overview.current.totalTips).toBe(500);
+      // Total cobrado: 5000 + 500 = 5500
+      expect(overview.current.totalCollected).toBe(5500);
+      // Ticket promedio sobre venta neta: 5000 / 2 = 2500 (NUNCA 5500 / 2 = 2750)
+      expect(overview.current.averageTicket).toBe(2500);
+
+      // Distribución operativa
+      const dist = await service.getOperationalDistributions({ period: 'today' });
+      const ef = dist.byPaymentMethod.find((p) => p.method === 'efectivo');
+      const tj = dist.byPaymentMethod.find((p) => p.method === 'tarjeta');
+
+      expect(ef?.netSales).toBe(3000);
+      expect(ef?.tips).toBe(300);
+      expect(ef?.totalCollected).toBe(3300);
+
+      expect(tj?.netSales).toBe(2000);
+      expect(tj?.tips).toBe(200);
+      expect(tj?.totalCollected).toBe(2200);
+    });
+
+    it('debe calcular costo de ventas (gastos de insumos) y ganancia calculada excluyendo estrictamente las propinas', async () => {
+      const range = service.getDateRange({ period: 'today' });
+      const saleDate = new Date(range.start.getTime() + 10800000);
+
+      await saleModel.deleteMany({});
+      await orderModel.deleteMany({});
+      await recipeModel.deleteMany({});
+      await productModel.deleteMany({});
+
+      // 1. Insumos con costo
+      const carne = await productModel.create({
+        name: 'Carne de Res',
+        price: 50, // costo o precio unitario
+        unitCost: 50,
+        stock: 100,
+        category: 'Carnes',
+      });
+      const pan = await productModel.create({
+        name: 'Pan Brioche',
+        price: 10,
+        unitCost: 10,
+        stock: 100,
+        category: 'Panadería',
+      });
+
+      // 2. Receta: Hamburguesa cuesta $60 de insumos ($50 carne + $10 pan), precio venta $150
+      const burger = await recipeModel.create({
+        name: 'Burger Gourmet',
+        price: 150,
+        ingredients: [
+          { ingredientId: carne._id, quantity: 1, unitMesure: 'pza' },
+          { ingredientId: pan._id, quantity: 1, unitMesure: 'pza' },
+        ],
+        isActive: true,
+      });
+
+      // 3. Comanda: 2 hamburguesas => Costo de insumos = 2 x 60 = 120
+      const order = await orderModel.create({
+        table: new mongoose.Types.ObjectId(),
+        items: [{ recipe: burger._id, quantity: 2, status: 'delivered' }],
+        status: 'delivered',
+        total: 300,
+      });
+
+      // 4. Venta: Venta neta = $300, Propina = $50, Total Cobrado = $350
+      await saleModel.create({
+        table: new mongoose.Types.ObjectId(),
+        orders: [order._id],
+        totalAmount: 300,
+        tipAmount: 50,
+        discountAmount: 0,
+        status: 'paid',
+        date: saleDate,
+        folio: 'FIN-001',
+        orderType: 'local',
+        paymentMethod: 'tarjeta',
+      });
+
+      const overview = await service.getOverviewKpis({ period: 'today' });
+
+      // Verificaciones:
+      // Venta neta: $300
+      expect(overview.current.netSales).toBe(300);
+      // Propinas: $50
+      expect(overview.current.totalTips).toBe(50);
+      // Total cobrado: $350
+      expect(overview.current.totalCollected).toBe(350);
+      // Gastos calculados (Costo de ventas): 2 hamburguesas x $60 = $120
+      expect(overview.current.cogs).toBe(120);
+      expect(overview.current.expenses).toBe(120);
+      // Ganancia calculada = Venta neta ($300) - Gastos calculados ($120) = $180
+      // NUNCA Total cobrado ($350) - $120 = $230!
+      expect(overview.current.estimatedProfit).toBe(180);
+      // Margen = (180 / 300) * 100 = 60.0%
+      expect(overview.current.profitMarginPercentage).toBe(60);
+
+      // Verificación en la tendencia diaria (getHourlyAndDailyAnalytics)
+      const hourlyDaily = await service.getHourlyAndDailyAnalytics({ period: 'today' });
+      expect(hourlyDaily.dailyTrend.length).toBe(1);
+      const todayTrend = hourlyDaily.dailyTrend[0];
+      expect(todayTrend.netSales).toBe(300);
+      expect(todayTrend.tips).toBe(50);
+      expect(todayTrend.totalCollected).toBe(350);
+      expect(todayTrend.cogs).toBe(120);
+      expect(todayTrend.expenses).toBe(120);
+      expect(todayTrend.estimatedProfit).toBe(180);
+      expect(todayTrend.profitMarginPercentage).toBe(60);
+    });
+
+    it('debe manejar días sin ventas retornando ceros consistentes sin errores ni NaN', async () => {
+      await saleModel.deleteMany({});
+      await orderModel.deleteMany({});
+
+      const overview = await service.getOverviewKpis({ period: 'today' });
+      expect(overview.current.netSales).toBe(0);
+      expect(overview.current.totalTips).toBe(0);
+      expect(overview.current.totalCollected).toBe(0);
+      expect(overview.current.cogs).toBe(0);
+      expect(overview.current.expenses).toBe(0);
+      expect(overview.current.estimatedProfit).toBe(0);
+      expect(overview.current.profitMarginPercentage).toBeNull();
+      expect(overview.current.averageTicket).toBeNull();
+
+      const hourlyDaily = await service.getHourlyAndDailyAnalytics({ period: 'today' });
+      expect(hourlyDaily.dailyTrend.length).toBe(1);
+      expect(hourlyDaily.dailyTrend[0].netSales).toBe(0);
+      expect(hourlyDaily.dailyTrend[0].tips).toBe(0);
+      expect(hourlyDaily.dailyTrend[0].cogs).toBe(0);
+      expect(hourlyDaily.dailyTrend[0].estimatedProfit).toBe(0);
+      expect(hourlyDaily.dailyTrend[0].profitMarginPercentage).toBeNull();
+    });
   });
 });

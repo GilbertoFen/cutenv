@@ -314,9 +314,22 @@ export default function ThermalTicketModal({
                     </div>
                   )}
 
+                  {(sale.tipAmount || 0) > 0 && (
+                    <>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Venta Neta:</span>
+                        <span className="font-semibold">${(sale.totalAmount || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-amber-800">
+                        <span>Propina:</span>
+                        <span>+${Number(sale.tipAmount).toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="flex justify-between items-center pt-1.5 border-t border-slate-200 text-sm font-black text-slate-900">
-                    <span>TOTAL:</span>
-                    <span className="text-base">${totalAmount.toFixed(2)}</span>
+                    <span>{(sale.tipAmount || 0) > 0 ? 'TOTAL COBRADO:' : 'TOTAL:'}</span>
+                    <span className="text-base">${((sale.totalAmount || 0) + (sale.tipAmount || 0)).toFixed(2)}</span>
                   </div>
                 </div>
 

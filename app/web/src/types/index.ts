@@ -1,3 +1,10 @@
+export interface OrderModifier {
+  name: string;
+  price?: number;
+  station?: 'fria' | 'caliente' | 'ninguna';
+  notes?: string;
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -6,6 +13,7 @@ export interface Recipe {
   price: number;
   category: string;
   station?: 'fria' | 'caliente' | 'ninguna';
+  modifiers?: OrderModifier[];
 }
 
 export interface UpdateOrderItem {
@@ -15,6 +23,7 @@ export interface UpdateOrderItem {
   status?: string;
   notes?: string;
   station?: 'fria' | 'caliente' | 'ninguna';
+  modifiers?: OrderModifier[];
 }
 
 export interface Order {
@@ -35,6 +44,7 @@ export interface Order {
     category?: string;
     notes?: string;
     station?: 'fria' | 'caliente' | 'ninguna';
+    modifiers?: OrderModifier[];
     status?: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
     callWaiter?: {
       requested: boolean;
@@ -49,9 +59,16 @@ export interface Order {
 export interface Table {
   id: string;
   number: number;
-  status: 'disponible' | 'ocupada' | 'reservada';
+  status: 'disponible' | 'ocupada' | 'reservada' | 'completada';
   capacity: number;
   occupiedAt?: string;
+  isVirtual?: boolean;
+  tableType?: 'fisica' | 'para_llevar' | 'domicilio' | 'telefonico';
+  virtualCode?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryNotes?: string;
 }
 
 export interface AddOrderModalProps {
@@ -87,6 +104,8 @@ export interface SaleData {
   folio: string;
   table: { number?: number } | string;
   totalAmount: number;
+  tipAmount?: number;
+  totalCollected?: number;
   date?: string;
   orders: SaleOrder[];
   orderType?: 'local' | 'para llevar' | 'evento' | 'domicilio';
