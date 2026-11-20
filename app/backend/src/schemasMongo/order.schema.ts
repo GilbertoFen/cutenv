@@ -15,6 +15,12 @@ export class Order {
     status: { type: String, enum: ['pending', 'preparing', 'ready', 'delivered', 'cancelled'], default: 'preparing' },
     station: { type: String, enum: ['fria', 'caliente', 'ninguna'], default: 'ninguna' },
     notes: { type: String, required: false },
+    modifiers: [{
+      name: { type: String, required: true },
+      price: { type: Number, default: 0 },
+      station: { type: String, enum: ['fria', 'caliente', 'ninguna'], default: 'ninguna' },
+      notes: { type: String, required: false },
+    }],
     callWaiter: {
       requested: { type: Boolean, default: false },
       reason: { type: String, enum: ['ready', 'unavailable', 'issue', 'other'], default: 'ready' },
@@ -31,6 +37,12 @@ export class Order {
     status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
     station?: 'fria' | 'caliente' | 'ninguna';
     notes?: string;
+    modifiers?: Array<{
+      name: string;
+      price?: number;
+      station?: 'fria' | 'caliente' | 'ninguna';
+      notes?: string;
+    }>;
     callWaiter?: {
       requested: boolean;
       reason: 'ready' | 'unavailable' | 'issue' | 'other';

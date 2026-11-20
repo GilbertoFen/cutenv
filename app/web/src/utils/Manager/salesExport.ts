@@ -21,12 +21,18 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
   // HOJA 1: RESUMEN DE VENTAS
   // ==========================================
   const totalOperaciones = sales.length;
-  const totalRecaudado = sales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+  const totalNetSales = sales.reduce((acc, s) => acc + (s.status !== 'cancelled' ? (s.totalAmount || 0) : 0), 0);
+  const totalTips = sales.reduce((acc, s) => acc + (s.status !== 'cancelled' ? (s.tipAmount || 0) : 0), 0);
+  const totalCobrado = totalNetSales + totalTips;
 
-  let totalEfectivo = 0;
-  let totalTarjeta = 0;
-  let totalTransferencia = 0;
-  let totalOtros = 0;
+  let totalEfectivoNeto = 0;
+  let totalEfectivoPropina = 0;
+  let totalTarjetaNeto = 0;
+  let totalTarjetaPropina = 0;
+  let totalTransferenciaNeto = 0;
+  let totalTransferenciaPropina = 0;
+  let totalOtrosNeto = 0;
+  let totalOtrosPropina = 0;
 
   let pagadasCount = 0;
   let sinPagarCount = 0;
@@ -34,17 +40,31 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
   let canceladasCount = 0;
 
   for (const s of sales) {
-    const pm = (s.paymentMethod || '').toLowerCase();
-    const amt = s.totalAmount || 0;
+    if (s.status === 'cancelled') {
+      canceladasCount++;
+      continue;
+    }
 
-    if (pm.includes('efectivo') || pm === 'cash') totalEfectivo += amt;
-    else if (pm.includes('tarjeta') || pm === 'card' || pm === 'card_terminal') totalTarjeta += amt;
-    else if (pm.includes('transfer') || pm === 'spei') totalTransferencia += amt;
-    else totalOtros += amt;
+    const pm = (s.paymentMethod || '').toLowerCase();
+    const net = s.totalAmount || 0;
+    const tip = s.tipAmount || 0;
+
+    if (pm.includes('efectivo') || pm === 'cash') {
+      totalEfectivoNeto += net;
+      totalEfectivoPropina += tip;
+    } else if (pm.includes('tarjeta') || pm === 'card' || pm === 'card_terminal') {
+      totalTarjetaNeto += net;
+      totalTarjetaPropina += tip;
+    } else if (pm.includes('transfer') || pm === 'spei') {
+      totalTransferenciaNeto += net;
+      totalTransferenciaPropina += tip;
+    } else {
+      totalOtrosNeto += net;
+      totalOtrosPropina += tip;
+    }
 
     const st = (s.status || '').toLowerCase();
     if (st === 'paid') pagadasCount++;
-    else if (st === 'cancelled') canceladasCount++;
     else if (st === 'partial') parcialCount++;
     else sinPagarCount++;
   }
@@ -58,16 +78,18 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
     ['Filtro - Tipo de Pedido:', options.orderType === 'all' ? 'Todos los tipos' : (options.orderType || 'Todos')],
     ['Fecha de Generación:', new Date().toLocaleString('es-MX')],
     [''],
-    ['INDICADOR GENERAL', 'VALOR'],
-    ['Total de Ventas Recaudado (MXN)', totalRecaudado],
+    ['INDICADOR GENERAL', 'VALOR (MXN)'],
+    ['1. Venta Total Neta (Exclusivo productos)', totalNetSales],
+    ['2. Propinas Totales (Gratificaciones de servicio)', totalTips],
+    ['3. Total General Cobrado (Venta neta + propinas)', totalCobrado],
     ['Número Total de Operaciones', totalOperaciones],
-    ['Ticket Promedio (MXN)', totalOperaciones > 0 ? totalRecaudado / totalOperaciones : 0],
+    ['Ticket Promedio (Calculado sobre Venta Neta)', totalOperaciones > 0 ? totalNetSales / totalOperaciones : 0],
     [''],
-    ['DESGLOSE POR MÉTODO DE PAGO', 'MONTO (MXN)'],
-    ['Total en Efectivo', totalEfectivo],
-    ['Total con Tarjeta (Débito / Crédito)', totalTarjeta],
-    ['Total por Transferencia Electrónica', totalTransferencia],
-    ['Total Otros / No Especificado', totalOtros],
+    ['DESGLOSE POR MÉTODO DE PAGO', 'VENTA NETA (MXN)', 'PROPINAS (MXN)', 'TOTAL COBRADO (MXN)'],
+    ['Total en Efectivo', totalEfectivoNeto, totalEfectivoPropina, totalEfectivoNeto + totalEfectivoPropina],
+    ['Total con Tarjeta (Débito / Crédito)', totalTarjetaNeto, totalTarjetaPropina, totalTarjetaNeto + totalTarjetaPropina],
+    ['Total por Transferencia Electrónica', totalTransferenciaNeto, totalTransferenciaPropina, totalTransferenciaNeto + totalTransferenciaPropina],
+    ['Total Otros / No Especificado', totalOtrosNeto, totalOtrosPropina, totalOtrosNeto + totalOtrosPropina],
     [''],
     ['ESTADO DE LAS CUENTAS', 'CANTIDAD'],
     ['Ventas Pagadas (Cobradas)', pagadasCount],
@@ -77,7 +99,7 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
   ];
 
   const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
-  wsResumen['!cols'] = [{ wch: 38 }, { wch: 22 }];
+  wsResumen['!cols'] = [{ wch: 42 }, { wch: 22 }, { wch: 18 }, { wch: 22 }];
 
   // ==========================================
   // HOJA 2: DETALLE DE VENTAS
@@ -91,8 +113,9 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
     'Estado',
     'Subtotal (MXN)',
     'Descuentos (MXN)',
+    'Venta Neta (MXN)',
     'Propina (MXN)',
-    'Total (MXN)',
+    'Total Cobrado (MXN)',
     'Método de Pago',
     'Facturada CFDI',
     'Responsable / Cancelado por',
@@ -113,10 +136,11 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
     }
 
     const anySale = s as any;
-    const subtotal = anySale.subtotal || s.totalAmount || 0;
     const discount = s.discountAmount || 0;
-    const tip = anySale.tipAmount || 0;
-    const total = s.totalAmount || 0;
+    const netSale = s.totalAmount || 0;
+    const subtotal = anySale.subtotal || (netSale + discount);
+    const tip = s.tipAmount || anySale.tipAmount || 0;
+    const totalCobrado = netSale + tip;
 
     return [
       s.folio || s.id || '—',
@@ -127,8 +151,9 @@ export function exportSalesToExcel(sales: SaleData[], options: ExportFilterOptio
       translateSaleStatus(s.status),
       subtotal,
       discount,
+      netSale,
       tip,
-      total,
+      totalCobrado,
       s.paymentMethod || 'No especificado',
       s.isFacturada ? 'Sí' : 'No',
       s.cancelledBy || anySale.cashierName || 'Personal POS',
@@ -280,7 +305,9 @@ export function exportSalesToCSV(sales: SaleData[], options: ExportFilterOptions
     'Método de Pago',
     'Subtotal',
     'Descuento',
-    'Total',
+    'Venta Neta',
+    'Propina',
+    'Total Cobrado',
     'Facturada',
     'Cancelado Por',
     'Motivo Cancelación',
@@ -301,6 +328,12 @@ export function exportSalesToCSV(sales: SaleData[], options: ExportFilterOptions
     }
 
     const anySale = s as any;
+    const discount = Number(s.discountAmount || 0);
+    const netSale = Number(s.totalAmount || 0);
+    const subtotal = Number(anySale.subtotal || (netSale + discount));
+    const tip = Number(s.tipAmount || anySale.tipAmount || 0);
+    const totalCobrado = netSale + tip;
+
     const row = [
       s.folio || s.id || '—',
       fechaStr,
@@ -309,9 +342,11 @@ export function exportSalesToCSV(sales: SaleData[], options: ExportFilterOptions
       s.orderType || 'local',
       translateSaleStatus(s.status),
       s.paymentMethod || 'No especificado',
-      Number(anySale.subtotal || s.totalAmount || 0).toFixed(2),
-      Number(s.discountAmount || 0).toFixed(2),
-      Number(s.totalAmount || 0).toFixed(2),
+      subtotal.toFixed(2),
+      discount.toFixed(2),
+      netSale.toFixed(2),
+      tip.toFixed(2),
+      totalCobrado.toFixed(2),
       s.isFacturada ? 'Sí' : 'No',
       s.cancelledBy || anySale.cashierName || '—',
       s.cancelReason || '—',

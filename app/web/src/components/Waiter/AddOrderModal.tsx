@@ -95,6 +95,9 @@ export default function AddOrderModal({
       const items = selectedItems.map((i) => ({
         recipe: i.recipe.id,
         quantity: i.quantity,
+        notes: (i as any).notes,
+        station: i.recipe.station || (i.recipe.category?.toLowerCase() === 'bebidas' ? 'ninguna' : undefined),
+        modifiers: (i as any).modifiers || (i.recipe as any).modifiers,
       }));
       const created = await createOrder({ table: tableId, items, notes });
 
@@ -105,12 +108,18 @@ export default function AddOrderModal({
           table: tableId,
           tableNumber: created?.tableNumber || created?.table?.number || undefined,
           notes,
-          recipes: selectedItems.map((it) => ({
-            name: it.recipe.name,
-            quantity: it.quantity,
-            notes: (it as any).notes || '',
-            station: it.recipe.station || (it.recipe.category?.toLowerCase() === 'bebidas' ? 'ninguna' : 'ninguna'),
-          })),
+          recipes: selectedItems.map((it) => {
+            const rawStation = it.recipe.station;
+            const isDrink = it.recipe.category?.toLowerCase().includes('bebida') || it.recipe.category?.toLowerCase().includes('refresco');
+            const station = rawStation || (isDrink ? 'ninguna' : 'ninguna');
+            return {
+              name: it.recipe.name,
+              quantity: it.quantity,
+              notes: (it as any).notes || '',
+              station,
+              modifiers: (it as any).modifiers || (it.recipe as any).modifiers || [],
+            };
+          }),
           createdAt: new Date().toISOString(),
         };
         printKitchenOrderToLocalAgent(orderPayload).catch((e) =>

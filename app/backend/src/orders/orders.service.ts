@@ -51,10 +51,31 @@ export class OrdersService {
   }
 
   private toKitchenOrderLoad(order: any): any {
+    const isVirtual = Boolean(order.table?.isVirtual);
+    const virtualCode = order.table?.virtualCode;
+    const tableType = order.table?.tableType;
+    const typeLabel =
+      tableType === 'para_llevar'
+        ? 'LLEVAR'
+        : tableType === 'domicilio'
+        ? 'DOMICILIO'
+        : tableType === 'telefonico'
+        ? 'TELÉFONO'
+        : '';
+    const tableLabel = isVirtual ? `${virtualCode || 'VIRTUAL'}${typeLabel ? ` (${typeLabel})` : ''}` : undefined;
+
     return {
       id: order._id.toString(),
       tableNumber: order.table?.number ?? order.table?.['number'] ?? 0,
       tableId: order.table?._id?.toString?.() ?? order.table?.toString?.() ?? '',
+      tableLabel,
+      isVirtual,
+      tableType,
+      virtualCode,
+      customerName: order.table?.customerName,
+      customerPhone: order.table?.customerPhone,
+      deliveryAddress: order.table?.deliveryAddress,
+      deliveryNotes: order.table?.deliveryNotes,
       status: order.status,
       total: order.total,
       notes: order.notes,
@@ -73,6 +94,7 @@ export class OrdersService {
           callWaiter: item.callWaiter ?? null,
           station: this.resolveItemStation(item),
           category: item.recipe?.category ?? '',
+          modifiers: item.modifiers ?? [],
         })),
     };
   }
@@ -203,12 +225,22 @@ export class OrdersService {
 
   async createOrder(dto: CreateOrderDto) {
     try {
+      const targetTable = await this.tablesService.getTableById(dto.table).catch(() => null);
+      if (targetTable && targetTable.isVirtual && targetTable.status === 'completada') {
+        throw new BadRequestException('No se pueden agregar órdenes a un pedido virtual ya completado');
+      }
+
       const recipeIds = dto.items.map((item) => item.recipe);
       const recipes = await this.recipeModel.find({ _id: { $in: recipeIds } });
 
       const total = dto.items.reduce((sum, item) => {
         const recipe = recipes.find((r) => r._id!.toString() === item.recipe);
-        return sum + (recipe?.price ?? 0) * item.quantity;
+        const basePrice = recipe?.price ?? 0;
+        const extraModifiersPrice = (item.modifiers || []).reduce(
+          (mSum: number, mod: any) => mSum + (Number(mod.price) > 0 ? Number(mod.price) : 0),
+          0
+        );
+        return sum + (basePrice + extraModifiersPrice) * item.quantity;
       }, 0);
 
       const itemsWithStatus = dto.items.map((it) => {
@@ -224,6 +256,12 @@ export class OrdersService {
           status: (it.status || 'preparing') as any,
           station: itemStation as any,
           notes: it.notes || '',
+          modifiers: (it.modifiers || []).map((m: any) => ({
+            name: m.name,
+            price: Number(m.price) || 0,
+            station: m.station || itemStation || 'ninguna',
+            notes: m.notes || '',
+          })),
         };
       });
 
@@ -330,18 +368,65 @@ export class OrdersService {
     }
   }
 
-  private async dispatchKitchenPrintJob(orderLoad: any) {
+  private async dispatchKitchenPrintJob(orderLoad: any, interTicketDelayMs?: number) {
     const isKitchenPrintEnabled = (process.env.TICKET_A_COCINA || '').trim().toUpperCase() === 'TRUE';
     if (!isKitchenPrintEnabled) return;
+
+    const delay =
+      interTicketDelayMs !== undefined
+        ? interTicketDelayMs
+        : process.env.INTER_TICKET_DELAY_MS
+        ? parseInt(process.env.INTER_TICKET_DELAY_MS, 10)
+        : 10000;
 
     const agentUrl = (process.env.PRINTER_AGENT_URL || 'http://127.0.0.1:5001').replace(/\/+$/, '');
     const url = `${agentUrl}/print-kitchen`;
 
-    const allItems = Array.isArray(orderLoad.recipes) ? orderLoad.recipes : (orderLoad.items || []);
-    const coldItems = allItems.filter((it: any) => it.station === 'fria' && it.status !== 'cancelled');
-    const hotItems = allItems.filter((it: any) => it.station === 'caliente' && it.status !== 'cancelled');
+    const allItems = (Array.isArray(orderLoad.recipes) ? orderLoad.recipes : (orderLoad.items || [])).filter(
+      (it: any) => it.status !== 'cancelled'
+    );
 
-    const sendTicket = async (items: any[], station: 'fria' | 'caliente', stationName: string) => {
+    const coldItems: any[] = [];
+    const hotItems: any[] = [];
+    const noKitchenItems: any[] = [];
+
+    for (const it of allItems) {
+      const isDrink = it.category?.toLowerCase() === 'bebidas' || it.recipe?.category?.toLowerCase() === 'bebidas';
+      const station = it.station || it.recipe?.station || (isDrink ? 'ninguna' : 'ninguna');
+
+      if (station === 'fria') {
+        coldItems.push(it);
+      } else if (station === 'caliente') {
+        hotItems.push(it);
+      } else {
+        noKitchenItems.push(it);
+      }
+
+      // Extras o modificadores con estación diferente
+      if (Array.isArray(it.modifiers)) {
+        for (const mod of it.modifiers) {
+          if (mod && mod.station && mod.station !== station) {
+            const extraItem = {
+              name: `(EXTRA PARA: ${it.name || 'PLATILLO'}) ${mod.name}`,
+              quantity: it.quantity || 1,
+              price: mod.price || 0,
+              notes: mod.notes || '',
+              station: mod.station,
+              isExtraFromOtherStation: true,
+            };
+            if (mod.station === 'fria') {
+              coldItems.push(extraItem);
+            } else if (mod.station === 'caliente') {
+              hotItems.push(extraItem);
+            } else if (mod.station === 'ninguna') {
+              noKitchenItems.push(extraItem);
+            }
+          }
+        }
+      }
+    }
+
+    const sendTicket = async (items: any[], station: 'fria' | 'caliente' | 'ninguna', stationName: string) => {
       if (!items || items.length === 0) return;
       try {
         const controller = new AbortController();
@@ -383,12 +468,23 @@ export class OrdersService {
       }
     };
 
-    // Separación estricta de tickets: se generan independientemente y nunca se imprimen tickets vacíos
+    // Secuencia controlada de tickets: 1. Fría, 2. Caliente, 3. Sin cocina (Bebidas). Nunca tickets vacíos.
+    const ticketsToSend: Array<{ items: any[]; station: 'fria' | 'caliente' | 'ninguna'; name: string }> = [];
     if (coldItems.length > 0) {
-      await sendTicket(coldItems, 'fria', 'COCINA FRÍA');
+      ticketsToSend.push({ items: coldItems, station: 'fria', name: 'COCINA FRÍA' });
     }
     if (hotItems.length > 0) {
-      await sendTicket(hotItems, 'caliente', 'COCINA CALIENTE');
+      ticketsToSend.push({ items: hotItems, station: 'caliente', name: 'COCINA CALIENTE' });
+    }
+    if (noKitchenItems.length > 0) {
+      ticketsToSend.push({ items: noKitchenItems, station: 'ninguna', name: 'PRODUCTOS SIN COCINA (BEBIDAS)' });
+    }
+
+    for (let i = 0; i < ticketsToSend.length; i++) {
+      if (i > 0 && delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      await sendTicket(ticketsToSend[i].items, ticketsToSend[i].station, ticketsToSend[i].name);
     }
   }
 
@@ -614,7 +710,12 @@ export class OrdersService {
 
         const total = dto.items.reduce((sum, item) => {
           const recipe = recipes.find((r) => r._id!.toString() === item.recipe);
-          return sum + (recipe?.price ?? 0) * item.quantity;
+          const basePrice = recipe?.price ?? 0;
+          const extraModifiersPrice = (item.modifiers || []).reduce(
+            (mSum: number, mod: any) => mSum + (Number(mod.price) > 0 ? Number(mod.price) : 0),
+            0
+          );
+          return sum + (basePrice + extraModifiersPrice) * item.quantity;
         }, 0);
 
         const existingItems = Array.isArray(order.items) ? [...order.items] : [];
@@ -660,6 +761,7 @@ export class OrdersService {
               status: (dtoItem.status || existing.status || 'preparing') as any,
               station: preservedStation,
               notes: dtoItem.notes !== undefined ? dtoItem.notes : (existing.notes || ''),
+              modifiers: dtoItem.modifiers !== undefined ? dtoItem.modifiers : (existing.modifiers || []),
               callWaiter: existing.callWaiter,
             };
           } else {
@@ -676,6 +778,7 @@ export class OrdersService {
               status: (dtoItem.status || 'preparing') as any,
               station: itemStation,
               notes: dtoItem.notes || '',
+              modifiers: dtoItem.modifiers || [],
             };
           }
         });

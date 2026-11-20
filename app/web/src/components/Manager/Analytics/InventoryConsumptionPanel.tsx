@@ -108,15 +108,6 @@ export default function InventoryConsumptionPanel({ consumption, note }: Props) 
           </table>
         )}
       </div>
-
-      {/* Aclaración metodológica obligatoria */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 leading-relaxed flex items-start gap-2">
-        <AppIcon name="info" size={15} className="text-slate-400 shrink-0 mt-0.5" />
-        <div>
-          <strong>Metodología de inventario: </strong>
-          {note} Este panel es informativo y no modifica las existencias físicas actuales.
-        </div>
-      </div>
     </div>
   );
 }

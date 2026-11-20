@@ -57,7 +57,9 @@ export default function SalesTodayPanel({
               <Th className="px-2 sm:px-2.5 py-2.5">Mesa</Th>
               <Th className="px-2 sm:px-2.5 py-2.5">Fecha y hora</Th>
               <Th className="px-2 sm:px-2.5 py-2.5">Estado</Th>
-              <Th className="px-2 sm:px-2.5 py-2.5 text-right">Total</Th>
+              <Th className="px-2 sm:px-2.5 py-2.5 text-right">Venta Neta</Th>
+              <Th className="px-2 sm:px-2.5 py-2.5 text-right">Propina</Th>
+              <Th className="px-2 sm:px-2.5 py-2.5 text-right">Total Cobrado</Th>
               <Th className="px-2 sm:px-2.5 py-2.5">Nota / Justificación</Th>
               <Th className="px-2 sm:px-3 py-2.5 text-right">Acciones</Th>
             </tr>
@@ -65,19 +67,23 @@ export default function SalesTodayPanel({
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td className="px-4 py-12 text-center text-slate-400" colSpan={7}>
+                <td className="px-4 py-12 text-center text-slate-400" colSpan={9}>
                   Cargando ventas…
                 </td>
               </tr>
             ) : sales.length === 0 ? (
               <tr>
-                <td className="px-4 py-12 text-center text-slate-400" colSpan={7}>
+                <td className="px-4 py-12 text-center text-slate-400" colSpan={9}>
                   Sin ventas registradas en esta fecha.
                 </td>
               </tr>
             ) : (
               sales.map((s: SaleData) => {
                 const isCancelled = s.status === 'cancelled';
+                const netAmount = s.totalAmount || 0;
+                const tipAmount = s.tipAmount || 0;
+                const totalCollected = s.totalCollected ?? (netAmount + tipAmount);
+
                 return (
                   <tr key={s.id} className={`hover:bg-slate-50/70 transition-colors ${isCancelled ? 'bg-rose-50/30' : ''}`}>
                     <Td className="px-2.5 sm:px-3 py-2.5 font-black text-slate-900 font-mono whitespace-nowrap">{s.folio || "—"}</Td>
@@ -108,8 +114,14 @@ export default function SalesTodayPanel({
                         ) : null}
                       </div>
                     </Td>
-                    <Td className={`px-2 sm:px-2.5 py-2.5 text-right font-black text-xs sm:text-sm whitespace-nowrap ${isCancelled ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                      {currency(s.totalAmount || 0)}
+                    <Td className={`px-2 sm:px-2.5 py-2.5 text-right font-bold text-xs whitespace-nowrap ${isCancelled ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                      {currency(netAmount)}
+                    </Td>
+                    <Td className="px-2 sm:px-2.5 py-2.5 text-right font-semibold text-xs whitespace-nowrap text-amber-700">
+                      {tipAmount > 0 ? `+${currency(tipAmount)}` : '—'}
+                    </Td>
+                    <Td className={`px-2 sm:px-2.5 py-2.5 text-right font-black text-xs sm:text-sm whitespace-nowrap ${isCancelled ? 'text-slate-400 line-through' : 'text-emerald-700'}`}>
+                      {currency(totalCollected)}
                     </Td>
                     <Td className="px-2 sm:px-2.5 py-2.5 max-w-[140px] sm:max-w-[180px]">
                       {isCancelled ? (

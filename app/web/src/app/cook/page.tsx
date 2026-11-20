@@ -307,9 +307,29 @@ export default function CookPage() {
                       <AppIcon name="tables" size={20} />
                     </div>
                     <div>
-                      <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                        Mesa {order.tableNumber ?? 'S/N'}
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex flex-wrap items-center gap-2">
+                        <span>
+                          {(order as any).tableLabel || (
+                            (order as any).isVirtual
+                              ? `Pedido ${(order as any).virtualCode || ''}`
+                              : `Mesa ${order.tableNumber ?? 'S/N'}`
+                          )}
+                        </span>
+                        {(order as any).isVirtual && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-900 border border-indigo-200 uppercase">
+                            {(order as any).tableType === 'para_llevar'
+                              ? '🛍️ Llevar'
+                              : (order as any).tableType === 'domicilio'
+                              ? '🛵 Domicilio'
+                              : '📞 Teléfono'}
+                          </span>
+                        )}
                       </h2>
+                      {(order as any).customerName && (
+                        <p className="text-xs font-bold text-slate-700 mt-0.5">
+                          Cliente: {(order as any).customerName}
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-1.5 mt-1">
                         {hasCold && (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-100 text-sky-900 border border-sky-300 flex items-center gap-1">
@@ -376,30 +396,37 @@ export default function CookPage() {
                                 : 'bg-white border-slate-200/90 shadow-soft-xs'
                           }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 min-w-0 flex-1">
-                            {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name}
-                                className="w-12 h-12 object-cover rounded-xl border border-slate-200 shrink-0 mt-0.5"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
-                                <AppIcon name="utensils" size={18} />
-                              </div>
+                        <div className="flex items-start gap-3 min-w-0">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-12 h-12 object-cover rounded-xl border border-slate-200 shrink-0 mt-0.5"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+                              <AppIcon name="utensils" size={18} />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`font-black text-sm sm:text-base text-slate-900 break-words leading-snug ${isItemCancelled ? 'line-through text-slate-400' : ''
+                                }`}
+                            >
+                              {item.name}
+                            </p>
+                            {item.description && (
+                              <p className="text-xs text-slate-500 mt-0.5 break-words line-clamp-2">{item.description}</p>
                             )}
-                            <div className="min-w-0 flex-1">
-                              <p
-                                className={`font-black text-sm sm:text-base text-slate-900 break-words leading-snug ${isItemCancelled ? 'line-through text-slate-400' : ''
-                                  }`}
-                              >
-                                {item.name}
+                            {item.notes && (
+                              <p className="text-[11px] text-amber-900 italic mt-1 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 break-words">
+                                Nota: {item.notes}
                               </p>
-                              {item.description && (
-                                <p className="text-xs text-slate-500 mt-0.5 break-words line-clamp-2">{item.description}</p>
-                              )}
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            )}
+
+                            {/* Fila inferior: Cantidad, Cocina, Estatus y Botones de acción al mismo nivel */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100/80">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md shrink-0">
                                   Cant: {item.quantity}
                                 </span>
@@ -453,51 +480,46 @@ export default function CookPage() {
                                           : 'Preparando'}
                                 </span>
                               </div>
-                              {item.notes && (
-                                <p className="text-[11px] text-amber-900 italic mt-1 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 break-words">
-                                  Nota: {item.notes}
-                                </p>
+
+                              {/* Action Buttons for Cook al mismo nivel */}
+                              {!isItemCancelled && !isItemDelivered && itemId && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setCallingWaiterItem({
+                                        orderId: order.id,
+                                        itemId,
+                                        dishName: item.name,
+                                        tableNumber: order.tableNumber || 0,
+                                      })
+                                    }
+                                    className={`min-h-[36px] px-2.5 py-1 rounded-xl font-bold text-xs transition flex items-center gap-1 active:scale-95 ${hasCall
+                                      ? 'bg-amber-500 text-white shadow-soft-xs'
+                                      : 'bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200'
+                                      }`}
+                                    title="Llamar al mesero para este platillo"
+                                  >
+                                    <AppIcon name="bell" size={13} />
+                                    <span>Mesero</span>
+                                  </button>
+
+                                  {!isItemReady && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleItemReady(order.id, itemId)}
+                                      disabled={updatingItem === itemId}
+                                      className="min-h-[36px] px-3.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-soft-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                                      title="Marcar este platillo individualmente como listo"
+                                    >
+                                      <AppIcon name="check" size={14} />
+                                      <span>{updatingItem === itemId ? '…' : 'Listo'}</span>
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
-
-                          {/* Action Buttons for Cook */}
-                          {!isItemCancelled && !isItemDelivered && itemId && (
-                            <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setCallingWaiterItem({
-                                    orderId: order.id,
-                                    itemId,
-                                    dishName: item.name,
-                                    tableNumber: order.tableNumber || 0,
-                                  })
-                                }
-                                className={`min-h-[40px] px-2.5 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1 active:scale-95 ${hasCall
-                                  ? 'bg-amber-500 text-white shadow-soft-xs'
-                                  : 'bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200'
-                                  }`}
-                                title="Llamar al mesero para este platillo"
-                              >
-                                <AppIcon name="bell" size={13} />
-                                <span className="hidden sm:inline">Mesero</span>
-                              </button>
-
-                              {!isItemReady && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleItemReady(order.id, itemId)}
-                                  disabled={updatingItem === itemId}
-                                  className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-soft-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
-                                  title="Marcar este platillo individualmente como listo"
-                                >
-                                  <AppIcon name="check" size={14} />
-                                  <span>{updatingItem === itemId ? '…' : 'Listo'}</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
                         </div>
 
                         {/* Active Call Alert Badge on Item */}

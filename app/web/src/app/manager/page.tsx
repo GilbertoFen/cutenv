@@ -76,10 +76,15 @@ function ManagerPageContent() {
       (acc, s) => acc + (s.status !== 'cancelled' ? (s.totalAmount || 0) : 0),
       0
     );
+    const totalTips = salesOfDay.reduce(
+      (acc, s) => acc + (s.status !== 'cancelled' ? (s.tipAmount || 0) : 0),
+      0
+    );
+    const totalCollected = totalAmount + totalTips;
     const avg = count > 0 ? totalAmount / count : 0;
     const paidCount = salesOfDay.filter((s) => s.status === 'paid').length;
     const unpaidCount = allSales.filter((s) => s.status === 'unpaid' || s.status === 'partial').length;
-    return { count, totalAmount, avg, paidCount, unpaidCount };
+    return { count, totalAmount, totalTips, totalCollected, avg, paidCount, unpaidCount };
   }, [salesOfDay, allSales]);
 
   if (authLoading) {
@@ -157,16 +162,8 @@ function ManagerPageContent() {
       <main className="flex-1 min-w-0 overflow-y-auto p-5 sm:p-7 space-y-6">
         {tab === 'sales' && (
           <div className="space-y-6">
-            <header className="flex flex-wrap items-end justify-between gap-4 pb-5 border-b border-slate-100">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  Supervisión Gerencial y Almacén
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Auditoría de cuentas en sala, control de stock, recetas del menú y KPIs en tiempo real
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
+            <header className="flex flex-wrap items-center justify-end gap-4 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2 ml-auto">
                 <label className="text-xs font-bold text-slate-700">Fecha:</label>
                 <input
                   type="date"
@@ -188,6 +185,8 @@ function ManagerPageContent() {
               dateLabel={selectedDate}
               count={summary.count}
               totalAmount={summary.totalAmount}
+              totalTips={summary.totalTips}
+              totalCollected={summary.totalCollected}
               avg={summary.avg}
               paidCount={summary.paidCount}
               unpaidCount={summary.unpaidCount}

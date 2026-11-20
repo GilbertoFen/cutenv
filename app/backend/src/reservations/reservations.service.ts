@@ -162,6 +162,7 @@ export class ReservationsService {
     if (dto.table) {
       tableDoc = await this.tableModel.findById(dto.table).exec();
       if (!tableDoc) throw new NotFoundException('Mesa no encontrada');
+      if (tableDoc.isVirtual) throw new ConflictException('No se pueden reservar mesas virtuales.');
       tableId = toObjectId(tableDoc._id);
 
       const party = dto.partySize ?? tableDoc.capacity;
@@ -235,6 +236,7 @@ export class ReservationsService {
 
     const newTable = await this.tableModel.findById(dto.tableId).exec();
     if (!newTable) throw new NotFoundException('Mesa no encontrada');
+    if (newTable.isVirtual) throw new ConflictException('No se pueden reservar mesas virtuales.');
 
     const newTableId = toObjectId(newTable._id);
     const party = r.partySize ?? newTable.capacity;

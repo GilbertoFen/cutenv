@@ -46,15 +46,27 @@ export default function SaleDetailModal({ saleId, onClose, onInvoiceCreated }: P
           {error && <div className="text-xs text-rose-600 font-semibold mb-3">{error}</div>}
           {!loading && sale && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                 <Kpi label="Folio" value={sale.folio ?? "—"} />
                 <Kpi label="Fecha" value={sale.date ? new Date(sale.date).toLocaleDateString() : "—"} />
                 <Kpi label="Estado" value={translateSaleStatus(sale.status)} />
                 <Kpi
-                  label="Total de la Venta"
+                  label="Venta Neta"
                   value={currency(sale.totalAmount || 0)}
                   className="bg-indigo-50/60 border-indigo-200"
                   valueClassName="text-indigo-900"
+                />
+                <Kpi
+                  label="Propina"
+                  value={currency(sale.tipAmount || 0)}
+                  className="bg-amber-50/60 border-amber-200"
+                  valueClassName="text-amber-900"
+                />
+                <Kpi
+                  label="Total Cobrado"
+                  value={currency((sale.totalAmount || 0) + (sale.tipAmount || 0))}
+                  className="bg-emerald-50/60 border-emerald-200"
+                  valueClassName="text-emerald-900"
                 />
               </div>
 

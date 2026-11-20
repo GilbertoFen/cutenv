@@ -15,12 +15,25 @@ export interface KpiComparison {
   percentageChangeRevenue: number | null;
   percentageChangeOrders: number | null;
   percentageChangeUnits: number | null;
+  percentageChangeProfit?: number | null;
 }
 
 export interface PeriodKpiData {
   netSales: number;
+  totalTips?: number;
+  totalCollected?: number;
   grossSales: number;
   totalDiscounts: number;
+  cogs?: number;
+  expenses?: number;
+  estimatedProfit?: number;
+  profitMarginPercentage?: number | null;
+  costModel?: {
+    hasOperatingExpenses: boolean;
+    source: string;
+    label: string;
+    description: string;
+  };
   salesCount: number;
   averageTicket: number | null;
   unitsSold: number;
@@ -53,6 +66,13 @@ export interface DayOfWeekData {
 export interface DailyTrendPoint {
   date: string;
   revenue: number;
+  netSales?: number;
+  tips?: number;
+  totalCollected?: number;
+  cogs?: number;
+  expenses?: number;
+  estimatedProfit?: number;
+  profitMarginPercentage?: number | null;
   salesCount: number;
   unitsSold: number;
   averageTicket: number | null;
@@ -94,7 +114,10 @@ export interface IngredientConsumptionItem {
 export interface OperationalDistributionItem {
   type?: string;
   method?: string;
+  netSales?: number;
+  tips?: number;
   revenue: number;
+  totalCollected?: number;
   ticketsCount: number;
   percentage: number;
 }

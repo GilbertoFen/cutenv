@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Patch, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
+import { CreateVirtualTableDto } from './dto/create-virtual-table.dto';
 import { UpdateTableStatusDto } from './dto/update-table-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -11,13 +12,18 @@ export class TablesController {
   constructor(private readonly tablesService: TablesService) { }
 
   @Get()
-  getAllTables() {
-    return this.tablesService.getAllTables();
+  getAllTables(@Query('includeCompleted') includeCompleted?: string) {
+    return this.tablesService.getAllTables(includeCompleted === 'true');
   }
 
   @Get('search')
   async search(@Query() query: any) {
     return this.tablesService.searchTables(query);
+  }
+
+  @Post('virtual')
+  createVirtualTable(@Body() dto: CreateVirtualTableDto) {
+    return this.tablesService.createVirtualTable(dto);
   }
 
   @Post()

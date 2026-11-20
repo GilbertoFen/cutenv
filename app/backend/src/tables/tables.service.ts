@@ -5,6 +5,7 @@ import { Order, OrderDocument } from '../schemasMongo/order.schema';
 import { Reservation, ReservationDocument } from '../schemasMongo/reservation.schema';
 import { Model, isValidObjectId } from 'mongoose';
 import { CreateTableDto } from './dto/create-table.dto';
+import { CreateVirtualTableDto } from './dto/create-virtual-table.dto';
 import { UpdateTableStatusDto } from './dto/update-table-status.dto';
 import { TableResponseDto } from './dto/table-response.dto';
 import { Sale, SaleDocument } from '../schemasMongo/sale.schema';
@@ -23,18 +24,31 @@ export class TablesService {
     private readonly tablesGateway: TablesGateway,
   ) { }
 
-  async getAllTables(): Promise<TableResponseDto[]> {
+  async getAllTables(includeCompleted: boolean = false): Promise<TableResponseDto[]> {
     try {
-      const tables = await this.tableModel.find();
+      const filter: any = {
+        $or: [
+          { isVirtual: { $ne: true } },
+          { isVirtual: true, status: includeCompleted ? { $in: ['ocupada', 'completada'] } : 'ocupada' },
+        ],
+      };
+      const tables = await this.tableModel.find(filter).sort({ isVirtual: 1, number: 1 });
       return tables.map((table) => ({
         id: table['_id'] as any,
         number: table.number,
         status: table.status,
         capacity: table.capacity,
         occupiedAt: table.occupiedAt,
+        isVirtual: table.isVirtual,
+        tableType: table.tableType,
+        virtualCode: table.virtualCode,
+        customerName: table.customerName,
+        customerPhone: table.customerPhone,
+        deliveryAddress: table.deliveryAddress,
+        deliveryNotes: table.deliveryNotes,
       }));
     } catch (e) {
-      throw new BadRequestException(e)
+      throw new BadRequestException(e);
     }
   }
 
@@ -48,6 +62,101 @@ export class TablesService {
         status: table.status,
         capacity: table.capacity,
         occupiedAt: table.occupiedAt,
+        isVirtual: table.isVirtual,
+        tableType: table.tableType,
+        virtualCode: table.virtualCode,
+        customerName: table.customerName,
+        customerPhone: table.customerPhone,
+        deliveryAddress: table.deliveryAddress,
+        deliveryNotes: table.deliveryNotes,
+      };
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  async createVirtualTable(dto: CreateVirtualTableDto): Promise<TableResponseDto> {
+    try {
+      const prefix =
+        dto.tableType === 'para_llevar'
+          ? 'LL'
+          : dto.tableType === 'domicilio'
+          ? 'DOM'
+          : 'TEL';
+
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const countToday = await this.tableModel.countDocuments({
+        tableType: dto.tableType,
+        createdAt: { $gte: startOfDay },
+      });
+
+      let seq = countToday + 1;
+      let virtualCode = `${prefix}-${String(seq).padStart(2, '0')}`;
+      while (await this.tableModel.exists({ virtualCode, createdAt: { $gte: startOfDay } })) {
+        seq++;
+        virtualCode = `${prefix}-${String(seq).padStart(2, '0')}`;
+      }
+
+      const maxDoc = await this.tableModel.findOne().sort({ number: -1 });
+      const number = Math.max(1000, maxDoc?.number ?? 0) + 1;
+
+      const table = await this.tableModel.create({
+        number,
+        status: 'ocupada',
+        capacity: 1,
+        occupiedAt: new Date(),
+        isVirtual: true,
+        tableType: dto.tableType,
+        virtualCode,
+        customerName: dto.customerName?.trim() || undefined,
+        customerPhone: dto.customerPhone?.trim() || undefined,
+        deliveryAddress: dto.deliveryAddress?.trim() || undefined,
+        deliveryNotes: dto.deliveryNotes?.trim() || undefined,
+      });
+
+      const mappedOrderType =
+        dto.tableType === 'domicilio'
+          ? 'domicilio'
+          : dto.tableType === 'para_llevar'
+          ? 'para llevar'
+          : (dto.deliveryAddress ? 'domicilio' : 'para llevar');
+
+      const folio = randomBytes(4).toString('hex').toUpperCase();
+      await this.saleModel.create({
+        table: table._id,
+        orders: [],
+        totalAmount: 0,
+        status: 'unpaid',
+        folio,
+        orderType: mappedOrderType,
+      });
+
+      this.tablesGateway.emitTableStatusChanged({
+        tableId: table._id.toString(),
+        number: table.number,
+        prevStatus: 'disponible',
+        status: 'ocupada',
+        at: Date.now(),
+        isVirtual: true,
+        virtualCode,
+        tableType: dto.tableType,
+      });
+
+      return {
+        id: table._id.toString(),
+        number: table.number,
+        status: table.status,
+        capacity: table.capacity,
+        occupiedAt: table.occupiedAt,
+        isVirtual: true,
+        tableType: table.tableType,
+        virtualCode: table.virtualCode,
+        customerName: table.customerName,
+        customerPhone: table.customerPhone,
+        deliveryAddress: table.deliveryAddress,
+        deliveryNotes: table.deliveryNotes,
       };
     } catch (e) {
       throw e;
@@ -82,7 +191,14 @@ export class TablesService {
       const table = await this.tableModel.findById(idStr);
       if (!table) throw new NotFoundException('Table not found');
 
-      if (dto.status === 'disponible' || dto.status === 'reservada') {
+      if (table.isVirtual && dto.status === 'reservada') {
+        throw new ConflictException('No es posible reservar un pedido virtual.');
+      }
+
+      const targetStatus: 'disponible' | 'ocupada' | 'reservada' | 'completada' =
+        table.isVirtual && dto.status === 'disponible' ? 'completada' : dto.status;
+
+      if (dto.status === 'disponible' || dto.status === 'reservada' || targetStatus === 'completada') {
         // 1. Validar si existen órdenes activas en preparación o listas en cocina
         const pendingOrders = await this.orderModel.find({
           table: table._id,
@@ -128,31 +244,33 @@ export class TablesService {
         }
       }
 
-      if (dto.status === 'disponible') {
+      if (dto.status === 'disponible' || targetStatus === 'completada') {
         table.occupiedAt = undefined;
       }
 
       if (dto.status === 'ocupada') {
-        // Restricción: No se permite ocupar la mesa si existe una reservación activa o programada dentro de los próximos 60 minutos
-        const now = new Date();
-        const sixtyMinWindow = new Date(now.getTime() + 60 * 60 * 1000);
-        const upcomingReservation = await this.reservationModel.findOne({
-          table: table._id,
-          status: 'programada',
-          startTime: {
-            $gte: new Date(now.getTime() - 15 * 60 * 1000),
-            $lte: sixtyMinWindow,
-          },
-        });
-
-        if (upcomingReservation) {
-          const resTime = new Date(upcomingReservation.startTime).toLocaleTimeString('es-MX', {
-            hour: '2-digit',
-            minute: '2-digit',
+        if (!table.isVirtual) {
+          // Restricción: No se permite ocupar la mesa si existe una reservación activa o programada dentro de los próximos 60 minutos
+          const now = new Date();
+          const sixtyMinWindow = new Date(now.getTime() + 60 * 60 * 1000);
+          const upcomingReservation = await this.reservationModel.findOne({
+            table: table._id,
+            status: 'programada',
+            startTime: {
+              $gte: new Date(now.getTime() - 15 * 60 * 1000),
+              $lte: sixtyMinWindow,
+            },
           });
-          throw new ConflictException(
-            `No es posible ocupar la Mesa ${table.number} porque tiene una reservación programada a nombre de "${upcomingReservation.customerName || 'Cliente'}" para las ${resTime} (dentro de los próximos 60 minutos).`,
-          );
+
+          if (upcomingReservation) {
+            const resTime = new Date(upcomingReservation.startTime).toLocaleTimeString('es-MX', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            throw new ConflictException(
+              `No es posible ocupar la Mesa ${table.number} porque tiene una reservación programada a nombre de "${upcomingReservation.customerName || 'Cliente'}" para las ${resTime} (dentro de los próximos 60 minutos).`,
+            );
+          }
         }
 
         table.occupiedAt = new Date();
@@ -164,25 +282,36 @@ export class TablesService {
 
         if (!existingSale) {
           const folio = randomBytes(4).toString('hex').toUpperCase();
+          const mappedOrderType =
+            table.tableType === 'domicilio'
+              ? 'domicilio'
+              : table.tableType === 'para_llevar'
+              ? 'para llevar'
+              : 'local';
+
           await this.saleModel.create({
             table: table._id,
             orders: [],
             totalAmount: 0,
             status: 'unpaid',
             folio,
+            orderType: mappedOrderType,
           });
         }
       }
-      const prevStatus = table.status as 'disponible' | 'ocupada' | 'reservada';
-      table.status = dto.status;
+      const prevStatus = table.status as any;
+      table.status = targetStatus;
       await table.save();
 
       const payload = {
         tableId: table._id.toString(),
         number: table.number,
         prevStatus,
-        status: table.status as 'disponible' | 'ocupada' | 'reservada',
+        status: table.status as any,
         at: Date.now(),
+        isVirtual: table.isVirtual,
+        virtualCode: table.virtualCode,
+        tableType: table.tableType,
       };
 
       this.tablesGateway.emitTableStatusChanged(payload);

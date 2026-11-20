@@ -184,7 +184,7 @@ export function formatTicketPlainText(sale: SaleData, width: '80mm' | '58mm' = '
   const cols = width === '80mm' ? 48 : 32;
   const line = (char = '-') => char.repeat(cols);
   const center = (text: string) => {
-    if (text.length >= cols) return text.slice(0, cols);
+    if (text.length >= cols) return text;
     const pad = Math.floor((cols - text.length) / 2);
     return ' '.repeat(pad) + text;
   };
@@ -255,7 +255,14 @@ export function formatTicketPlainText(sale: SaleData, width: '80mm' | '58mm' = '
   }
 
   lines.push(line('='));
-  lines.push(row('TOTAL A PAGAR:', `$${(sale.totalAmount || 0).toFixed(2)}`));
+  if (sale.tipAmount && sale.tipAmount > 0) {
+    lines.push(row('VENTA NETA:', `$${(sale.totalAmount || 0).toFixed(2)}`));
+    lines.push(row('PROPINA:', `+$${Number(sale.tipAmount).toFixed(2)}`));
+    lines.push(line('-'));
+    lines.push(row('TOTAL COBRADO:', `$${((sale.totalAmount || 0) + sale.tipAmount).toFixed(2)}`));
+  } else {
+    lines.push(row('TOTAL A PAGAR:', `$${(sale.totalAmount || 0).toFixed(2)}`));
+  }
   lines.push(line('='));
 
   lines.push(row('ESTADO DE CUENTA:', sale.status === 'paid' ? 'PAGADO (LIQUIDADO)' : 'POR COBRAR (PRE-CUENTA)'));
@@ -291,8 +298,11 @@ export function isTicketACocinaEnabled(): boolean {
 /**
  * Envía la comanda de cocina directamente al agente de impresión USB de forma transparente.
  * Si TICKET_A_COCINA=FALSE o la impresora está fuera de línea, falla silenciosamente sin alertar ni bloquear la interfaz.
- * Separa automáticamente los platillos por estación (Cocina Fría y Cocina Caliente), generando
- * dos tickets independientes si contiene artículos de ambas, o solo el correspondiente si es exclusiva.
+ * Separa automáticamente los platillos por estación en hasta 3 comandas:
+ * 1) Cocina Fría
+ * 2) Cocina Caliente
+ * 3) Productos sin cocina asignada (bebidas/bar)
+ * No imprime tickets vacíos y mantiene un intervalo de 10s entre tickets consecutivos.
  */
 export async function printKitchenOrderToLocalAgent(
   order: any,
@@ -315,39 +325,113 @@ export async function printKitchenOrderToLocalAgent(
     return sendSingleStationTicket(order, options);
   }
 
-  const coldItems = items.filter((it: any) => (it.station || it.recipe?.station) === 'fria');
-  const hotItems = items.filter((it: any) => (it.station || it.recipe?.station) === 'caliente');
+  const getItemStation = (it: any): 'fria' | 'caliente' | 'ninguna' => {
+    const st = it.station || it.recipe?.station;
+    if (st === 'fria' || st === 'caliente' || st === 'ninguna') return st;
+    const cat = String(it.category || it.recipe?.category || '').toLowerCase();
+    if (cat.includes('bebida') || cat.includes('refresco') || cat.includes('coctel') || cat.includes('jugo') || cat.includes('cerveza') || cat.includes('bar')) {
+      return 'ninguna';
+    }
+    return 'ninguna';
+  };
 
-  const results: Array<{ success: boolean; message: string }> = [];
+  const coldItems: any[] = [];
+  const hotItems: any[] = [];
+  const noKitchenItems: any[] = [];
 
-  if (coldItems.length > 0) {
-    const coldOrder = {
-      ...order,
-      station: 'fria',
-      stationName: 'COCINA FRÍA',
-      recipes: coldItems,
-      items: coldItems,
+  for (const it of items) {
+    const parentStation = getItemStation(it);
+    const parentName = it.name || it.recipe?.name || 'Platillo';
+    const modifiers = Array.isArray(it.modifiers) ? it.modifiers : [];
+
+    const localModifiers: any[] = [];
+    for (const mod of modifiers) {
+      const modStation = mod.station || parentStation;
+      if (modStation === parentStation) {
+        localModifiers.push(mod);
+      } else {
+        const destStationLabel =
+          modStation === 'fria'
+            ? 'COCINA FRÍA'
+            : modStation === 'caliente'
+            ? 'COCINA CALIENTE'
+            : 'BAR / BEBIDAS';
+        localModifiers.push({
+          ...mod,
+          notes: `[PREP EN ${destStationLabel}] ${mod.notes || ''}`.trim(),
+        });
+
+        const crossItem = {
+          name: `(EXTRA PARA: ${parentName}) ${mod.name}`,
+          quantity: it.quantity || 1,
+          notes: mod.notes || '',
+          price: mod.price || 0,
+          isModifierItem: true,
+          station: modStation,
+        };
+
+        if (modStation === 'fria') coldItems.push(crossItem);
+        else if (modStation === 'caliente') hotItems.push(crossItem);
+        else noKitchenItems.push(crossItem);
+      }
+    }
+
+    const itemWithModifiers = {
+      ...it,
+      modifiers: localModifiers,
     };
-    results.push(await sendSingleStationTicket(coldOrder, { ...options, station: 'fria' }));
+
+    if (parentStation === 'fria') coldItems.push(itemWithModifiers);
+    else if (parentStation === 'caliente') hotItems.push(itemWithModifiers);
+    else noKitchenItems.push(itemWithModifiers);
   }
 
-  if (hotItems.length > 0) {
-    const hotOrder = {
-      ...order,
-      station: 'caliente',
-      stationName: 'COCINA CALIENTE',
-      recipes: hotItems,
-      items: hotItems,
-    };
-    results.push(await sendSingleStationTicket(hotOrder, { ...options, station: 'caliente' }));
+  const stationBatches = [
+    { key: 'fria', title: 'COCINA FRÍA', items: coldItems },
+    { key: 'caliente', title: 'COCINA CALIENTE', items: hotItems },
+    { key: 'ninguna', title: 'PRODUCTOS SIN COCINA (BEBIDAS)', items: noKitchenItems },
+  ].filter((b) => b.items.length > 0);
+
+  if (stationBatches.length === 0) {
+    return { success: false, message: 'No hay artículos para imprimir' };
   }
 
-  const allOk = results.length > 0 && results.every((r) => r.success);
+  const results: Array<{ station: string; success: boolean; message: string }> = [];
+
+  for (let i = 0; i < stationBatches.length; i++) {
+    const batch = stationBatches[i];
+
+    // Intervalo de ~10 segundos entre tickets consecutivos
+    if (i > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
+
+    try {
+      const stationOrder = {
+        ...order,
+        station: batch.key,
+        stationName: batch.title,
+        recipes: batch.items,
+        items: batch.items,
+      };
+      const res = await sendSingleStationTicket(stationOrder, { ...options, station: batch.key });
+      results.push({ station: batch.key, ...res });
+    } catch (err: any) {
+      console.warn(`[PrinterService] Error al enviar ticket de ${batch.title}:`, err);
+      results.push({
+        station: batch.key,
+        success: false,
+        message: err?.message || 'Error al enviar ticket',
+      });
+    }
+  }
+
+  const anyOk = results.some((r) => r.success);
   return {
-    success: allOk,
-    message: allOk
-      ? `Comandas enviadas exitosamente (${results.length} ticket${results.length > 1 ? 's' : ''})`
-      : 'Algunas comandas no pudieron ser impresas',
+    success: anyOk,
+    message: anyOk
+      ? `Comandas procesadas (${results.filter((r) => r.success).length}/${results.length} impresas)`
+      : 'No se pudo enviar ninguna comanda',
   };
 }
 
@@ -356,15 +440,26 @@ async function sendSingleStationTicket(
   options?: PrintOptions & { station?: string },
 ): Promise<{ success: boolean; message: string }> {
   const url = `${getPrinterAgentUrl()}/print-kitchen`;
+  const rawId = order.id || order._id || 'ORD-0000';
+  const station = order.station || options?.station || 'ninguna';
+  const defaultTitle =
+    station === 'fria'
+      ? 'COCINA FRÍA'
+      : station === 'caliente'
+      ? 'COCINA CALIENTE'
+      : 'PRODUCTOS SIN COCINA (BEBIDAS)';
+  const stationName = order.stationName || defaultTitle;
+
   const payload = {
     type: 'kitchen',
     order,
     options: {
+      jobId: `kitchen_${rawId}_${station}`,
       paperWidth: options?.paperWidth || '58mm',
       cutPaper: options?.cutPaper ?? true,
       openDrawer: false,
-      station: order.station || options?.station,
-      stationName: order.stationName || (order.station === 'fria' ? 'COCINA FRÍA' : 'COCINA CALIENTE'),
+      station,
+      stationName,
       printedAt: new Date().toISOString(),
     },
   };
@@ -388,7 +483,7 @@ async function sendSingleStationTicket(
       const data = await res.json().catch(() => ({}));
       return {
         success: true,
-        message: data.message || 'Comanda enviada a cocina exitosamente',
+        message: data.message || `Comanda de ${stationName} enviada exitosamente`,
       };
     }
   } catch { }
@@ -403,7 +498,7 @@ async function sendSingleStationTicket(
       const data = await res.json().catch(() => ({}));
       return {
         success: true,
-        message: data.message || 'Comanda enviada a cocina exitosamente vía servidor',
+        message: data.message || `Comanda de ${stationName} enviada exitosamente vía servidor`,
       };
     }
   } catch (err: any) {
@@ -412,7 +507,7 @@ async function sendSingleStationTicket(
 
   return {
     success: false,
-    message: 'Agente de impresión local fuera de línea',
+    message: `Agente de impresión local fuera de línea para ${stationName}`,
   };
 }
 
@@ -423,7 +518,7 @@ export function formatKitchenTicketPlainText(order: any, width: '80mm' | '58mm' 
   const cols = width === '80mm' ? 48 : 32;
   const line = (char = '-') => char.repeat(cols);
   const center = (text: string) => {
-    if (text.length >= cols) return text.slice(0, cols);
+    if (text.length >= cols) return text;
     const pad = Math.floor((cols - text.length) / 2);
     return ' '.repeat(pad) + text;
   };
@@ -432,18 +527,42 @@ export function formatKitchenTicketPlainText(order: any, width: '80mm' | '58mm' 
     return left + ' '.repeat(space) + right;
   };
 
-  const tableNum =
-    order.tableNumber ??
-    (typeof order.table === 'object' && order.table !== null ? order.table?.number : order.table) ??
-    '—';
+  const isVirtual = Boolean(order.isVirtual || order.table?.isVirtual);
+  const virtualCode = order.virtualCode || order.table?.virtualCode;
+  const tableType = order.tableType || order.table?.tableType;
+  const typeLabel =
+    tableType === 'para_llevar'
+      ? 'LLEVAR'
+      : tableType === 'domicilio'
+      ? 'DOMICILIO'
+      : tableType === 'telefonico'
+      ? 'TELÉFONO'
+      : '';
+  const tableNum = order.tableLabel || (
+    isVirtual
+      ? `${virtualCode || 'VIRTUAL'}${typeLabel ? ` (${typeLabel})` : ''}`
+      : (order.tableNumber ??
+        (typeof order.table === 'object' && order.table !== null ? order.table?.number : order.table) ??
+        '—')
+  );
 
   const orderId = order.id || order._id || 'ORD-0000';
   const shortId = typeof orderId === 'string' && orderId.length > 6 ? orderId.slice(-6).toUpperCase() : String(orderId).toUpperCase();
   const dateStr = new Date(order.createdAt || Date.now()).toLocaleDateString('es-MX');
   const timeStr = new Date(order.createdAt || Date.now()).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-  const station = stationTitle || order.stationName || (order.station === 'fria' ? 'COCINA FRÍA' : order.station === 'caliente' ? 'COCINA CALIENTE' : '');
-  const titleText = station ? `*** COMANDA DE ${station.toUpperCase()} ***` : '*** COMANDA DE COCINA ***';
+  const rawStation = order.station;
+  const station = stationTitle || order.stationName || (
+    rawStation === 'fria'
+      ? 'COCINA FRÍA'
+      : rawStation === 'caliente'
+      ? 'COCINA CALIENTE'
+      : rawStation === 'ninguna'
+      ? 'PRODUCTOS SIN COCINA (BEBIDAS)'
+      : ''
+  );
+
+  const titleText = station ? `*** ${station.toUpperCase()} ***` : '*** COMANDA DE COCINA ***';
 
   const lines: string[] = [
     center('================================'),
@@ -453,6 +572,13 @@ export function formatKitchenTicketPlainText(order: any, width: '80mm' | '58mm' 
     ...(station ? [row(`ESTACIÓN:`, station.toUpperCase())] : []),
     row(`FECHA: ${dateStr}`, `HORA: ${timeStr}`),
   ];
+
+  if (order.customerName) {
+    lines.push(row(`CLIENTE:`, `${order.customerName}${order.customerPhone ? ` (${order.customerPhone})` : ''}`.toUpperCase()));
+  }
+  if (order.deliveryAddress) {
+    lines.push(`DIR: ${order.deliveryAddress.toUpperCase()}`);
+  }
 
   if (order.notes) {
     lines.push(line('-'));
@@ -482,12 +608,24 @@ export function formatKitchenTicketPlainText(order: any, width: '80mm' | '58mm' 
     if (notes) {
       lines.push(`      >> ${notes}`);
     }
+
+    if (Array.isArray(it.modifiers) && it.modifiers.length > 0) {
+      for (const mod of it.modifiers) {
+        const modPrice = Number(mod.price) || 0;
+        const priceTag = modPrice > 0 ? ` (+$${modPrice.toFixed(2)})` : ' (Sin costo)';
+        const prefix = modPrice > 0 ? '   + ' : '   * ';
+        const modNote = mod.notes ? ` (${mod.notes})` : '';
+        lines.push(`${prefix}${mod.name.toUpperCase()}${priceTag}${modNote}`);
+      }
+    }
   }
 
   lines.push(line('-'));
-  lines.push(row('TOTAL PLATILLOS:', `${totalItemsCount} pzas`));
+  const isDrinksOnly = rawStation === 'ninguna';
+  const labelTotal = isDrinksOnly ? 'TOTAL BEBIDAS:' : 'TOTAL PLATILLOS:';
+  lines.push(row(labelTotal, `${totalItemsCount} pzas`));
   lines.push(line('='));
-  lines.push(center('--- ENVIADO A COCINA ---'));
+  lines.push(center(isDrinksOnly ? '--- ENVIADO A BAR/BEBIDAS ---' : '--- ENVIADO A COCINA ---'));
   lines.push('');
   lines.push('');
 

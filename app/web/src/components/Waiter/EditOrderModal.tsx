@@ -187,6 +187,7 @@ const EditOrderModal = ({ order, onClose, onUpdate }: SaleProps) => {
         status: item.status,
         notes: item.notes,
         station: item.station,
+        modifiers: (item as any).modifiers,
       }));
 
       await updateOrder(order.id, updatedPayload, notes);

@@ -26,8 +26,8 @@ export type ModalProps = {
 export type TableStatusLoad = {
   tableId: string;
   number: number;
-  prevStatus: 'disponible' | 'ocupada' | 'reservada';
-  status: 'disponible' | 'ocupada' | 'reservada';
+  prevStatus: 'disponible' | 'ocupada' | 'reservada' | 'completada';
+  status: 'disponible' | 'ocupada' | 'reservada' | 'completada';
   at: number;
 };
 

@@ -1,6 +1,23 @@
 import { IsMongoId, IsArray, ValidateNested, IsNumber, IsString, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
+class OrderModifierDto {
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsNumber()
+  price?: number;
+
+  @IsOptional()
+  @IsString()
+  station?: 'fria' | 'caliente' | 'ninguna';
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 class OrderItemDto {
   @IsMongoId()
   recipe: string;
@@ -15,6 +32,12 @@ class OrderItemDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderModifierDto)
+  modifiers?: OrderModifierDto[];
 }
 
 export class CreateOrderDto {

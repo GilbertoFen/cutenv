@@ -68,7 +68,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('Verduras y Frutas');
   const [price, setPrice] = useState('0');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState('Sin nota');
   const [imageUrl, setImageUrl] = useState('');
 
   // Lógica de empaque y unidades
@@ -94,7 +94,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
       setBrand('');
       setCategory('Abarrotes y Secos');
       setPrice('0');
-      setDescription('');
+      setDescription('Sin nota');
       setImageUrl('');
       setPurchaseUnit('caja');
       setPackagesCount('1');
@@ -177,7 +177,7 @@ export default function UnifiedAddProductModal({ isOpen, onClose, onSuccess }: P
         setName(prod.name || '');
         setBrand(prod.brand || '');
         setCategory(prod.category || 'Abarrotes y Secos');
-        setDescription(prod.description || '');
+        setDescription(prod.description || 'Sin nota');
         setImageUrl(prod.imageUrl || '');
         if (prod.price || prod.unitCost) {
           setPrice(String(prod.price || prod.unitCost || 0));

@@ -10,10 +10,13 @@ export type TicketPrintedLoad = {
 
 export type TableStatusChangeLoad = {
   tableId: string;
-    number: number;
-    prevStatus: 'disponible' | 'ocupada' | 'reservada';
-    status: 'disponible' | 'ocupada' | 'reservada';
-    at: number;
+  number: number;
+  prevStatus: 'disponible' | 'ocupada' | 'reservada' | 'completada';
+  status: 'disponible' | 'ocupada' | 'reservada' | 'completada';
+  at: number;
+  isVirtual?: boolean;
+  virtualCode?: string;
+  tableType?: string;
 }
 
 export type SalePaidLoad = {

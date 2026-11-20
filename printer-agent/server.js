@@ -33,11 +33,55 @@ const recentPrintJobs = new Map();
 setInterval(() => {
   const now = Date.now();
   for (const [id, timestamp] of recentPrintJobs.entries()) {
-    if (now - timestamp > 15000) {
+    if (now - timestamp > 30000) {
       recentPrintJobs.delete(id);
     }
   }
 }, 10000);
+
+// Cola secuencial de impresión física para proteger la impresora térmica de ráfagas
+const printQueue = [];
+let isProcessingQueue = false;
+let lastPhysicalPrintTime = 0;
+const MIN_INTER_TICKET_DELAY_MS = Number(process.env.PRINTER_INTER_TICKET_DELAY_MS) || 10000;
+
+async function processPrintQueue() {
+  if (isProcessingQueue || printQueue.length === 0) return;
+  isProcessingQueue = true;
+
+  while (printQueue.length > 0) {
+    const job = printQueue.shift();
+    try {
+      const timeSinceLast = Date.now() - lastPhysicalPrintTime;
+      if (lastPhysicalPrintTime > 0 && timeSinceLast < MIN_INTER_TICKET_DELAY_MS) {
+        const waitMs = MIN_INTER_TICKET_DELAY_MS - timeSinceLast;
+        console.log(`[printer-agent] Intervalo de seguridad entre tickets: esperando ${Math.round(waitMs / 1000)}s antes de enviar a "${job.printerName}"...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+
+      await printBufferToSystem(job.buffer, job.printerName);
+      lastPhysicalPrintTime = Date.now();
+      job.resolve({ success: true, printerName: job.printerName });
+    } catch (err) {
+      console.error(`[printer-agent] Error en cola física para "${job.printerName}":`, err.message);
+      if (job.fallbackFile && job.receiptText) {
+        try { fs.writeFileSync(job.fallbackFile, job.receiptText, 'utf8'); } catch {}
+      }
+      job.reject(err);
+    }
+  }
+
+  isProcessingQueue = false;
+}
+
+function enqueuePhysicalPrint(buffer, printerName, fallbackFile, receiptText) {
+  return new Promise((resolve, reject) => {
+    printQueue.push({ buffer, printerName, fallbackFile, receiptText, resolve, reject });
+    processPrintQueue().catch((err) => {
+      console.error('[printer-agent] Error procesando cola de impresión:', err);
+    });
+  });
+}
 
 /**
  * Detecta impresoras instaladas en el sistema operativo
@@ -159,8 +203,8 @@ async function printBufferToSystem(buffer, printerName) {
       // Envío Raw a impresora en Windows vía PowerShell
       cmd = `powershell -Command "Get-Content -Path '${tempFile}' -Encoding Byte -Raw | Out-Printer -Name '${printerName}'"`;
     } else if (platform === 'darwin' || platform === 'linux') {
-      // Envío Raw a CUPS/lp en macOS / Linux
-      cmd = `lp -d "${printerName}" -o raw "${tempFile}"`;
+      // Reactivar cola de CUPS si quedó pausada/desactivada y enviar Raw
+      cmd = `cupsenable "${printerName}" 2>/dev/null || true; cupsaccept "${printerName}" 2>/dev/null || true; lp -d "${printerName}" -o raw "${tempFile}"`;
     } else {
       try { fs.unlinkSync(tempFile); } catch { }
       return reject(new Error(`Plataforma no soportada: ${platform}`));
@@ -183,7 +227,7 @@ function generatePlainTextReceipt(sale, options = {}) {
   const width = options.paperWidth === '58mm' ? 32 : 48;
   const line = (char = '-') => char.repeat(width);
   const center = (text) => {
-    if (text.length >= width) return text.slice(0, width);
+    if (text.length >= width) return text;
     const pad = Math.floor((width - text.length) / 2);
     return ' '.repeat(pad) + text;
   };
@@ -276,7 +320,7 @@ function generateKitchenOrderReceipt(order, options = {}) {
   const width = options.paperWidth === '58mm' ? 32 : 48;
   const line = (char = '-') => char.repeat(width);
   const center = (text) => {
-    if (text.length >= width) return text.slice(0, width);
+    if (text.length >= width) return text;
     const pad = Math.floor((width - text.length) / 2);
     return ' '.repeat(pad) + text;
   };
@@ -285,18 +329,49 @@ function generateKitchenOrderReceipt(order, options = {}) {
     return left + ' '.repeat(space) + right;
   };
 
-  const tableNum =
-    order.tableNumber ??
-    (typeof order.table === 'object' && order.table !== null ? order.table?.number : order.table) ??
-    '—';
+  const isVirtual = Boolean(order.isVirtual || order.table?.isVirtual);
+  const virtualCode = order.virtualCode || order.table?.virtualCode;
+  const tableType = order.tableType || order.table?.tableType;
+  const typeLabel =
+    tableType === 'para_llevar'
+      ? 'LLEVAR'
+      : tableType === 'domicilio'
+      ? 'DOMICILIO'
+      : tableType === 'telefonico'
+      ? 'TELÉFONO'
+      : '';
+  const tableNum = order.tableLabel || (
+    isVirtual
+      ? `${virtualCode || 'VIRTUAL'}${typeLabel ? ` (${typeLabel})` : ''}`
+      : (order.tableNumber ??
+        (typeof order.table === 'object' && order.table !== null ? order.table?.number : order.table) ??
+        '—')
+  );
 
   const orderId = order.id || order._id || 'ORD-0000';
   const shortId = typeof orderId === 'string' && orderId.length > 6 ? orderId.slice(-6).toUpperCase() : String(orderId).toUpperCase();
   const dateStr = new Date(order.createdAt || Date.now()).toLocaleDateString('es-MX');
   const timeStr = new Date(order.createdAt || Date.now()).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-  const station = options.stationName || order.stationName || (options.station === 'fria' || order.station === 'fria' ? 'COCINA FRÍA' : (options.station === 'caliente' || order.station === 'caliente' ? 'COCINA CALIENTE' : ''));
-  const titleText = station ? `*** COMANDA DE ${station.toUpperCase()} ***` : '*** COMANDA DE COCINA ***';
+  const rawStation = options.station || order.station;
+  const isNoKitchen = rawStation === 'ninguna' || rawStation === 'sin_cocina' || rawStation === 'bebidas';
+  const isCold = rawStation === 'fria';
+  const isHot = rawStation === 'caliente';
+
+  const defaultStationName = isCold
+    ? 'COCINA FRÍA'
+    : isHot
+      ? 'COCINA CALIENTE'
+      : isNoKitchen
+        ? 'PRODUCTOS SIN COCINA (BEBIDAS)'
+        : '';
+
+  const station = options.stationName || order.stationName || defaultStationName;
+  const titleText = isNoKitchen
+    ? '*** PRODUCTOS SIN COCINA (BEBIDAS) ***'
+    : station
+      ? `*** COMANDA DE ${station.toUpperCase()} ***`
+      : '*** COMANDA DE COCINA ***';
 
   const lines = [
     center('================================'),
@@ -307,16 +382,27 @@ function generateKitchenOrderReceipt(order, options = {}) {
     row(`FECHA: ${dateStr}`, `HORA: ${timeStr}`),
   ];
 
+  if (order.customerName) {
+    lines.push(row('CLIENTE:', `${order.customerName}${order.customerPhone ? ` (${order.customerPhone})` : ''}`.toUpperCase()));
+  }
+  if (order.deliveryAddress) {
+    lines.push(`DIR: ${order.deliveryAddress.toUpperCase()}`);
+  }
+
   if (order.notes) {
     lines.push(line('-'));
     lines.push(`NOTAS ORDEN: ${order.notes.toUpperCase()}`);
   }
 
   lines.push(line('='));
-  lines.push(width === 48 ? 'CANT  PLATILLO / ESPECIFICACION' : 'CANT PLATILLO / NOTAS');
+  lines.push(
+    width === 48
+      ? (isNoKitchen ? 'CANT  PRODUCTO / ESPECIFICACION' : 'CANT  PLATILLO / ESPECIFICACION')
+      : (isNoKitchen ? 'CANT PRODUCTO / NOTAS' : 'CANT PLATILLO / NOTAS')
+  );
   lines.push(line('-'));
 
-  const items = order.recipes || order.items || [];
+  const items = (order.recipes || order.items || []).filter(it => it.status !== 'cancelled');
   let totalItemsCount = 0;
 
   for (const it of items) {
@@ -332,15 +418,30 @@ function generateKitchenOrderReceipt(order, options = {}) {
       lines.push(`${qtyStr.padEnd(5, ' ')} ${name.toUpperCase()}`);
     }
 
+    // Agregados / Toppings / Modificadores
+    if (it.modifiers && Array.isArray(it.modifiers) && it.modifiers.length > 0) {
+      for (const mod of it.modifiers) {
+        const modName = typeof mod === 'string' ? mod : mod.name;
+        const hasExtraCost = typeof mod === 'object' && Number(mod.price) > 0;
+        const priceStr = hasExtraCost ? ` (+$${Number(mod.price).toFixed(2)})` : ' (Sin costo)';
+        const stationOrigin =
+          typeof mod === 'object' && mod.station && mod.station !== rawStation
+            ? ` [De Cocina ${mod.station.toUpperCase()}]`
+            : '';
+        const prefix = hasExtraCost ? '+ ' : '* ';
+        lines.push(`      ${prefix}${modName.toUpperCase()}${priceStr}${stationOrigin}`);
+      }
+    }
+
     if (notes) {
       lines.push(`      >> ${notes}`);
     }
   }
 
   lines.push(line('-'));
-  lines.push(row('TOTAL PLATILLOS:', `${totalItemsCount} pzas`));
+  lines.push(row(isNoKitchen ? 'TOTAL PRODUCTOS:' : 'TOTAL PLATILLOS:', `${totalItemsCount} pzas`));
   lines.push(line('='));
-  lines.push(center('--- ENVIADO A COCINA ---'));
+  lines.push(center(isNoKitchen ? '--- DESPACHO DE BEBIDAS / SALA ---' : '--- ENVIADO A COCINA ---'));
   lines.push('');
   lines.push('');
 
@@ -355,6 +456,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-POS-Print-Token');
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -366,6 +468,11 @@ const server = http.createServer(async (req, res) => {
   // Endpoint 1: GET /status
   if (req.method === 'GET' && url.pathname === '/status') {
     const printerInfo = await resolvePrinter();
+    if ((process.platform === 'darwin' || process.platform === 'linux') && printerInfo.detected) {
+      try {
+        execSync(`cupsenable "${printerInfo.name}" 2>/dev/null; cupsaccept "${printerInfo.name}" 2>/dev/null`);
+      } catch {}
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       status: 'online',
@@ -480,9 +587,13 @@ const server = http.createServer(async (req, res) => {
           }));
         }
 
-        // Enviar a la impresora física real del sistema
+        // Enviar a la impresora física real del sistema mediante la cola secuencial segura
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const prefix = isKitchen ? 'failed_kitchen' : 'failed_account';
+        const fallbackSimFile = path.join(SIMULATED_DIR, `${prefix}_${rawId}_${timestamp}.txt`);
+
         try {
-          await printBufferToSystem(escPosBuffer, printerInfo.name);
+          await enqueuePhysicalPrint(escPosBuffer, printerInfo.name, fallbackSimFile, receiptText);
           recentPrintJobs.set(jobId, Date.now());
 
           console.log(`[printer-agent] ${isKitchen ? 'Comanda de cocina' : 'Ticket'} enviado a la impresora real "${printerInfo.name}" para ${jobId}`);
@@ -499,17 +610,11 @@ const server = http.createServer(async (req, res) => {
         } catch (printErr) {
           console.error(`[printer-agent] Error al imprimir en "${printerInfo.name}":`, printErr.message);
 
-          // Si falla la impresora física, guardar como simulación de respaldo y avisar
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const prefix = isKitchen ? 'failed_kitchen' : 'failed_account';
-          const simFile = path.join(SIMULATED_DIR, `${prefix}_${rawId}_${timestamp}.txt`);
-          fs.writeFileSync(simFile, receiptText, 'utf8');
-
           res.writeHead(500, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({
             success: false,
             error: `Error de hardware en la impresora "${printerInfo.name}": ${printErr.message}`,
-            fallbackFile: simFile,
+            fallbackFile: fallbackSimFile,
           }));
         }
       } catch (parseErr) {

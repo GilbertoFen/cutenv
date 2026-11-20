@@ -158,6 +158,11 @@ export class AnalyticsService {
       ? Number((((currentPeriodData.unitsSold - prevPeriodData.unitsSold) / prevPeriodData.unitsSold) * 100).toFixed(1))
       : null;
 
+    const hasPreviousProfitBase = (prevPeriodData.estimatedProfit ?? 0) > 0;
+    const percentageChangeProfit = hasPreviousProfitBase
+      ? Number(((((currentPeriodData.estimatedProfit ?? 0) - prevPeriodData.estimatedProfit) / prevPeriodData.estimatedProfit) * 100).toFixed(1))
+      : null;
+
     return {
       period: query.period || 'last_7_days',
       periodLabel: range.periodLabel,
@@ -177,8 +182,50 @@ export class AnalyticsService {
         percentageChangeRevenue,
         percentageChangeOrders,
         percentageChangeUnits,
+        percentageChangeProfit,
       },
     };
+  }
+
+  /**
+   * Helper para calcular el costo unitario de recetas a partir del costo de sus insumos en inventario.
+   */
+  private async calculateRecipeCosts(recipeIds: Array<Types.ObjectId | string>): Promise<Map<string, number>> {
+    const costMap = new Map<string, number>();
+    if (!recipeIds || recipeIds.length === 0) return costMap;
+
+    const cleanIds = Array.from(new Set(recipeIds.map((id) => id?.toString?.()).filter(Boolean)));
+    const objectIds = cleanIds.map((id) => new Types.ObjectId(id));
+
+    const recipes = await this.recipeModel.find({ _id: { $in: objectIds } }).lean();
+
+    const productIds = new Set<string>();
+    for (const r of recipes) {
+      for (const ing of (r as any).ingredients || []) {
+        const rawId = (ing.ingredientId || ing.product)?.toString();
+        if (rawId) productIds.add(rawId);
+      }
+    }
+
+    const products = await this.productModel
+      .find({ _id: { $in: Array.from(productIds).map((id) => new Types.ObjectId(id)) } })
+      .lean();
+    const productMap = new Map(products.map((p: any) => [p._id.toString(), p]));
+
+    for (const r of recipes) {
+      const rId = (r as any)._id?.toString();
+      let totalCost = 0;
+      for (const ing of (r as any).ingredients || []) {
+        const rawId = (ing.ingredientId || ing.product)?.toString();
+        if (!rawId) continue;
+        const p = productMap.get(rawId);
+        const unitCost = p?.unitCost || p?.price || 0;
+        totalCost += (ing.quantity || 0) * unitCost;
+      }
+      costMap.set(rId, Number(totalCost.toFixed(2)));
+    }
+
+    return costMap;
   }
 
   private async computePeriodSalesKpis(start: Date, end: Date) {
@@ -195,11 +242,13 @@ export class AnalyticsService {
           count: { $sum: 1 },
           totalAmount: { $sum: '$totalAmount' },
           totalDiscounts: { $sum: '$discountAmount' },
+          totalTips: { $sum: { $ifNull: ['$tipAmount', 0] } },
         },
       },
     ]);
 
     let netSales = 0;
+    let totalTips = 0;
     let salesCount = 0;
     let totalDiscounts = 0;
     let pendingSalesAmount = 0;
@@ -210,6 +259,7 @@ export class AnalyticsService {
     for (const group of salesKpis) {
       if (group._id === 'paid') {
         netSales += group.totalAmount;
+        totalTips += group.totalTips || 0;
         salesCount += group.count;
         totalDiscounts += group.totalDiscounts || 0;
       } else if (group._id === 'unpaid' || group._id === 'partial') {
@@ -222,12 +272,14 @@ export class AnalyticsService {
     }
 
     netSales = Number(netSales.toFixed(2));
+    totalTips = Number(totalTips.toFixed(2));
+    const totalCollected = Number((netSales + totalTips).toFixed(2));
     totalDiscounts = Number(totalDiscounts.toFixed(2));
     const grossSales = Number((netSales + totalDiscounts).toFixed(2));
     const averageTicket = salesCount > 0 ? Number((netSales / salesCount).toFixed(2)) : null;
 
-    // 2. Conteo de unidades vendidas en ventas válidas (status: 'paid')
-    const unitsResult = await this.saleModel.aggregate([
+    // 2. Conteo de unidades vendidas y agregación de recetas para cálculo de Costo de Ventas (COGS)
+    const recipeSalesResult = await this.saleModel.aggregate([
       {
         $match: {
           date: { $gte: start, $lte: end },
@@ -245,17 +297,51 @@ export class AnalyticsService {
       { $unwind: '$orderDocs' },
       { $unwind: '$orderDocs.items' },
       {
+        $match: {
+          'orderDocs.items.status': { $ne: 'cancelled' },
+        },
+      },
+      {
         $group: {
-          _id: null,
-          totalUnits: { $sum: '$orderDocs.items.quantity' },
+          _id: '$orderDocs.items.recipe',
+          unitsSold: { $sum: '$orderDocs.items.quantity' },
         },
       },
     ]);
 
-    const unitsSold = unitsResult[0]?.totalUnits || 0;
+    let unitsSold = 0;
+    const recipeIds = recipeSalesResult.map((r) => r._id).filter(Boolean);
+    const recipeCostMap = await this.calculateRecipeCosts(recipeIds);
+
+    let cogs = 0;
+    for (const r of recipeSalesResult) {
+      unitsSold += r.unitsSold;
+      const rId = r._id?.toString();
+      if (rId && recipeCostMap.has(rId)) {
+        cogs += r.unitsSold * (recipeCostMap.get(rId) || 0);
+      }
+    }
+
+    cogs = Number(cogs.toFixed(2));
+    const expenses = cogs; // Gastos calculados de venta (insumos)
+    const estimatedProfit = Number((netSales - expenses).toFixed(2));
+    const profitMarginPercentage = netSales > 0 ? Number(((estimatedProfit / netSales) * 100).toFixed(1)) : null;
 
     return {
       netSales,
+      totalTips,
+      totalCollected,
+      cogs,
+      expenses,
+      estimatedProfit,
+      profitMarginPercentage,
+      costModel: {
+        hasOperatingExpenses: false,
+        source: 'cogs_recipes_inventory',
+        label: 'Costo de ventas (Insumos y Recetas)',
+        description:
+          'Calculado a partir de los costos unitarios de insumos de las recetas vendidas. No incluye gastos fijos operativos (renta, servicios, salarios).',
+      },
       grossSales,
       totalDiscounts,
       salesCount,
@@ -454,6 +540,7 @@ export class AnalyticsService {
         $project: {
           dateStr: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: this.TIMEZONE } },
           totalAmount: 1,
+          tipAmount: 1,
           orders: 1,
         },
       },
@@ -491,6 +578,9 @@ export class AnalyticsService {
         $group: {
           _id: '$dateStr',
           revenue: { $sum: '$totalAmount' },
+          netSales: { $sum: '$totalAmount' },
+          tips: { $sum: { $ifNull: ['$tipAmount', 0] } },
+          totalCollected: { $sum: { $add: ['$totalAmount', { $ifNull: ['$tipAmount', 0] }] } },
           salesCount: { $sum: 1 },
           unitsSold: { $sum: '$units' },
         },
@@ -498,22 +588,85 @@ export class AnalyticsService {
       { $sort: { _id: 1 } },
     ]);
 
-    const dailyMap = new Map<string, { revenue: number; salesCount: number; unitsSold: number }>();
+    // 2.4 Agregación de recetas vendidas por día para Costo de Ventas (COGS)
+    const dailyRecipeAggregation = await this.saleModel.aggregate([
+      {
+        $match: {
+          date: { $gte: range.start, $lte: range.end },
+          status: 'paid',
+        },
+      },
+      {
+        $project: {
+          dateStr: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: this.TIMEZONE } },
+          orders: 1,
+        },
+      },
+      {
+        $lookup: {
+          from: 'orders',
+          localField: 'orders',
+          foreignField: '_id',
+          as: 'orderDocs',
+        },
+      },
+      { $unwind: '$orderDocs' },
+      { $unwind: '$orderDocs.items' },
+      {
+        $match: {
+          'orderDocs.items.status': { $ne: 'cancelled' },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            dateStr: '$dateStr',
+            recipeId: '$orderDocs.items.recipe',
+          },
+          unitsSold: { $sum: '$orderDocs.items.quantity' },
+        },
+      },
+    ]);
+
+    const dailyRecipeIds = dailyRecipeAggregation.map((d) => d._id?.recipeId).filter(Boolean);
+    const dailyRecipeCostMap = await this.calculateRecipeCosts(dailyRecipeIds);
+
+    const dailyCogsMap = new Map<string, number>();
+    for (const d of dailyRecipeAggregation) {
+      const dStr = d._id?.dateStr;
+      const rId = d._id?.recipeId?.toString();
+      if (!dStr || !rId) continue;
+      const unitCost = dailyRecipeCostMap.get(rId) || 0;
+      const totalCost = d.unitsSold * unitCost;
+      dailyCogsMap.set(dStr, (dailyCogsMap.get(dStr) || 0) + totalCost);
+    }
+
+    const dailyMap = new Map<string, { revenue: number; netSales: number; tips: number; totalCollected: number; salesCount: number; unitsSold: number }>();
     for (const d of dailyAggregation) {
       dailyMap.set(d._id, {
         revenue: Number(d.revenue.toFixed(2)),
+        netSales: Number((d.netSales ?? d.revenue).toFixed(2)),
+        tips: Number((d.tips ?? 0).toFixed(2)),
+        totalCollected: Number((d.totalCollected ?? d.revenue).toFixed(2)),
         salesCount: d.salesCount,
         unitsSold: d.unitsSold,
       });
     }
 
-      const dailyTrend: Array<{
-        date: string;
-        revenue: number;
-        salesCount: number;
-        unitsSold: number;
-        averageTicket: number | null;
-      }> = [];
+    const dailyTrend: Array<{
+      date: string;
+      revenue: number;
+      netSales: number;
+      tips: number;
+      totalCollected: number;
+      cogs: number;
+      expenses: number;
+      estimatedProfit: number;
+      profitMarginPercentage: number | null;
+      salesCount: number;
+      unitsSold: number;
+      averageTicket: number | null;
+    }> = [];
     const loopDate = new Date(range.start);
     const endMs = range.end.getTime();
 
@@ -525,12 +678,23 @@ export class AnalyticsService {
         day: '2-digit',
       }).format(loopDate);
 
-      const data = dailyMap.get(dStr) || { revenue: 0, salesCount: 0, unitsSold: 0 };
-      const avg = data.salesCount > 0 ? Number((data.revenue / data.salesCount).toFixed(2)) : null;
+      const data = dailyMap.get(dStr) || { revenue: 0, netSales: 0, tips: 0, totalCollected: 0, salesCount: 0, unitsSold: 0 };
+      const avg = data.salesCount > 0 ? Number((data.netSales / data.salesCount).toFixed(2)) : null;
+      const dailyCogs = Number((dailyCogsMap.get(dStr) || 0).toFixed(2));
+      const dailyExpenses = dailyCogs;
+      const dailyProfit = Number((data.netSales - dailyExpenses).toFixed(2));
+      const dailyMargin = data.netSales > 0 ? Number(((dailyProfit / data.netSales) * 100).toFixed(1)) : null;
 
       dailyTrend.push({
         date: dStr,
         revenue: data.revenue,
+        netSales: data.netSales,
+        tips: data.tips,
+        totalCollected: data.totalCollected,
+        cogs: dailyCogs,
+        expenses: dailyExpenses,
+        estimatedProfit: dailyProfit,
+        profitMarginPercentage: dailyMargin,
         salesCount: data.salesCount,
         unitsSold: data.unitsSold,
         averageTicket: avg,
@@ -845,7 +1009,7 @@ export class AnalyticsService {
         const pName = p?.name || 'Insumo';
         const pStock = p?.stock ?? 0;
         const pUnit = p?.baseUnit || ing.unitMesure || 'pza';
-        const pCost = p?.price ?? 0;
+        const pCost = p?.unitCost || p?.price || 0;
 
         const consumed = (ing.quantity || 0) * rSale.unitsSold;
 
@@ -919,7 +1083,10 @@ export class AnalyticsService {
         {
           $group: {
             _id: { $ifNull: ['$paymentMethod', 'efectivo'] },
+            netSales: { $sum: '$totalAmount' },
+            tips: { $sum: { $ifNull: ['$tipAmount', 0] } },
             revenue: { $sum: '$totalAmount' },
+            totalCollected: { $sum: { $add: ['$totalAmount', { $ifNull: ['$tipAmount', 0] }] } },
             ticketsCount: { $sum: 1 },
           },
         },
@@ -938,7 +1105,10 @@ export class AnalyticsService {
 
     const paymentMethods = paymentMethodAgg.map((p) => ({
       method: p._id,
+      netSales: Number((p.netSales ?? p.revenue).toFixed(2)),
+      tips: Number((p.tips ?? 0).toFixed(2)),
       revenue: Number(p.revenue.toFixed(2)),
+      totalCollected: Number((p.totalCollected ?? p.revenue).toFixed(2)),
       ticketsCount: p.ticketsCount,
       percentage: totalRevenue > 0 ? Number(((p.revenue / totalRevenue) * 100).toFixed(1)) : 0,
     }));

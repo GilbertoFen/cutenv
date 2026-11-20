@@ -49,6 +49,8 @@ export class SalesService {
       return (sales ?? []).map((sale: any) => ({
         id: sale?._id?.toString?.() ?? '',
         totalAmount: sale?.totalAmount ?? 0,
+        tipAmount: sale?.tipAmount ?? 0,
+        totalCollected: Number(((sale?.totalAmount ?? 0) + (sale?.tipAmount ?? 0)).toFixed(2)),
         orders: (sale?.orders ?? []).map((order: any) => {
           const items = (order?.items ?? []).map((item: any) => ({
             recipe: item?.recipe?.name ?? '—',
@@ -143,6 +145,8 @@ export class SalesService {
         return {
           id: sale._id.toString(),
           totalAmount: sale.totalAmount ?? 0,
+          tipAmount: sale.tipAmount ?? 0,
+          totalCollected: Number(((sale.totalAmount ?? 0) + (sale.tipAmount ?? 0)).toFixed(2)),
           orders: nonCancelledOrders.map((order: any) => {
             const rawItems = Array.isArray(order.items) ? order.items : [];
             const items = rawItems
@@ -250,6 +254,8 @@ export class SalesService {
       return {
         id: sale?._id?.toString?.() ?? '',
         totalAmount: sale?.totalAmount ?? 0,
+        tipAmount: sale?.tipAmount ?? 0,
+        totalCollected: Number(((sale?.totalAmount ?? 0) + (sale?.tipAmount ?? 0)).toFixed(2)),
         orders,
         folio: sale?.folio ?? '—',
         orderType: sale?.orderType,
@@ -375,6 +381,7 @@ export class SalesService {
       sale.date = new Date();
       sale.orderType = orderType;
       sale.paymentMethod = paymentMethod;
+      sale.tipAmount = Math.max(0, Number(body?.tipAmount || 0));
 
       // Base contable autorizada calculada desde el servidor (excluyendo órdenes canceladas)
       const totals = await this.orderModel.aggregate([
@@ -691,10 +698,10 @@ export class SalesService {
       .exec();
 
     // 2. Agrupación A: Ventas por método de pago (solo efectivamente cobradas)
-    const paymentMethodsMap: Record<string, { total: number; count: number; label: string }> = {
-      efectivo: { total: 0, count: 0, label: 'Efectivo' },
-      tarjeta: { total: 0, count: 0, label: 'Tarjeta de Débito/Crédito' },
-      transferencia: { total: 0, count: 0, label: 'Transferencia Bancaria' },
+    const paymentMethodsMap: Record<string, { netSales: number; tips: number; total: number; count: number; label: string }> = {
+      efectivo: { netSales: 0, tips: 0, total: 0, count: 0, label: 'Efectivo' },
+      tarjeta: { netSales: 0, tips: 0, total: 0, count: 0, label: 'Tarjeta de Débito/Crédito' },
+      transferencia: { netSales: 0, tips: 0, total: 0, count: 0, label: 'Transferencia Bancaria' },
     };
 
     // Agrupación B: Ventas por modalidad
@@ -705,52 +712,67 @@ export class SalesService {
       evento: { total: 0, count: 0, label: 'Eventos / Especiales' },
     };
 
+    let totalNetSales = 0;
+    let totalTips = 0;
     let totalCollectedRevenue = 0;
     let totalDiscounts = 0;
     const paidSales = sales.filter((s) => s.status === 'paid' || s.status === 'partial');
 
     for (const sale of paidSales) {
-      let amountPaid = 0;
+      let netSaleAmount = 0;
       if (sale.status === 'paid') {
-        amountPaid = Number(sale.totalAmount || 0);
+        netSaleAmount = Number(sale.totalAmount || 0);
       } else if (sale.status === 'partial') {
-        amountPaid = Number((sale as any).paidAmount || 0);
+        netSaleAmount = Number((sale as any).paidAmount || 0);
       }
-      if (amountPaid < 0) amountPaid = 0;
+      if (netSaleAmount < 0) netSaleAmount = 0;
+
+      const tipAmount = Math.max(0, Number((sale as any).tipAmount || 0));
+      const saleCollected = netSaleAmount + tipAmount;
 
       if (sale.discountAmount) {
         totalDiscounts += Number(sale.discountAmount || 0);
       }
 
+      totalNetSales += netSaleAmount;
+      totalTips += tipAmount;
+      totalCollectedRevenue += saleCollected;
+
       // Desglose de método de pago
       const paymentsList = (sale as any).payments;
       if (Array.isArray(paymentsList) && paymentsList.length > 0) {
+        const totalPayments = paymentsList.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0);
         for (const p of paymentsList) {
           const methodKey = (p.method || 'efectivo').toLowerCase().trim();
           const pAmount = Number(p.amount || 0);
           if (!paymentMethodsMap[methodKey]) {
-            paymentMethodsMap[methodKey] = { total: 0, count: 0, label: methodKey.toUpperCase() };
+            paymentMethodsMap[methodKey] = { netSales: 0, tips: 0, total: 0, count: 0, label: methodKey.toUpperCase() };
           }
+          const ratio = totalPayments > 0 ? pAmount / totalPayments : 1 / paymentsList.length;
+          const pNet = Number((netSaleAmount * ratio).toFixed(2));
+          const pTip = Number((tipAmount * ratio).toFixed(2));
+          paymentMethodsMap[methodKey].netSales += pNet;
+          paymentMethodsMap[methodKey].tips += pTip;
           paymentMethodsMap[methodKey].total += pAmount;
           paymentMethodsMap[methodKey].count += 1;
-          totalCollectedRevenue += pAmount;
         }
       } else {
         const methodKey = (sale.paymentMethod || 'efectivo').toLowerCase().trim();
         if (!paymentMethodsMap[methodKey]) {
-          paymentMethodsMap[methodKey] = { total: 0, count: 0, label: methodKey.toUpperCase() };
+          paymentMethodsMap[methodKey] = { netSales: 0, tips: 0, total: 0, count: 0, label: methodKey.toUpperCase() };
         }
-        paymentMethodsMap[methodKey].total += amountPaid;
+        paymentMethodsMap[methodKey].netSales += netSaleAmount;
+        paymentMethodsMap[methodKey].tips += tipAmount;
+        paymentMethodsMap[methodKey].total += saleCollected;
         paymentMethodsMap[methodKey].count += 1;
-        totalCollectedRevenue += amountPaid;
       }
 
-      // Desglose de modalidad
+      // Desglose de modalidad (las ventas por modalidad corresponden exclusivamente al valor neto de productos vendidos)
       const typeKey = (sale.orderType || 'local').toLowerCase().trim();
       if (!orderTypesMap[typeKey]) {
         orderTypesMap[typeKey] = { total: 0, count: 0, label: typeKey };
       }
-      orderTypesMap[typeKey].total += amountPaid;
+      orderTypesMap[typeKey].total += netSaleAmount;
       const orderCountForSale = Array.isArray(sale.orders) && sale.orders.length > 0
         ? sale.orders.filter((o: any) => o?.status !== 'cancelled').length
         : 1;
@@ -810,6 +832,8 @@ export class SalesService {
     const paymentItems = Object.entries(paymentMethodsMap).map(([method, data]) => ({
       method,
       label: data.label,
+      netSales: Number(data.netSales.toFixed(2)),
+      tips: Number(data.tips.toFixed(2)),
       total: Number(data.total.toFixed(2)),
       transactionsCount: data.count,
       percentage: totalCollectedRevenue > 0 ? Number(((data.total / totalCollectedRevenue) * 100).toFixed(1)) : 0,
@@ -827,11 +851,15 @@ export class SalesService {
 
     const totalTransactions = paymentItems.reduce((acc, p) => acc + p.transactionsCount, 0);
     const totalOrders = orderTypeItems.reduce((acc, o) => acc + o.ordersCount, 0);
-    const averageTicket = totalTransactions > 0 ? Number((totalCollectedRevenue / totalTransactions).toFixed(2)) : 0;
+    // Regla fundamental: el ticket promedio se calcula exclusivamente con base en ventas netas (sin propinas)
+    const averageTicket = totalTransactions > 0 ? Number((totalNetSales / totalTransactions).toFixed(2)) : 0;
 
     // Lista de ventas para la tabla de detalle
     const recentSales = paidSales.map((s: any) => {
       const saleDate = s.date || s.createdAt || new Date();
+      const netAmount = Number((s.totalAmount || 0).toFixed(2));
+      const tipAmount = Number((s.tipAmount || 0).toFixed(2));
+      const totalCollected = Number((netAmount + tipAmount).toFixed(2));
       return {
         id: s._id.toString(),
         folio: s.folio || '—',
@@ -839,7 +867,10 @@ export class SalesService {
         orderType: s.orderType || 'local',
         paymentMethod: s.paymentMethod || 'efectivo',
         status: s.status,
-        totalAmount: Number((s.totalAmount || 0).toFixed(2)),
+        netAmount,
+        tipAmount,
+        totalAmount: totalCollected,
+        totalCollected,
         discountAmount: Number((s.discountAmount || 0).toFixed(2)),
         date: saleDate,
         time: new Date(saleDate).toLocaleTimeString('es-MX', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }),
@@ -870,6 +901,8 @@ export class SalesService {
       generatedAtFormatted,
       timezone,
       summary: {
+        totalNetSales: Number(totalNetSales.toFixed(2)),
+        totalTips: Number(totalTips.toFixed(2)),
         totalRevenue: Number(totalCollectedRevenue.toFixed(2)),
         totalOrders,
         totalTransactions,
@@ -878,6 +911,8 @@ export class SalesService {
       },
       byPaymentMethod: {
         items: paymentItems,
+        totalNetSales: Number(totalNetSales.toFixed(2)),
+        totalTips: Number(totalTips.toFixed(2)),
         totalRevenue: Number(totalCollectedRevenue.toFixed(2)),
         totalTransactions,
       },
@@ -951,19 +986,20 @@ export class SalesService {
       doc.fillColor('#111827').font('Helvetica-Bold').fontSize(9.5).text('RESUMEN GENERAL', leftMargin, curY);
 
       curY += 14;
-      const colW = contentWidth / 4;
+      const colW = contentWidth / 5;
       const summaryItems = [
-        { label: 'Total de Ingresos', val: `$${data.summary.totalRevenue.toFixed(2)}` },
-        { label: 'Ventas Realizadas', val: `${data.summary.totalTransactions} transacciones` },
-        { label: 'Pedidos Atendidos', val: `${data.summary.totalOrders} pedidos` },
+        { label: 'Venta Total Neta', val: `$${data.summary.totalNetSales.toFixed(2)}` },
+        { label: 'Propinas Totales', val: `$${data.summary.totalTips.toFixed(2)}` },
+        { label: 'Total Cobrado', val: `$${data.summary.totalRevenue.toFixed(2)}` },
+        { label: 'Transacciones', val: `${data.summary.totalTransactions}` },
         { label: 'Ticket Promedio', val: `$${data.summary.averageTicket.toFixed(2)}` },
       ];
 
       doc.rect(leftMargin, curY, contentWidth, 34).fillAndStroke('#f9fafb', '#e5e7eb');
       summaryItems.forEach((item, idx) => {
         const itemX = leftMargin + idx * colW;
-        doc.fillColor('#6b7280').font('Helvetica').fontSize(7.5).text(item.label.toUpperCase(), itemX + 8, curY + 6);
-        doc.fillColor('#111827').font('Helvetica-Bold').fontSize(11).text(item.val, itemX + 8, curY + 18);
+        doc.fillColor('#6b7280').font('Helvetica').fontSize(7).text(item.label.toUpperCase(), itemX + 6, curY + 6);
+        doc.fillColor('#111827').font('Helvetica-Bold').fontSize(10).text(item.val, itemX + 6, curY + 18);
         if (idx > 0) {
           doc.strokeColor('#e5e7eb').lineWidth(1).moveTo(itemX, curY).lineTo(itemX, curY + 34).stroke();
         }
@@ -979,33 +1015,38 @@ export class SalesService {
 
       // Encabezado de tabla
       doc.rect(leftMargin, curY, contentWidth, 18).fillAndStroke('#f3f4f6', '#d1d5db');
-      doc.fillColor('#374151').font('Helvetica-Bold').fontSize(8);
+      doc.fillColor('#374151').font('Helvetica-Bold').fontSize(7.5);
       doc.text('Método de Pago', leftMargin + 8, curY + 5);
-      doc.text('Transacciones', leftMargin + 200, curY + 5, { width: 90, align: 'center' });
-      doc.text('% del Total', leftMargin + 300, curY + 5, { width: 90, align: 'center' });
-      doc.text('Importe Total', leftMargin + 400, curY + 5, { width: 124, align: 'right' });
+      doc.text('Venta Neta', leftMargin + 150, curY + 5, { width: 75, align: 'right' });
+      doc.text('Propinas', leftMargin + 230, curY + 5, { width: 70, align: 'right' });
+      doc.text('Total Cobrado', leftMargin + 305, curY + 5, { width: 80, align: 'right' });
+      doc.text('Transac.', leftMargin + 395, curY + 5, { width: 55, align: 'center' });
+      doc.text('% Cobrado', leftMargin + 460, curY + 5, { width: 64, align: 'right' });
 
       curY += 18;
-      doc.font('Helvetica').fontSize(8);
+      doc.font('Helvetica').fontSize(7.5);
 
       data.byPaymentMethod.items.forEach((item, i) => {
         const rowBg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
         doc.rect(leftMargin, curY, contentWidth, 17).fillAndStroke(rowBg, '#e5e7eb');
         doc.fillColor('#1f2937').text(item.label, leftMargin + 8, curY + 4);
-        doc.text(String(item.transactionsCount), leftMargin + 200, curY + 4, { width: 90, align: 'center' });
-        doc.text(`${item.percentage.toFixed(1)}%`, leftMargin + 300, curY + 4, { width: 90, align: 'center' });
-        doc.font('Helvetica-Bold').text(`$${item.total.toFixed(2)}`, leftMargin + 400, curY + 4, { width: 124, align: 'right' });
-        doc.font('Helvetica');
+        doc.text(`$${(item.netSales || 0).toFixed(2)}`, leftMargin + 150, curY + 4, { width: 75, align: 'right' });
+        doc.text(`$${(item.tips || 0).toFixed(2)}`, leftMargin + 230, curY + 4, { width: 70, align: 'right' });
+        doc.font('Helvetica-Bold').text(`$${item.total.toFixed(2)}`, leftMargin + 305, curY + 4, { width: 80, align: 'right' });
+        doc.font('Helvetica').text(String(item.transactionsCount), leftMargin + 395, curY + 4, { width: 55, align: 'center' });
+        doc.text(`${item.percentage.toFixed(1)}%`, leftMargin + 460, curY + 4, { width: 64, align: 'right' });
         curY += 17;
       });
 
       // Total fila pago
       doc.rect(leftMargin, curY, contentWidth, 18).fillAndStroke('#e5e7eb', '#d1d5db');
-      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(8.5);
+      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(8);
       doc.text('TOTAL POR MÉTODO DE PAGO', leftMargin + 8, curY + 5);
-      doc.text(String(data.byPaymentMethod.totalTransactions), leftMargin + 200, curY + 5, { width: 90, align: 'center' });
-      doc.text('100.0%', leftMargin + 300, curY + 5, { width: 90, align: 'center' });
-      doc.text(`$${data.byPaymentMethod.totalRevenue.toFixed(2)}`, leftMargin + 400, curY + 5, { width: 124, align: 'right' });
+      doc.text(`$${data.byPaymentMethod.totalNetSales.toFixed(2)}`, leftMargin + 150, curY + 5, { width: 75, align: 'right' });
+      doc.text(`$${data.byPaymentMethod.totalTips.toFixed(2)}`, leftMargin + 230, curY + 5, { width: 70, align: 'right' });
+      doc.text(`$${data.byPaymentMethod.totalRevenue.toFixed(2)}`, leftMargin + 305, curY + 5, { width: 80, align: 'right' });
+      doc.text(String(data.byPaymentMethod.totalTransactions), leftMargin + 395, curY + 5, { width: 55, align: 'center' });
+      doc.text('100.0%', leftMargin + 460, curY + 5, { width: 64, align: 'right' });
 
       curY += 30;
 
@@ -1101,14 +1142,20 @@ export class SalesService {
       // ==========================================
       // 6. TOTALES FINALES DEL DÍA
       // ==========================================
-      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(9.5).text('TOTALES FINALES', leftMargin, curY);
+      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(9.5).text('TOTALES FINALES DEL CORTE', leftMargin, curY);
       curY += 14;
 
-      doc.rect(leftMargin, curY, contentWidth, 26).fillAndStroke('#f0fdf4', '#86efac');
-      doc.fillColor('#166534').font('Helvetica-Bold').fontSize(10).text('TOTAL GENERAL COBRADO:', leftMargin + 12, curY + 8);
-      doc.fontSize(12).text(`$${data.summary.totalRevenue.toFixed(2)} MXN`, leftMargin + 350, curY + 7, { width: 170, align: 'right' });
+      doc.rect(leftMargin, curY, contentWidth, 52).fillAndStroke('#f0fdf4', '#86efac');
+      doc.fillColor('#166534').font('Helvetica-Bold').fontSize(8.5).text('VENTA TOTAL NETA (PRODUCTOS Y SERVICIOS):', leftMargin + 12, curY + 8);
+      doc.fontSize(9.5).text(`$${data.summary.totalNetSales.toFixed(2)} MXN`, leftMargin + 350, curY + 7, { width: 170, align: 'right' });
 
-      curY += 38;
+      doc.fillColor('#166534').font('Helvetica-Bold').fontSize(8.5).text('PROPINAS TOTALES RECIBIDAS:', leftMargin + 12, curY + 22);
+      doc.fontSize(9.5).text(`$${data.summary.totalTips.toFixed(2)} MXN`, leftMargin + 350, curY + 21, { width: 170, align: 'right' });
+
+      doc.fillColor('#14532d').font('Helvetica-Bold').fontSize(10).text('TOTAL GENERAL COBRADO (VENTA NETA + PROPINAS):', leftMargin + 12, curY + 36);
+      doc.fontSize(11).text(`$${data.summary.totalRevenue.toFixed(2)} MXN`, leftMargin + 350, curY + 35, { width: 170, align: 'right' });
+
+      curY += 64;
 
       // ==========================================
       // 7. FIRMAS Y REGISTRO ADMINISTRATIVO
